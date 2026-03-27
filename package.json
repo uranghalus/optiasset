@@ -7,6 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
+
+  },
+  "prisma": {
+    "seed": "ts-node --compiler-options {\\"module\\":\\"CommonJS\\"} prisma/seed.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

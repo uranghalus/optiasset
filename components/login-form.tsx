@@ -9,14 +9,16 @@ import z from 'zod'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 
-import { Field, FieldError, FieldGroup, FieldLabel } from './ui/field'
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from './ui/field'
 import { Input } from './ui/input'
 
-import { Checkbox } from '@radix-ui/react-checkbox'
+
 import { Button } from './ui/button'
 
 import { PasswordInput } from './password-input'
 import { loginAction } from '@/action/auth-action'
+import Logo from './logo'
+import { Checkbox } from './ui/checkbox'
 
 export default function LoginForm() {
     const [isLoading, setIsLoading] = useState(false)
@@ -85,7 +87,7 @@ export default function LoginForm() {
     }
 
     return (
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:px-4 px-4">
 
             {/* GLOBAL ERROR */}
             {form.formState.errors.root?.message && (
@@ -95,7 +97,19 @@ export default function LoginForm() {
             )}
 
             <FieldGroup>
-                {/* EMAIL */}
+                <div className="flex flex-col items-center gap-2 text-center">
+                    <a
+                        href="#"
+                        className="flex flex-col items-center gap-2 font-medium"
+                    >
+                        <Logo />
+                        <span className="sr-only">Acme Inc.</span>
+                    </a>
+                    <h1 className="text-xl font-bold">Welcome to OptimaAsset</h1>
+                    <FieldDescription>
+                        Don&apos;t have an account? <a href="#">Sign up</a>
+                    </FieldDescription>
+                </div>
                 <Controller
                     name="email"
                     control={form.control}
@@ -141,8 +155,9 @@ export default function LoginForm() {
                     name="rememberMe"
                     control={form.control}
                     render={({ field }) => (
-                        <Field className="flex items-center gap-2">
+                        <Field orientation={'horizontal'}>
                             <Checkbox
+                                className='w-4 h-4'
                                 checked={field.value}
                                 onCheckedChange={field.onChange}
                             />
@@ -150,11 +165,12 @@ export default function LoginForm() {
                         </Field>
                     )}
                 />
+                <Field>
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                        {isLoading ? 'Loading...' : 'Login'}
+                    </Button>
+                </Field>
             </FieldGroup>
-
-            <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Loading...' : 'Login'}
-            </Button>
         </form>
     )
 }

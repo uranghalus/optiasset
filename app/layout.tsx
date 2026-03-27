@@ -9,6 +9,7 @@ import { PreferencesProvider } from "@/context/preferences-provider";
 import { QueryProvider } from "@/context/query-provider";
 import ToastProvider from "@/context/toast-providers";
 import { ThemeProvider } from "next-themes";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -48,7 +49,8 @@ export default function RootLayout({
               <FontProvider>
                 <PreferencesProvider>
                   <DirectionProvider>
-                    <ToastProvider>{children}</ToastProvider>
+                    <ToastProvider><TooltipProvider>
+                      {children}</TooltipProvider></ToastProvider>
                   </DirectionProvider>
                 </PreferencesProvider>
               </FontProvider>

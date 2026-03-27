@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -15,7 +10,7 @@ datasource db {
 model User {
   id              String       @id
   name            String       @db.Text
-  email           String
+  email           String       @unique
   emailVerified   Boolean      @default(false)
   image           String?      @db.Text
   createdAt       DateTime     @default(now())
@@ -26,32 +21,30 @@ model User {
   banned          Boolean?     @default(false)
   banReason       String?      @db.Text
   banExpires      DateTime?
-  sessions        Session[]
   accounts        Account[]
-  teammembers     TeamMember[]
-  members         Member[]
   invitations     Invitation[]
+  members         Member[]
+  sessions        Session[]
+  teammember      teammember[]
 
-  @@unique([email])
   @@map("user")
 }
 
 model Session {
   id                   String   @id
   expiresAt            DateTime
-  token                String
+  token                String   @unique
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
   ipAddress            String?  @db.Text
   userAgent            String?  @db.Text
   userId               String
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   impersonatedBy       String?  @db.Text
   activeOrganizationId String?  @db.Text
   activeTeamId         String?  @db.Text
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([token])
-  @@index([userId(length: 191)])
+  @@index([userId])
   @@map("session")
 }
 
@@ -60,7 +53,6 @@ model Account {
   accountId             String    @db.Text
   providerId            String    @db.Text
   userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessToken           String?   @db.Text
   refreshToken          String?   @db.Text
   idToken               String?   @db.Text
@@ -70,8 +62,9 @@ model Account {
   password              String?   @db.Text
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId(length: 191)])
+  @@index([userId])
   @@map("account")
 }
 
@@ -88,79 +81,50 @@ model Verification {
 }
 
 model Organization {
-  id                String             @id
-  name              String             @db.Text
-  slug              String
-  logo              String?            @db.Text
-  createdAt         DateTime
-  metadata          String?            @db.Text
-  organizationroles OrganizationRole[]
-  teams             Team[]
-  members           Member[]
-  invitations       Invitation[]
+  id               String             @id
+  name             String             @db.Text
+  slug             String             @unique
+  logo             String?            @db.Text
+  createdAt        DateTime
+  metadata         String?            @db.Text
+  invitations      Invitation[]
+  members          Member[]
+  organizationrole organizationrole[]
+  teams            Team[]
 
-  @@unique([slug])
   @@map("organization")
-}
-
-model OrganizationRole {
-  id             String       @id
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  role           String       @db.Text
-  permission     String       @db.Text
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime?    @updatedAt
-
-  @@index([organizationId(length: 191)])
-  @@index([role(length: 191)])
-  @@map("organizationRole")
 }
 
 model Team {
   id             String       @id
   name           String       @db.Text
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdAt      DateTime
   updatedAt      DateTime?    @updatedAt
-  teammembers    TeamMember[]
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  teammember     teammember[]
 
-  @@index([organizationId(length: 191)])
+  @@index([organizationId])
   @@map("team")
-}
-
-model TeamMember {
-  id        String    @id
-  teamId    String
-  team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime?
-
-  @@index([teamId(length: 191)])
-  @@index([userId(length: 191)])
-  @@map("teamMember")
 }
 
 model Member {
   id             String       @id
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   userId         String
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   role           String       @db.Text
   createdAt      DateTime
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([organizationId(length: 191)])
-  @@index([userId(length: 191)])
+  @@index([organizationId])
+  @@index([userId])
   @@map("member")
 }
 
 model Invitation {
   id             String       @id
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   email          String       @db.Text
   role           String?      @db.Text
   teamId         String?      @db.Text
@@ -169,8 +133,35 @@ model Invitation {
   createdAt      DateTime     @default(now())
   inviterId      String
   user           User         @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  @@index([organizationId(length: 191)])
+  @@index([organizationId])
   @@index([email(length: 191)])
+  @@index([inviterId], map: "invitation_inviterId_fkey")
   @@map("invitation")
+}
+
+model organizationrole {
+  id             String       @id
+  organizationId String
+  role           String       @db.Text
+  permission     String       @db.Text
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime?
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: "organizationRole_organizationId_fkey")
+
+  @@index([organizationId], map: "organizationRole_organizationId_idx")
+  @@index([role(length: 191)], map: "organizationRole_role_idx")
+}
+
+model teammember {
+  id        String    @id
+  teamId    String
+  userId    String
+  createdAt DateTime?
+  team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade, map: "teamMember_teamId_fkey")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade, map: "teamMember_userId_fkey")
+
+  @@index([teamId], map: "teamMember_teamId_idx")
+  @@index([userId], map: "teamMember_userId_idx")
 }

@@ -1,5 +1,6 @@
 import { AppSidebar } from '@/components/app-sidebar'
 import { Header } from '@/components/header'
+import { Main } from '@/components/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ThemeSwitch } from '@/components/theme-switcher'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
@@ -36,7 +37,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                                 </div>
                             </Header>
 
-                            {children}
+                            <Main fluid>
+                                {children}
+                            </Main>
                         </SidebarInset>
                     </SidebarProvider>
                 </LayoutProvider>

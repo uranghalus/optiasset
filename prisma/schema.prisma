@@ -165,3 +165,92 @@ model teammember {
   @@index([teamId], map: "teamMember_teamId_idx")
   @@index([userId], map: "teamMember_userId_idx")
 }
+
+// Asset Management
+model Item {
+  id          String  @id @default(uuid())
+  code        String  @unique
+  name        String
+  categoryId  String?
+  brand       String?
+  partNumber  String?
+  description String?
+
+  assetType AssetType
+
+  createdAt DateTime  @default(now())
+  createdBy String?
+  updatedAt DateTime?
+  updatedBy String?
+
+  category Category? @relation(fields: [categoryId], references: [id])
+
+  assets Asset[]
+  stocks Stock[]
+
+  @@map("items")
+}
+
+model Asset {
+  id String @id @default(uuid())
+
+  itemId       String
+  serialNumber String? @unique
+
+  purchaseDate  DateTime?
+  purchasePrice Float?
+
+  condition      String?
+  warrantyExpire DateTime?
+
+  locationId     String?
+  departmentId   String?
+  assignedUserId String?
+
+  notes String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  item Item @relation(fields: [itemId], references: [id])
+
+  @@map("assets")
+}
+
+model Stock {
+  id String @id @default(uuid())
+
+  itemId   String
+  quantity Int
+
+  locationId   String?
+  departmentId String?
+
+  updatedAt DateTime @updatedAt
+
+  item Item @relation(fields: [itemId], references: [id])
+
+  @@unique([itemId, locationId])
+  @@map("stocks")
+}
+
+model Category {
+  id   String @id @default(uuid())
+  name String
+
+  items Item[]
+
+  @@map("categories")
+}
+
+model Location {
+  id   String @id @default(uuid())
+  name String
+
+  @@map("locations")
+}
+
+enum AssetType {
+  FIXED
+  SUPPLY
+}

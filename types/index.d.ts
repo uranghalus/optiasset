@@ -3,6 +3,12 @@ export type ActionState = {
   message?: string;
   fieldErrors?: Record<string, string>;
 };
+export type PaginationState = {
+  page: number;
+  pageSize: number;
+  total?: number;
+  totalPages?: number;
+}
 
 /* ===================== */
 /* SIDEBAR TYPES */

@@ -49,8 +49,11 @@ export default function RootLayout({
               <FontProvider>
                 <PreferencesProvider>
                   <DirectionProvider>
-                    <ToastProvider><TooltipProvider>
-                      {children}</TooltipProvider></ToastProvider>
+                    <ToastProvider>
+                      <TooltipProvider>
+                        {children}
+                      </TooltipProvider>
+                    </ToastProvider>
                   </DirectionProvider>
                 </PreferencesProvider>
               </FontProvider>

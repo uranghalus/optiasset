@@ -70,3 +70,51 @@ export async function createCategory(formData: FormData) {
   revalidatePath('/assets/categories');
   return category;
 }
+
+/* =======================
+   UPDATE CATEGORY
+ ======================= */
+export async function updateCategory(id: string, formData: FormData) {
+  const session = await getServerSession();
+  if (!session) throw new Error('Unauthorized');
+  const category = await prisma.category.findFirst({
+    where: {
+      id,
+
+    },
+  });
+
+  if (!category) throw new Error("Category not found");
+  const name = formData.get('name')?.toString();
+
+  if (!id || !name) {
+    throw new Error('Required fields are missing');
+  }
+  const updated = await prisma.category.update({
+    where: {
+      id,
+    },
+    data: {
+      name: formData.get("name")?.toString() ?? category.name,
+
+    },
+  });
+  revalidatePath('/assets/categories');
+  return category;
+}
+
+/* =======================
+   DELETE CATEGORY
+ ======================= */
+export async function deleteCategory(id: string) {
+  const session = await getServerSession();
+  if (!session) throw new Error('Unauthorized');
+
+  const category = await prisma.category.delete({
+    where: {
+      id,
+    },
+  });
+  revalidatePath('/assets/categories');
+  return category;
+}

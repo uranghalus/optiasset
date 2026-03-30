@@ -4,7 +4,7 @@ import { ButtonGroup } from '@/components/ui/button-group';
 import { useDialog } from '@/context/dialog-provider';
 import { Category } from '@/generated/prisma/client';
 import { Row } from '@tanstack/react-table';
-import { Trash2 } from 'lucide-react';
+import { Eye, Pencil, Trash2 } from 'lucide-react';
 import React from 'react'
 
 interface DataTableRowActionsProps<TData> {
@@ -18,9 +18,21 @@ export default function CategoriesRowAction<TData>({
 
     return (
         <ButtonGroup>
-            <Button variant="destructive" size="icon">
+            <Button variant="destructive" size="icon" onClick={() => {
+                setCurrentRow(category);
+                setOpen("delete");
+            }}>
                 <Trash2 />
             </Button>
+            <Button variant="outline" size="icon" onClick={() => {
+                setCurrentRow(category);
+                setOpen("edit");
+            }}>
+                <Pencil />
+            </Button>
+            {/* <Button variant="outline" size="icon">
+                <Eye />
+            </Button> */}
         </ButtonGroup>
     )
 }

@@ -7,8 +7,12 @@ import { Category } from '@/generated/prisma/client';
 import { DataTableToolbar } from '@/components/datatable/datatable-toolbar';
 import { DataTable } from '@/components/datatable/data-table';
 import { DataTablePagination } from '@/components/datatable/datatable-pagination';
+import { useDialog } from '@/context/dialog-provider';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
 
 export default function CategoriesTable() {
+    const { setOpen } = useDialog();
     const [pagination, setPagination] = useState({
         pageIndex: 0,
         pageSize: 10,
@@ -32,7 +36,14 @@ export default function CategoriesTable() {
                 table={table}
                 searchKey="name"
                 searchPlaceholder="Search category..."
-            />
+            >
+                <div className="flex gap-2">
+                    <Button onClick={() => setOpen("add")} className="gap-2">
+                        <Plus className="size-4" />
+                        Add Category
+                    </Button>
+                </div>
+            </DataTableToolbar>
 
             <DataTable table={table} loading={isLoading} />
 

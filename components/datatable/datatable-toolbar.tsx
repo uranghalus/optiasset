@@ -25,9 +25,11 @@ type DataTableToolbarProps<TData> = {
             icon?: React.ComponentType<{ className?: string }>
         }[]
     }[]
+    children?: React.ReactNode
 }
 
 export function DataTableToolbar<TData>({
+    children,
     table,
     searchPlaceholder = 'Filter...',
     searchKey,
@@ -38,32 +40,16 @@ export function DataTableToolbar<TData>({
         Boolean(table.getState().globalFilter)
 
     return (
-        <div className="flex items-center justify-between">
-            {/* LEFT */}
-            <div className="flex flex-1 flex-col-reverse items-start gap-y-2 sm:flex-row sm:items-center sm:space-x-2">
-                {/* SEARCH */}
-                {searchKey ? (
-                    <Input
-                        placeholder={searchPlaceholder}
-                        value={
-                            (table.getColumn(searchKey)?.getFilterValue() as string) ?? ''
-                        }
-                        onChange={(event) =>
-                            table.getColumn(searchKey)?.setFilterValue(event.target.value)
-                        }
-                        className="h-8 w-[150px] lg:w-[250px]"
-                    />
-                ) : (
-                    <Input
-                        placeholder={searchPlaceholder}
-                        value={(table.getState().globalFilter as string) ?? ''}
-                        onChange={(event) => table.setGlobalFilter(event.target.value)}
-                        className="h-8 w-[150px] lg:w-[250px]"
-                    />
-                )}
+        <div className="flex items-center w-full">
 
-                {/* FACET FILTERS */}
-                <div className="flex gap-x-2">
+            {/* LEFT (children optional) */}
+            {children && <div>{children}</div>}
+
+            {/* RIGHT (selalu ke kanan) */}
+            <div className="ml-auto flex items-center gap-6 shrink-0">
+
+                {/* FILTER + RESET */}
+                <div className="flex items-center gap-2 flex-wrap">
                     {filters.map((filter) => {
                         const column = table.getColumn(filter.columnId)
                         if (!column) return null
@@ -77,26 +63,42 @@ export function DataTableToolbar<TData>({
                             />
                         )
                     })}
+
+                    {isFiltered && (
+                        <Button
+                            variant="ghost"
+                            onClick={() => {
+                                table.resetColumnFilters()
+                                table.setGlobalFilter('')
+                            }}
+                            className="h-8 px-2"
+                        >
+                            Reset
+                            <X className="ms-2 h-4 w-4" />
+                        </Button>
+                    )}
                 </div>
 
-                {/* RESET */}
-                {isFiltered && (
-                    <Button
-                        variant="ghost"
-                        onClick={() => {
-                            table.resetColumnFilters()
-                            table.setGlobalFilter('')
-                        }}
-                        className="h-8 px-2 lg:px-3"
-                    >
-                        Reset
-                        <X className="ms-2 h-4 w-4" />
-                    </Button>
-                )}
-            </div>
+                {/* SEARCH + VIEW */}
+                <div className="flex items-center gap-4">
+                    <Input
+                        placeholder={searchPlaceholder}
+                        value={
+                            searchKey
+                                ? (table.getColumn(searchKey)?.getFilterValue() as string) ?? ''
+                                : (table.getState().globalFilter as string) ?? ''
+                        }
+                        onChange={(event) =>
+                            searchKey
+                                ? table.getColumn(searchKey)?.setFilterValue(event.target.value)
+                                : table.setGlobalFilter(event.target.value)
+                        }
+                        className="h-8 w-[150px] lg:w-[250px]"
+                    />
 
-            {/* RIGHT */}
-            <DataTableViewOptions table={table} />
+                    <DataTableViewOptions table={table} />
+                </div>
+            </div>
         </div>
     )
 }

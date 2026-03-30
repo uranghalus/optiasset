@@ -2,6 +2,7 @@ import { DialogProvider } from '@/context/dialog-provider'
 import { Metadata } from 'next'
 import React from 'react'
 import CategoriesTable from './components/categories-table'
+import CategoriesDialog from './components/categories-dialogs'
 
 export const metadata: Metadata = {
     title: "Categories",
@@ -21,10 +22,10 @@ export default function CategoriesPage() {
                             Manage categories for your assets.
                         </p>
                     </div>
-                    {/* <CategoryPrimaryButtons /> */}
                 </div>
                 <CategoriesTable />
             </div>
+            <CategoriesDialog />
         </DialogProvider>
     )
 }

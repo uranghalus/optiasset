@@ -67,44 +67,44 @@ export const sidebarData: SidebarData = {
         },
         {
           title: "Lokasi Aset",
-          url: "/asset-locations",
+          url: "/assets/locations",
           icon: MapPin,
         },
-        {
-          title: "Persetujuan",
-          url: "/approvals",
-          icon: CheckSquare,
-        },
-        {
-          title: "Peminjaman Aset",
-          url: "/asset-loans",
-          icon: Handshake,
-        },
-        {
-          title: "Perawatan Aset",
-          url: "/assets/maintenances",
-          icon: Wrench,
-        },
-        {
-          title: "Jadwal Aset",
-          url: "/assets/schedules",
-          icon: Clock,
-        },
-        {
-          title: "Mutasi Aset",
-          url: "/asset-transfers",
-          icon: Move,
-        },
-        {
-          title: "Penghapusan Aset",
-          url: "/assets/disposals",
-          icon: ArchiveX,
-        },
-        {
-          title: "Riwayat Aset",
-          url: "/asset-history",
-          icon: History,
-        },
+        // {
+        //   title: "Persetujuan",
+        //   url: "/approvals",
+        //   icon: CheckSquare,
+        // },
+        // {
+        //   title: "Peminjaman Aset",
+        //   url: "/asset-loans",
+        //   icon: Handshake,
+        // },
+        // {
+        //   title: "Perawatan Aset",
+        //   url: "/assets/maintenances",
+        //   icon: Wrench,
+        // },
+        // {
+        //   title: "Jadwal Aset",
+        //   url: "/assets/schedules",
+        //   icon: Clock,
+        // },
+        // {
+        //   title: "Mutasi Aset",
+        //   url: "/asset-transfers",
+        //   icon: Move,
+        // },
+        // {
+        //   title: "Penghapusan Aset",
+        //   url: "/assets/disposals",
+        //   icon: ArchiveX,
+        // },
+        // {
+        //   title: "Riwayat Aset",
+        //   url: "/asset-history",
+        //   icon: History,
+        // },
       ],
     },
 

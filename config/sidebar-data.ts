@@ -14,6 +14,7 @@ import {
   ArchiveX,
   Clock,
   CheckSquare,
+  Building2,
 } from "lucide-react";
 
 import { SidebarData } from "@/types";
@@ -121,6 +122,11 @@ export const sidebarData: SidebarData = {
           title: "Preferensi",
           url: "/settings/preferences",
           icon: Sliders,
+        },
+        {
+          title: "Organisasi",
+          url: "/organizations",
+          icon: Building2,
         },
         {
           title: "Impor & Ekspor",

@@ -1,0 +1,310 @@
+"use client";
+
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Controller, useForm } from "react-hook-form";
+import { useEffect } from "react";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+import {
+  Field,
+  FieldGroup,
+  FieldLabel,
+  FieldError,
+} from "@/components/ui/field";
+
+import { Item } from "@/generated/prisma/client";
+import {
+  useCreateItem,
+  useUpdateItem,
+  useCategoriesForSelect,
+} from "@/hooks/crud/use-items";
+import { ItemForm, ItemFormSchema } from "@/schema/item-schema";
+
+type Props = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  currentRow?: Item;
+};
+
+export function ItemActionDialog({ open, onOpenChange, currentRow }: Props) {
+  const isEdit = !!currentRow;
+
+  const createMutation = useCreateItem();
+  const updateMutation = useUpdateItem();
+  const { data: categories } = useCategoriesForSelect();
+
+  const form = useForm<ItemForm>({
+    resolver: zodResolver(ItemFormSchema),
+    defaultValues: {
+      code: "",
+      name: "",
+      categoryId: "",
+      brand: "",
+      partNumber: "",
+      description: "",
+      assetType: "FIXED",
+    },
+  });
+
+  useEffect(() => {
+    if (currentRow) {
+      form.reset({
+        code: currentRow.code,
+        name: currentRow.name,
+        categoryId: currentRow.categoryId ?? "",
+        brand: currentRow.brand ?? "",
+        partNumber: currentRow.partNumber ?? "",
+        description: currentRow.description ?? "",
+        assetType: currentRow.assetType,
+      });
+    } else {
+      form.reset({
+        code: "",
+        name: "",
+        categoryId: "",
+        brand: "",
+        partNumber: "",
+        description: "",
+        assetType: "FIXED",
+      });
+    }
+  }, [currentRow, form, open]);
+
+  const isPending = createMutation.isPending || updateMutation.isPending;
+
+  const onSubmit = async (values: ItemForm) => {
+    const formData = new FormData();
+    formData.append("code", values.code);
+    formData.append("name", values.name);
+    formData.append("assetType", values.assetType);
+    if (values.categoryId) formData.append("categoryId", values.categoryId);
+    if (values.brand) formData.append("brand", values.brand);
+    if (values.partNumber) formData.append("partNumber", values.partNumber);
+    if (values.description) formData.append("description", values.description);
+
+    try {
+      if (isEdit && currentRow) {
+        await updateMutation.mutateAsync({ id: currentRow.id, formData });
+      } else {
+        await createMutation.mutateAsync(formData);
+      }
+      onOpenChange(false);
+      form.reset();
+    } catch (error: any) {
+      console.error(error);
+      form.setError("root", {
+        type: "server",
+        message: error?.message ?? "Terjadi kesalahan saat menyimpan data",
+      });
+    }
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(state) => {
+        form.reset();
+        onOpenChange(state);
+      }}
+    >
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>
+            {isEdit ? "Edit Master Item" : "Tambah Master Item"}
+          </DialogTitle>
+          <DialogDescription>
+            {isEdit
+              ? "Perbarui data master item."
+              : "Buat master item baru untuk katalog aset."}
+          </DialogDescription>
+        </DialogHeader>
+
+        <form
+          id="item-form"
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-4"
+        >
+          {form.formState.errors.root?.message && (
+            <p className="text-sm text-red-500">
+              {form.formState.errors.root.message}
+            </p>
+          )}
+
+          <FieldGroup>
+            {/* TIPE ASET */}
+            <Controller
+              name="assetType"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel>Tipe Aset</FieldLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger aria-invalid={fieldState.invalid}>
+                      <SelectValue placeholder="Pilih tipe..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="FIXED">Aset Tetap (Fixed)</SelectItem>
+                      <SelectItem value="SUPPLY">
+                        Supply / Habis Pakai
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
+            />
+
+            {/* KODE */}
+            <Controller
+              name="code"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel>Kode Item</FieldLabel>
+                  <Input
+                    {...field}
+                    placeholder="ITM-001"
+                    aria-invalid={fieldState.invalid}
+                  />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
+            />
+
+            {/* NAMA */}
+            <Controller
+              name="name"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel>Nama Item</FieldLabel>
+                  <Input
+                    {...field}
+                    placeholder="Laptop Lenovo ThinkPad"
+                    aria-invalid={fieldState.invalid}
+                  />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
+            />
+
+            {/* KATEGORI */}
+            <Controller
+              name="categoryId"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel>Kategori</FieldLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger aria-invalid={fieldState.invalid}>
+                      <SelectValue placeholder="Pilih kategori..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories?.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
+            />
+
+            {/* BRAND */}
+            <Controller
+              name="brand"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel>Brand</FieldLabel>
+                  <Input
+                    {...field}
+                    placeholder="Lenovo"
+                    aria-invalid={fieldState.invalid}
+                  />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
+            />
+
+            {/* PART NUMBER */}
+            <Controller
+              name="partNumber"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel>Part Number</FieldLabel>
+                  <Input
+                    {...field}
+                    placeholder="TP-X1C-2024"
+                    aria-invalid={fieldState.invalid}
+                  />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
+            />
+
+            {/* DESKRIPSI */}
+            <Controller
+              name="description"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel>Deskripsi</FieldLabel>
+                  <Textarea
+                    {...field}
+                    placeholder="Keterangan tambahan..."
+                    aria-invalid={fieldState.invalid}
+                    rows={3}
+                  />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
+            />
+          </FieldGroup>
+
+          <DialogFooter>
+            <Button type="submit" disabled={isPending}>
+              {isPending ? "Menyimpan..." : "Simpan"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

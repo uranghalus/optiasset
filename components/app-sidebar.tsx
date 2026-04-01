@@ -18,7 +18,8 @@ import { sidebarData } from "@/config/sidebar-data";
 import { authClient } from "@/lib/auth-client";
 import type { NavItem } from "@/types";
 import { NavUser } from "./nav-user";
-import { Combine, GalleryVerticalEnd } from "lucide-react";
+import { OrganizationSwitcher } from "./organization-switcher";
+import { GalleryVerticalEnd } from "lucide-react";
 
 /**
  * Cek apakah satu item/group diperbolehkan tampil berdasarkan role user.
@@ -71,21 +72,7 @@ export function AppSidebar() {
     <Sidebar collapsible={collapsible} variant={variant}>
       {/* ================= HEADER ================= */}
       <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <a href="#">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                  <Combine className="size-4" />
-                </div>
-                <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-medium">OptimaAsset</span>
-                  <span className="">v1.0.0</span>
-                </div>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <OrganizationSwitcher />
       </SidebarHeader>
 
       {/* ================= CONTENT ================= */}

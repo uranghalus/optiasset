@@ -15,6 +15,8 @@ import {
   Clock,
   CheckSquare,
   Building2,
+  Network,
+  Layers,
 } from "lucide-react";
 
 import { SidebarData } from "@/types";
@@ -62,6 +64,11 @@ export const sidebarData: SidebarData = {
           icon: Boxes,
         },
         {
+          title: "Master Item",
+          url: "/assets/items",
+          icon: Package,
+        },
+        {
           title: "Kategori Aset",
           url: "/assets/categories",
           icon: Tags,
@@ -70,6 +77,16 @@ export const sidebarData: SidebarData = {
           title: "Lokasi Aset",
           url: "/assets/locations",
           icon: MapPin,
+        },
+        {
+          title: "Department",
+          url: "/assets/departments",
+          icon: Network,
+        },
+        {
+          title: "Divisi",
+          url: "/assets/divisi",
+          icon: Layers,
         },
         // {
         //   title: "Persetujuan",

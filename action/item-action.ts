@@ -67,18 +67,56 @@ export async function getCategoriesForSelect() {
 }
 
 /* =======================
+   HELPERS
+ ======================= */
+export async function getNextItemCode(assetType: "FIXED" | "SUPPLY") {
+  const prefix = assetType === "FIXED" ? "F-ITM-" : "S-ITM-";
+
+  const lastItem = await prisma.item.findFirst({
+    where: {
+      code: {
+        startsWith: prefix,
+      },
+    },
+    orderBy: {
+      code: "desc",
+    },
+  });
+
+  let nextNumber = 1;
+  if (lastItem) {
+    // Extract number from code (e.g., F-ITM-001 -> 001)
+    const match = lastItem.code.slice(prefix.length);
+    const parsed = parseInt(match, 10);
+    if (!isNaN(parsed)) {
+      nextNumber = parsed + 1;
+    }
+  }
+
+  return `${prefix}${nextNumber.toString().padStart(3, "0")}`;
+}
+
+/* =======================
    CREATE ITEM
  ======================= */
 export async function createItem(formData: FormData) {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
 
-  const code = formData.get("code")?.toString();
   const name = formData.get("name")?.toString();
-  const assetType = formData.get("assetType")?.toString();
+  const assetType = formData.get("assetType")?.toString() as
+    | "FIXED"
+    | "SUPPLY"
+    | undefined;
 
-  if (!code || !name || !assetType) {
+  if (!name || !assetType) {
     throw new Error("Required fields are missing");
+  }
+
+  // Generate code if not provided or empty
+  let code = formData.get("code")?.toString();
+  if (!code || code.trim() === "" || code === "AUTO") {
+    code = await getNextItemCode(assetType);
   }
 
   try {
@@ -86,9 +124,10 @@ export async function createItem(formData: FormData) {
       data: {
         code,
         name,
-        assetType: assetType as "FIXED" | "SUPPLY",
+        assetType,
         categoryId: formData.get("categoryId")?.toString() || null,
         brand: formData.get("brand")?.toString() || null,
+        model: formData.get("model")?.toString() || null,
         partNumber: formData.get("partNumber")?.toString() || null,
         description: formData.get("description")?.toString() || null,
         createdBy: session.user.id,
@@ -125,6 +164,7 @@ export async function updateItem(id: string, formData: FormData) {
           item.assetType,
         categoryId: formData.get("categoryId")?.toString() || item.categoryId,
         brand: formData.get("brand")?.toString() || item.brand,
+        model: formData.get("model")?.toString() || item.model,
         partNumber: formData.get("partNumber")?.toString() || item.partNumber,
         description:
           formData.get("description")?.toString() || item.description,

@@ -36,6 +36,7 @@ import {
   useCreateItem,
   useUpdateItem,
   useCategoriesForSelect,
+  useNextItemCode,
 } from "@/hooks/crud/use-items";
 import { ItemForm, ItemFormSchema } from "@/schema/item-schema";
 
@@ -59,11 +60,15 @@ export function ItemActionDialog({ open, onOpenChange, currentRow }: Props) {
       name: "",
       categoryId: "",
       brand: "",
+      model: "",
       partNumber: "",
       description: "",
       assetType: "FIXED",
     },
   });
+
+  const assetType = form.watch("assetType");
+  const { data: nextCode } = useNextItemCode(assetType, !isEdit && open);
 
   useEffect(() => {
     if (currentRow) {
@@ -72,32 +77,42 @@ export function ItemActionDialog({ open, onOpenChange, currentRow }: Props) {
         name: currentRow.name,
         categoryId: currentRow.categoryId ?? "",
         brand: currentRow.brand ?? "",
+        model: currentRow.model ?? "",
         partNumber: currentRow.partNumber ?? "",
         description: currentRow.description ?? "",
         assetType: currentRow.assetType,
       });
     } else {
       form.reset({
-        code: "",
+        code: nextCode ?? "",
         name: "",
         categoryId: "",
         brand: "",
+        model: "",
         partNumber: "",
         description: "",
         assetType: "FIXED",
       });
     }
-  }, [currentRow, form, open]);
+  }, [currentRow, form, open]); // Only reset on open or row change
+
+  // Update code when nextCode changes (for new items)
+  useEffect(() => {
+    if (!isEdit && nextCode) {
+      form.setValue("code", nextCode);
+    }
+  }, [nextCode, isEdit, form]);
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
   const onSubmit = async (values: ItemForm) => {
     const formData = new FormData();
-    formData.append("code", values.code);
+    formData.append("code", values.code || "");
     formData.append("name", values.name);
     formData.append("assetType", values.assetType);
     if (values.categoryId) formData.append("categoryId", values.categoryId);
     if (values.brand) formData.append("brand", values.brand);
+    if (values.model) formData.append("model", values.model);
     if (values.partNumber) formData.append("partNumber", values.partNumber);
     if (values.description) formData.append("description", values.description);
 
@@ -184,9 +199,18 @@ export function ItemActionDialog({ open, onOpenChange, currentRow }: Props) {
                   <FieldLabel>Kode Item</FieldLabel>
                   <Input
                     {...field}
-                    placeholder="ITM-001"
+                    placeholder={
+                      isEdit ? "ITM-001" : "Otomatis (F-ITM-xxx / S-ITM-xxx)"
+                    }
+                    readOnly={!isEdit}
+                    className={!isEdit ? "bg-muted" : ""}
                     aria-invalid={fieldState.invalid}
                   />
+                  {!isEdit && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Kode akan dibuat otomatis berdasarkan tipe aset.
+                    </p>
+                  )}
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
                   )}
@@ -249,6 +273,25 @@ export function ItemActionDialog({ open, onOpenChange, currentRow }: Props) {
                   <Input
                     {...field}
                     placeholder="Lenovo"
+                    aria-invalid={fieldState.invalid}
+                  />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
+            />
+
+            {/* MODEL */}
+            <Controller
+              name="model"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel>Model</FieldLabel>
+                  <Input
+                    {...field}
+                    placeholder="ThinkPad X1 Carbon"
                     aria-invalid={fieldState.invalid}
                   />
                   {fieldState.invalid && (

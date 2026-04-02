@@ -4,6 +4,7 @@ import {
   getAllItems,
   getCategoriesForSelect,
   updateItem,
+  getNextItemCode,
 } from "@/action/item-action";
 import { PaginationState } from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -55,5 +56,15 @@ export function useDeleteItem() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["items"] });
     },
+  });
+}
+
+// Get next item code
+export function useNextItemCode(assetType: "FIXED" | "SUPPLY", enabled = true) {
+  return useQuery({
+    queryKey: ["next-item-code", assetType],
+    queryFn: () => getNextItemCode(assetType),
+    enabled: enabled && !!assetType,
+    staleTime: 0, // Always get the latest
   });
 }

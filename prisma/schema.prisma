@@ -177,6 +177,7 @@ model Item {
   name        String
   categoryId  String?
   brand       String?
+  model       String?
   partNumber  String?
   description String?
   assetType   AssetType

@@ -97,6 +97,16 @@ export const itemColumns: ColumnDef<ItemWithRelations>[] = [
     size: 120,
   },
   {
+    accessorKey: "model",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Model" />
+    ),
+    cell: ({ cell }) => (
+      <div className="ps-2">{(cell.getValue() as string) || "-"}</div>
+    ),
+    size: 150,
+  },
+  {
     id: "assets_count",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Aset" />

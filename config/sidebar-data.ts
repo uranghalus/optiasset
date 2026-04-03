@@ -17,6 +17,9 @@ import {
   Building2,
   Network,
   Layers,
+  Warehouse,
+  ClipboardList,
+  Truck,
 } from "lucide-react";
 
 import { SidebarData } from "@/types";
@@ -65,63 +68,109 @@ export const sidebarData: SidebarData = {
         },
         {
           title: "Master Item",
-          url: "/assets/items",
+          url: "/items",
           icon: Package,
         },
         {
-          title: "Kategori Aset",
-          url: "/assets/categories",
+          title: "Kategori",
+          url: "/categories",
           icon: Tags,
         },
         {
-          title: "Lokasi Aset",
-          url: "/assets/locations",
+          title: "Lokasi",
+          url: "/locations",
           icon: MapPin,
         },
         {
           title: "Department",
-          url: "/assets/departments",
+          url: "/departments",
           icon: Network,
         },
         {
           title: "Divisi",
-          url: "/assets/divisi",
+          url: "/divisions",
           icon: Layers,
         },
-        // {
-        //   title: "Persetujuan",
-        //   url: "/approvals",
-        //   icon: CheckSquare,
-        // },
-        // {
-        //   title: "Peminjaman Aset",
-        //   url: "/asset-loans",
-        //   icon: Handshake,
-        // },
-        // {
-        //   title: "Perawatan Aset",
-        //   url: "/assets/maintenances",
-        //   icon: Wrench,
-        // },
-        // {
-        //   title: "Jadwal Aset",
-        //   url: "/assets/schedules",
-        //   icon: Clock,
-        // },
-        // {
-        //   title: "Mutasi Aset",
-        //   url: "/asset-transfers",
-        //   icon: Move,
-        // },
-        // {
-        //   title: "Penghapusan Aset",
-        //   url: "/assets/disposals",
-        //   icon: ArchiveX,
-        // },
+        {
+          title: "Mutasi Aset",
+          url: "/asset-transfers",
+          icon: Move,
+        },
+        {
+          title: "Penghapusan Aset",
+          url: "/asset-disposals",
+          icon: ArchiveX,
+        },
         {
           title: "Riwayat Aset",
           url: "/asset-history",
           icon: History,
+        },
+      ],
+    },
+
+    // ---------- INVENTORY / PERSEDIAAN ----------
+    {
+      title: "Persediaan",
+      items: [
+        {
+          title: "Stok Barang",
+          url: "/stocks",
+          icon: Warehouse,
+        },
+        {
+          title: "Transaksi Stok",
+          url: "/stock-transactions",
+          icon: ClipboardList,
+        },
+      ],
+    },
+
+    // ---------- OPERASIONAL ----------
+    {
+      title: "Operasional",
+      items: [
+        {
+          title: "Peminjaman Aset",
+          url: "/asset-loans",
+          icon: Handshake,
+        },
+        {
+          title: "Perawatan Aset",
+          url: "/maintenances",
+          icon: Wrench,
+        },
+        {
+          title: "Jadwal Perawatan",
+          url: "/maintenance-schedules",
+          icon: Clock,
+        },
+        {
+          title: "Persetujuan",
+          url: "/approvals",
+          icon: CheckSquare,
+        },
+      ],
+    },
+
+    // ---------- ORGANISASI ----------
+    {
+      title: "Organisasi",
+      items: [
+        {
+          title: "Organisasi",
+          url: "/organizations",
+          icon: Building2,
+        },
+        {
+          title: "Tim",
+          url: "/teams",
+          icon: Layers,
+        },
+        {
+          title: "Anggota",
+          url: "/members",
+          icon: UserCircle,
         },
       ],
     },
@@ -139,11 +188,6 @@ export const sidebarData: SidebarData = {
           title: "Preferensi",
           url: "/settings/preferences",
           icon: Sliders,
-        },
-        {
-          title: "Organisasi",
-          url: "/organizations",
-          icon: Building2,
         },
         {
           title: "Impor & Ekspor",

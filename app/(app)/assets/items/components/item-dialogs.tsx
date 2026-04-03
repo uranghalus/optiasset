@@ -4,6 +4,7 @@ import React from "react";
 import { ItemActionDialog } from "./item-action-dialog";
 import { Item } from "@/generated/prisma/client";
 import { ItemDeleteDialog } from "./item-delete-dialog";
+import { ItemStockDialog } from "./item-stock-dialog";
 
 export default function ItemDialogs() {
   const { currentRow, open, setCurrentRow, setOpen } = useDialog();
@@ -26,6 +27,19 @@ export default function ItemDialogs() {
             }}
           />
           <ItemDeleteDialog key={`item-delete-${(currentRow as Item).id}`} />
+          <ItemStockDialog
+            key={`item-stock-${(currentRow as Item).id}`}
+            item={currentRow as Item}
+            open={open === "view-stock"}
+            onOpenChange={(state) => {
+              if (!state) {
+                setOpen(null);
+                setCurrentRow(null);
+              } else {
+                setOpen("view-stock");
+              }
+            }}
+          />
         </>
       )}
     </>

@@ -43,21 +43,26 @@ export default async function AppLayout({
     <ThemeProvider>
       <SearchProvider>
         <LayoutProvider>
-          <SidebarProvider defaultOpen={defaultOpen}>
-            <AppSidebar />
+          <SidebarProvider defaultOpen={defaultOpen} className="print:block">
+            <div className="print:hidden">
+              <AppSidebar />
+            </div>
             <SidebarInset
               className={cn(
                 "@container/content",
                 "has-[[data-layout=fixed]]:h-svh",
                 "peer-data-[variant=inset]:has-[[data-layout=fixed]]:h-[calc(100svh-(var(--spacing)*4))]",
+                "print:p-0 print:border-none",
               )}
             >
-              <Header>
-                <div className="ms-auto flex items-center space-x-4">
-                  <ThemeSwitch />
-                  <ProfileDropdown />
-                </div>
-              </Header>
+              <div className="print:hidden">
+                <Header>
+                  <div className="ms-auto flex items-center space-x-4">
+                    <ThemeSwitch />
+                    <ProfileDropdown />
+                  </div>
+                </Header>
+              </div>
 
               <Main fluid>{children}</Main>
             </SidebarInset>

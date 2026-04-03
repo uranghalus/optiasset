@@ -18,7 +18,15 @@ export type DialogType =
   | "sync-user"
   | "unsync-user"
   | "view"
-  | "view-qr";
+  | "view-qr"
+  | "view-stock"
+  | "approve"
+  | "approve_spv"
+  | "approve_fa"
+  | "approve_gm"
+  | "waiting_stock"
+  | "reject"
+  | "complete";
 
 type DialogContextType<T> = {
   open: DialogType | null;

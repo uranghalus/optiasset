@@ -4,7 +4,7 @@ import { ButtonGroup } from "@/components/ui/button-group";
 import { useDialog } from "@/context/dialog-provider";
 import { Asset } from "@/generated/prisma/client";
 import { Row } from "@tanstack/react-table";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, QrCode } from "lucide-react";
 import React from "react";
 
 interface DataTableRowActionsProps<TData> {
@@ -37,6 +37,16 @@ export default function AssetRowAction<TData>({
         }}
       >
         <Pencil className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={() => {
+          setCurrentRow(asset);
+          setOpen("view-qr");
+        }}
+      >
+        <QrCode className="h-4 w-4" />
       </Button>
     </ButtonGroup>
   );

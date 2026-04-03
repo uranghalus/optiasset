@@ -118,11 +118,11 @@ export const sidebarData: SidebarData = {
         //   url: "/assets/disposals",
         //   icon: ArchiveX,
         // },
-        // {
-        //   title: "Riwayat Aset",
-        //   url: "/asset-history",
-        //   icon: History,
-        // },
+        {
+          title: "Riwayat Aset",
+          url: "/asset-history",
+          icon: History,
+        },
       ],
     },
 

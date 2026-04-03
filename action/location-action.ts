@@ -110,3 +110,15 @@ export async function deleteLocation(id: string) {
   revalidatePath("/assets/locations");
   return location;
 }
+/* =======================
+   GET LOCATIONS FOR SELECT
+   ======================= */
+export async function getLocationsForSelect() {
+  const session = await getServerSession();
+  if (!session) throw new Error("Unauthorized");
+
+  return prisma.location.findMany({
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+}

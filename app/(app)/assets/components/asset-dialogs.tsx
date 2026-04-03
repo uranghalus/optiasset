@@ -4,6 +4,7 @@ import React from "react";
 import { AssetActionDialog } from "./asset-action-dialog";
 import { Asset } from "@/generated/prisma/client";
 import { AssetDeleteDialog } from "./asset-delete-dialog";
+import { AssetQRDialog } from "./asset-qr-dialog";
 
 export default function AssetDialogs() {
   const { currentRow, open, setCurrentRow, setOpen } = useDialog();
@@ -26,6 +27,15 @@ export default function AssetDialogs() {
             }}
           />
           <AssetDeleteDialog key={`asset-delete-${(currentRow as Asset).id}`} />
+          <AssetQRDialog
+            key={`asset-qr-${(currentRow as Asset).id}`}
+            asset={currentRow as Asset}
+            open={open === "view-qr"}
+            onOpenChange={() => {
+              setOpen("view-qr");
+              setCurrentRow(undefined);
+            }}
+          />
         </>
       )}
     </>

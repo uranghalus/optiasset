@@ -4,7 +4,7 @@ import { ButtonGroup } from "@/components/ui/button-group";
 import { useDialog } from "@/context/dialog-provider";
 import { Item } from "@/generated/prisma/client";
 import { Row } from "@tanstack/react-table";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Box } from "lucide-react";
 import React from "react";
 
 interface DataTableRowActionsProps<TData> {
@@ -38,6 +38,18 @@ export default function ItemRowAction<TData>({
       >
         <Pencil className="h-4 w-4" />
       </Button>
+      {item.assetType === "SUPPLY" && (
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => {
+            setCurrentRow(item);
+            setOpen("view-stock");
+          }}
+        >
+          <Box className="h-4 w-4" />
+        </Button>
+      )}
     </ButtonGroup>
   );
 }

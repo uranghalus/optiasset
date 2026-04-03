@@ -8,24 +8,25 @@ datasource db {
 }
 
 model User {
-  id              String       @id
-  name            String       @db.Text
-  email           String       @unique
-  emailVerified   Boolean      @default(false)
-  image           String?      @db.Text
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  username        String?      @db.Text
-  displayUsername String?      @db.Text
-  role            String?      @db.Text
-  banned          Boolean?     @default(false)
-  banReason       String?      @db.Text
+  id              String         @id
+  name            String         @db.Text
+  email           String         @unique
+  emailVerified   Boolean        @default(false)
+  image           String?        @db.Text
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  username        String?        @db.Text
+  displayUsername String?        @db.Text
+  role            String?        @db.Text
+  banned          Boolean?       @default(false)
+  banReason       String?        @db.Text
   banExpires      DateTime?
   accounts        Account[]
   invitations     Invitation[]
   members         Member[]
   sessions        Session[]
   teammember      teamMember[]
+  assetHistory    AssetHistory[]
 
   @@map("user")
 }
@@ -105,7 +106,7 @@ model Team {
   updatedAt      DateTime?    @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   teammember     teamMember[]
-  divisi         divisi[]     @relation("divisitoteam")
+  divisi         divisi[]     @relation("div_team_rel")
 
   @@index([organizationId])
   @@map("team")
@@ -194,9 +195,9 @@ model Item {
 }
 
 model Asset {
-  id             String       @id @default(uuid())
+  id             String         @id @default(uuid())
   itemId         String
-  serialNumber   String?      @unique
+  serialNumber   String?        @unique
   purchaseDate   DateTime?
   purchasePrice  Float?
   condition      String?
@@ -205,32 +206,54 @@ model Asset {
   departmentId   String?
   assignedUserId String?
   notes          String?
-  createdAt      DateTime     @default(now())
+  createdAt      DateTime       @default(now())
   updatedAt      DateTime?
-  barcode        String?      @db.Char(100)
-  brand          String?      @db.Char(100)
+  barcode        String?        @db.Char(100)
+  brand          String?        @db.Char(100)
   garansi_exp    DateTime?
-  model          String?      @db.Char(100)
-  vendorName     String?      @db.Char(100)
-  item           Item         @relation(fields: [itemId], references: [id])
-  department     department[] @relation("assettodepartment")
-  divisi         divisi[]     @relation("assettodivisi")
+  model          String?        @db.Char(100)
+  vendorName     String?        @db.Char(100)
+  item           Item           @relation(fields: [itemId], references: [id])
+  department     department[]   @relation("asset_dept_rel")
+  divisi         divisi[]       @relation("asset_div_rel")
+  history        AssetHistory[]
 
   @@index([itemId], map: "assets_itemId_fkey")
   @@map("assets")
 }
 
 model Stock {
-  id           String   @id @default(uuid())
+  id           String             @id @default(uuid())
   itemId       String
   quantity     Int
   locationId   String?
   departmentId String?
-  updatedAt    DateTime @updatedAt
-  item         Item     @relation(fields: [itemId], references: [id])
+  updatedAt    DateTime           @updatedAt
+  item         Item               @relation(fields: [itemId], references: [id])
+  transactions StockTransaction[]
+  location     Location?          @relation(fields: [locationId], references: [id])
 
   @@unique([itemId, locationId])
   @@map("stocks")
+}
+
+model StockTransaction {
+  id        String          @id @default(uuid())
+  stockId   String
+  type      TransactionType
+  quantity  Int
+  reference String?
+  notes     String?
+  createdAt DateTime        @default(now())
+  stock     Stock           @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@map("stock_transactions")
+}
+
+enum TransactionType {
+  IN
+  OUT
+  ADJUSTMENT
 }
 
 model Category {
@@ -242,8 +265,9 @@ model Category {
 }
 
 model Location {
-  id   String @id @default(uuid())
-  name String
+  id     String  @id @default(uuid())
+  name   String
+  stocks Stock[]
 
   @@map("locations")
 }
@@ -259,7 +283,7 @@ model department {
   deleted_at      DateTime?
   organization    Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade, map: "Department_organization_id_fkey")
   divisi          divisi[]
-  assets          Asset[]      @relation("assettodepartment")
+  assets          Asset[]      @relation("asset_dept_rel")
 
   @@unique([organization_id, kode_department(length: 191)], map: "department_org_kode_unique_custom_v9")
   @@index([deleted_at], map: "department_deleted_at_idx_custom_v9")
@@ -277,8 +301,8 @@ model divisi {
   deleted_at      DateTime?
   department      department   @relation(fields: [department_id], references: [id_department], map: "Divisi_department_id_fkey")
   organization    Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade, map: "Divisi_organization_id_fkey")
-  assets          Asset[]      @relation("assettodivisi")
-  team            Team[]       @relation("divisitoteam")
+  assets          Asset[]      @relation("asset_div_rel")
+  team            Team[]       @relation("div_team_rel")
 
   @@index([department_id], map: "Divisi_department_id_fkey")
   @@index([deleted_at], map: "divisi_deleted_at_idx_custom_v9")
@@ -288,4 +312,22 @@ model divisi {
 enum AssetType {
   FIXED
   SUPPLY
+}
+
+model AssetHistory {
+  id         String   @id @default(uuid())
+  assetId    String?
+  asset_info String?  @db.Text // Store Asset Name & Barcode for permanent record
+  userId     String
+  action     String   @db.VarChar(50) // "CREATE", "UPDATE", "DELETE", "ASSIGN", "TRANSFER"
+  field      String?  @db.VarChar(50) // Which field changed (if UPDATE)
+  oldValue   String?  @db.Text
+  newValue   String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  asset Asset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  user  User   @relation(fields: [userId], references: [id])
+
+  @@index([assetId])
+  @@map("asset_history")
 }

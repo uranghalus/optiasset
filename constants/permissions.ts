@@ -58,8 +58,6 @@ export const PERMISSIONS = {
   // ── Inventory Control ───────────────────────────────────────────────
   /** Master Item, Kategori Item, Gudang, Stok, Penerimaan, Penyesuaian, Mutasi Stok */
   inventory: ["view", "create", "edit", "delete"],
-  /** Permintaan Barang + Persetujuan Permintaan */
-  "inventory.requisition": ["view", "create", "approve"],
 
   // ── Audit & Laporan ─────────────────────────────────────────────────
   /** Log Audit */
@@ -85,7 +83,6 @@ export const PERMISSION_LABELS: Record<string, string> = {
   "asset.transfer": "Mutasi Aset",
   "asset.history": "Riwayat Aset",
   inventory: "Inventory Control",
-  "inventory.requisition": "Requisition",
   "audit.log": "Log Audit",
   report: "Laporan",
 };

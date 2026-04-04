@@ -20,6 +20,7 @@ import {
   Warehouse,
   ClipboardList,
   Truck,
+  ShieldUser,
 } from "lucide-react";
 
 import { SidebarData } from "@/types";
@@ -172,6 +173,11 @@ export const sidebarData: SidebarData = {
           url: "/members",
           icon: UserCircle,
         },
+        {
+          title: "Role",
+          url: "/roles",
+          icon: ShieldUser,
+        }
       ],
     },
 

@@ -82,7 +82,7 @@ export function OrgRoleActionDialog({ open, onOpenChange, currentRow }: Props) {
   const onSubmit = async (values: OrgRoleForm) => {
     try {
       const formData = new FormData();
-      formData.append("role", values.role);
+      formData.append("name", values.role);
       formData.append("permissions", JSON.stringify(values.permissions));
 
       if (isEdit && currentRow) {

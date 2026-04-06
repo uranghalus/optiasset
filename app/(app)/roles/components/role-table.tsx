@@ -9,7 +9,7 @@ import { useDialog } from "@/context/dialog-provider";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { roleColumns } from "./role-column";
-import { useOrganizationRoles } from "@/hooks/crud/use-organization-roles";
+import { useRoles } from "@/hooks/crud/use-organization-roles";
 
 export default function RoleTable() {
   const { setOpen } = useDialog();
@@ -17,12 +17,10 @@ export default function RoleTable() {
     pageIndex: 0,
     pageSize: 10,
   });
-  const { data, isLoading } = useOrganizationRoles({
-    pagination: {
-      page: pagination.pageIndex,
-      pageSize: pagination.pageSize,
-    },
-  });
+  const { data, isLoading } = useRoles(
+    pagination.pageIndex + 1, // ✅ FIX DI SINI
+    pagination.pageSize
+  );;
   const { table } = useDataTable({
     data: (data?.data ?? []) as unknown as organizationRole[],
     columns: roleColumns,

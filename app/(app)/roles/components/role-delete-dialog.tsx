@@ -12,7 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useDeleteOrganizationRole } from "@/hooks/crud/use-organization-roles";
+import { useDeleteRole } from "@/hooks/crud/use-organization-roles";
 
 type OrgRoleRow = {
   id: string;
@@ -27,7 +27,7 @@ interface Props {
 }
 
 export function OrgRoleDeleteDialog({ open, onOpenChange, currentRow }: Props) {
-  const deleteMutation = useDeleteOrganizationRole();
+  const deleteMutation = useDeleteRole();
 
   const onDelete = async () => {
     await deleteMutation.mutateAsync(currentRow.id);

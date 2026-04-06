@@ -25,10 +25,12 @@ import {
 
 import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
 
+// ✅ FIX: pakai hooks role
 import {
-  useCreateOrganization,
-  useUpdateOrganization,
-} from "@/hooks/crud/use-organizations";
+  useCreateRole,
+  useUpdateRole,
+} from "@/hooks/crud/use-organization-roles";
+
 import { OrgRoleForm, orgRoleFormSchema } from "@/schema/org-role-schema";
 
 type OrgRoleRow = {
@@ -46,8 +48,9 @@ type Props = {
 export function OrgRoleActionDialog({ open, onOpenChange, currentRow }: Props) {
   const isEdit = !!currentRow;
 
-  const createMutation = useCreateOrganization();
-  const updateMutation = useUpdateOrganization();
+  // ✅ FIX: pakai hooks yg benar
+  const createMutation = useCreateRole();
+  const updateMutation = useUpdateRole();
 
   const form = useForm<OrgRoleForm>({
     resolver: zodResolver(orgRoleFormSchema),
@@ -82,7 +85,14 @@ export function OrgRoleActionDialog({ open, onOpenChange, currentRow }: Props) {
   const onSubmit = async (values: OrgRoleForm) => {
     try {
       const formData = new FormData();
-      formData.append("name", values.role);
+
+      // ⚠️ PENTING: bedakan create vs update
+      if (isEdit) {
+        formData.append("role", values.role); // update pakai "role"
+      } else {
+        formData.append("name", values.role); // create pakai "name"
+      }
+
       formData.append("permissions", JSON.stringify(values.permissions));
 
       if (isEdit && currentRow) {

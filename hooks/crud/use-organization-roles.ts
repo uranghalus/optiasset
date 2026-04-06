@@ -9,43 +9,35 @@ import {
 import { PaginationState } from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+export const ROLE_QUERY_KEY = "roles";
 
-export function useOrganizationRoles(p0: {
-  pagination: { page: number; pageSize: number };
-}) {
-  const [pagination, setPagination] = useState<PaginationState>({
-    page: 1,
-    pageSize: 10,
+export function useRoles(page: number = 1, limit: number = 10) {
+  return useQuery({
+    queryKey: [ROLE_QUERY_KEY, page, limit],
+    queryFn: async () => {
+      return await getAllRoles({ page, limit });
+    },
   });
-
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["roles", pagination.page, pagination.pageSize],
-    queryFn: () => getAllRoles(pagination),
-  });
-
-  return {
-    data,
-    isLoading,
-    error,
-    pagination,
-    setPagination,
-  };
 }
 // Create
-export function useCreateOrganizationRole() {
+export function useCreateRole() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: async (data: FormData) => {
-      return createOrganizationRole(data);
+    mutationFn: async (formData: FormData) => {
+      return await createOrganizationRole(formData);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["roles"] });
+      queryClient.invalidateQueries({
+        queryKey: [ROLE_QUERY_KEY],
+      });
     },
   });
 }
 // Update
-export function useUpdateOrganizationRole() {
+export function useUpdateRole() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async ({
       id,
@@ -54,22 +46,27 @@ export function useUpdateOrganizationRole() {
       id: string;
       formData: FormData;
     }) => {
-      return updateOrganizationRole(id, formData);
+      return await updateOrganizationRole(id, formData);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["roles"] });
+      queryClient.invalidateQueries({
+        queryKey: [ROLE_QUERY_KEY],
+      });
     },
   });
 }
 // Delete
-export function useDeleteOrganizationRole() {
+export function useDeleteRole() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (id: string) => {
-      return deleteOrganizationRole(id);
+      return await deleteOrganizationRole(id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["roles"] });
+      queryClient.invalidateQueries({
+        queryKey: [ROLE_QUERY_KEY],
+      });
     },
   });
 }

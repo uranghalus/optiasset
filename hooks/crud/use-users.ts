@@ -14,6 +14,7 @@ import {
 } from "@tanstack/react-query";
 
 export const USER_QUERY_KEY = "users";
+
 export function useUsers({
   page,
   limit,
@@ -25,7 +26,23 @@ export function useUsers({
 }) {
   return useQuery({
     queryKey: [USER_QUERY_KEY, { page, limit, search }],
-    queryFn: () => getAllUsers({ page, limit, search }),
+    queryFn: async () => {
+      const res = await getAllUsers({ page, limit, search });
+
+      // ✅ HARDEN RESPONSE
+      return {
+        data: Array.isArray(res?.data) ? res.data : [],
+        pagination: {
+          page: res?.pagination?.page ?? page,
+          limit: res?.pagination?.limit ?? limit,
+          total: res?.pagination?.total ?? 0,
+          totalPages:
+            res?.pagination?.totalPages && !isNaN(res.pagination.totalPages)
+              ? res.pagination.totalPages
+              : 1,
+        },
+      };
+    },
 
     placeholderData: keepPreviousData,
     staleTime: 0,

@@ -28,7 +28,6 @@ export async function getAllUsers({
       limit,
       offset,
 
-      // optional search
       ...(search && {
         searchValue: search,
         searchField: "name",
@@ -41,20 +40,26 @@ export async function getAllUsers({
     headers: await headers(),
   });
 
-  /**
-   * ⚠️ tergantung API kamu:
-   * - kalau ada total → pakai itu
-   * - kalau tidak → fallback length
-   */
-  const total = users?.total;
+  // ✅ normalize data
+  const userList = Array.isArray(users?.users)
+    ? users.users
+    : Array.isArray(users)
+      ? users
+      : [];
 
+  // ✅ pastikan total aman
+  const total =
+    typeof users?.total === "number"
+      ? users.total
+      : userList.length;
+  console.log("RAW USERS RESPONSE:", users);
   return {
-    data: users?.users ?? users, // fleksibel
+    data: userList,
     pagination: {
       page,
       limit,
       total,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(total / limit) || 1, // 🔥 anti NaN
     },
   };
 }

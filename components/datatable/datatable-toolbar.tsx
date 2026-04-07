@@ -16,6 +16,11 @@ type DataTableToolbarProps<TData> = {
     table: Table<TData>
     searchPlaceholder?: string
     searchKey?: string
+
+    // ✅ TAMBAHAN
+    onSearchChange?: (value: string) => void
+    searchValue?: string
+
     filters?: {
         columnId: string
         title: string
@@ -34,9 +39,11 @@ export function DataTableToolbar<TData>({
     searchPlaceholder = 'Filter...',
     searchKey,
     filters = [],
+    onSearchChange,
+    searchValue,
 }: DataTableToolbarProps<TData>) {
     const isFiltered =
-        table.getState().columnFilters.length > 0 ||
+        (table.getState().columnFilters?.length ?? 0) > 0 ||
         Boolean(table.getState().globalFilter)
 
     return (
@@ -70,6 +77,9 @@ export function DataTableToolbar<TData>({
                             onClick={() => {
                                 table.resetColumnFilters()
                                 table.setGlobalFilter('')
+
+                                // ✅ reset server search
+                                onSearchChange?.('')
                             }}
                             className="h-8 px-2"
                         >
@@ -84,15 +94,28 @@ export function DataTableToolbar<TData>({
                     <Input
                         placeholder={searchPlaceholder}
                         value={
-                            searchKey
-                                ? (table.getColumn(searchKey)?.getFilterValue() as string) ?? ''
-                                : (table.getState().globalFilter as string) ?? ''
+                            onSearchChange
+                                ? (searchValue ?? "")
+                                : searchKey
+                                    ? (table.getColumn(searchKey)?.getFilterValue() as string) ?? ''
+                                    : (table.getState().globalFilter as string) ?? ''
                         }
-                        onChange={(event) =>
-                            searchKey
-                                ? table.getColumn(searchKey)?.setFilterValue(event.target.value)
-                                : table.setGlobalFilter(event.target.value)
-                        }
+                        onChange={(event) => {
+                            const value = event.target.value
+
+                            // ✅ SERVER SIDE SEARCH
+                            if (onSearchChange) {
+                                onSearchChange(value)
+                                return
+                            }
+
+                            // ✅ CLIENT SIDE (fallback)
+                            if (searchKey) {
+                                table.getColumn(searchKey)?.setFilterValue(value)
+                            } else {
+                                table.setGlobalFilter(value)
+                            }
+                        }}
                         className="h-8 w-[150px] lg:w-[250px]"
                     />
 

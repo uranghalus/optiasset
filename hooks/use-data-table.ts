@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-'use client';
+"use client";
 
 import {
   type ColumnDef,
@@ -9,8 +9,8 @@ import {
   getCoreRowModel,
   getFilteredRowModel,
   getSortedRowModel,
-} from '@tanstack/react-table';
-import { useState } from 'react';
+} from "@tanstack/react-table";
+import { useState } from "react";
 
 type UseDataTableProps<TData> = {
   data: TData[];
@@ -18,6 +18,7 @@ type UseDataTableProps<TData> = {
   pageCount: number;
   columnResizeMode?: any;
   columnResizeDirection?: any;
+  enableRowSelection?: boolean;
   pagination: {
     pageIndex: number;
     pageSize: number;
@@ -30,9 +31,9 @@ export function useDataTable<TData>({
   columns,
   pageCount,
   pagination,
-  columnResizeMode = 'onChange',
-  columnResizeDirection = 'ltr',
-
+  columnResizeMode = "onChange",
+  columnResizeDirection = "ltr",
+  enableRowSelection = true,
   onPaginationChange,
 }: UseDataTableProps<TData>) {
   const [rowSelection, setRowSelection] = useState({});
@@ -51,7 +52,7 @@ export function useDataTable<TData>({
       rowSelection,
     },
 
-    enableRowSelection: true,
+    enableRowSelection,
     enableColumnResizing: true,
     columnResizeMode,
     columnResizeDirection,

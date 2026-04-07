@@ -1,58 +1,27 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-
-import { Checkbox } from "@/components/ui/checkbox";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-
-import { cn } from "@/lib/utils";
+// Wait! It's from @tanstack/react-table
 import { DataTableColumnHeader } from "@/components/datatable/datatable-column-header";
-import { ShieldAlert, ShieldCheck } from "lucide-react";
-import UserRowActions from "./user-row-action";
+import { ShieldCheck } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
+import MemberRowActions from "./member-row-action";
 
-import { UserWithRole } from "./user-table";
-
-export const userColumns: ColumnDef<UserWithRole>[] = [
-  /* =====================
-     * SELECT
-     ===================== */
-  {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected()
-            ? true
-            : table.getIsSomePageRowsSelected()
-              ? "indeterminate"
-              : false
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-    size: 32,
-  },
-
+export const memberColumns: any[] = [
   /* =====================
      * USER INFO (Avatar + Name + Email)
      ===================== */
   {
-    accessorKey: "name",
-    header: ({ column }) => (
+    accessorKey: "user.name",
+    header: ({ column }: any) => (
       <DataTableColumnHeader column={column} title="User" />
     ),
-    cell: ({ row }) => {
-      const user = row.original;
+    cell: ({ row }: any) => {
+      const member = row.original;
+      const user = member.user;
+      if (!user) return <span className="text-muted-foreground">Unknown</span>;
+
       return (
         <div className="flex items-center gap-3">
           <Avatar className="h-9 w-9">
@@ -67,7 +36,7 @@ export const userColumns: ColumnDef<UserWithRole>[] = [
       );
     },
     meta: {
-      thClassName: "w-full", // Give space
+      thClassName: "w-[200px]",
     },
   },
 
@@ -76,17 +45,17 @@ export const userColumns: ColumnDef<UserWithRole>[] = [
      ===================== */
   {
     accessorKey: "role",
-    header: ({ column }) => (
+    header: ({ column }: any) => (
       <DataTableColumnHeader column={column} title="Role" />
     ),
-    cell: ({ cell }) => {
-      const val = cell.getValue<string | null>();
+    cell: ({ cell }: any) => {
+      const val = cell.getValue();
       if (!val) return <span className="text-muted-foreground">-</span>;
 
-      const roles = val.split(",").map((r) => r.trim());
+      const roles = val.split(",").map((r: string) => r.trim());
       return (
         <div className="flex items-center flex-wrap gap-1">
-          {roles.map((r, i) => (
+          {roles.map((r: string, i: number) => (
             <div
               key={i}
               className="flex items-center gap-1 border px-2 py-0.5 rounded-md bg-muted/50 text-xs"
@@ -102,30 +71,41 @@ export const userColumns: ColumnDef<UserWithRole>[] = [
   },
 
   /* =====================
-     * STATUS (BANNED)
+     * DEPARTMENT
      ===================== */
   {
-    accessorKey: "banned", // Check actual field name from better-auth
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Status" />
+    accessorKey: "department.nama_department",
+    header: ({ column }: any) => (
+      <DataTableColumnHeader column={column} title="Department" />
     ),
-    cell: ({ row }) => {
-      const isBanned = row.original.banned;
-      return isBanned ? (
-        <Badge variant="destructive" className="gap-1">
-          <ShieldAlert className="h-3 w-3" />
-          Banned
-        </Badge>
+    cell: ({ row }: any) => {
+      const deptName = row.original.department?.nama_department;
+      return deptName ? (
+        <span>{deptName}</span>
       ) : (
-        <Badge
-          variant="secondary"
-          className="bg-green-100 text-green-700 hover:bg-green-100/80"
-        >
-          Active
-        </Badge>
+        <span className="text-muted-foreground">-</span>
       );
     },
-    size: 100,
+    size: 150,
+  },
+
+  /* =====================
+     * DIVISI
+     ===================== */
+  {
+    accessorKey: "divisi.nama_divisi",
+    header: ({ column }: any) => (
+      <DataTableColumnHeader column={column} title="Divisi" />
+    ),
+    cell: ({ row }: any) => {
+      const divName = row.original.divisi?.nama_divisi;
+      return divName ? (
+        <span>{divName}</span>
+      ) : (
+        <span className="text-muted-foreground">-</span>
+      );
+    },
+    size: 150,
   },
 
   /* =====================
@@ -133,10 +113,10 @@ export const userColumns: ColumnDef<UserWithRole>[] = [
      ===================== */
   {
     id: "actions",
-    header: ({ column }) => (
+    header: ({ column }: any) => (
       <DataTableColumnHeader column={column} title="Aksi" className="ml-auto" />
     ),
-    cell: UserRowActions,
+    cell: MemberRowActions,
     size: 56,
     enableResizing: false,
     meta: {

@@ -49,9 +49,7 @@ export async function getAllUsers({
 
   // ✅ pastikan total aman
   const total =
-    typeof users?.total === "number"
-      ? users.total
-      : userList.length;
+    typeof users?.total === "number" ? users.total : userList.length;
   console.log("RAW USERS RESPONSE:", users);
   return {
     data: userList,
@@ -81,13 +79,22 @@ export async function createUserAction(formData: FormData) {
       email,
       password,
       name,
-      role,
+      role: "user",
       data: {},
     },
   });
-
+  const addMember = await auth.api.addMember({
+    body: {
+      userId: data.user.id,
+      role: role, // required
+      organizationId: session.session.activeOrganizationId ?? undefined,
+    },
+  });
   revalidatePath("/users");
-  return data;
+  return {
+    data,
+    addMember,
+  };
 }
 //LINK update user
 export async function updateUserAction(id: string, formData: FormData) {

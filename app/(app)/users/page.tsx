@@ -2,6 +2,8 @@ import { DialogProvider } from "@/context/dialog-provider";
 import React from "react";
 import UsersTable from "./component/user-table";
 
+import UserDialogs from "./component/user-dialogs";
+
 export default function UserPage() {
   return (
     <DialogProvider>
@@ -16,7 +18,7 @@ export default function UserPage() {
         </div>
         <UsersTable />
       </div>
-      {/* <RoleDialogs /> */}
+      <UserDialogs />
     </DialogProvider>
-  )
+  );
 }

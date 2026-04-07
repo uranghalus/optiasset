@@ -1,66 +1,155 @@
-'use server'
+"use server";
 
 import { auth } from "@/lib/auth";
-import { getServerSession } from "@/lib/get-session";
-import { PaginationState } from "@/types";
 import { headers } from "next/headers";
+import { prisma } from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
 
-export async function getListMember({ page, pageSize }: PaginationState) {
-    const session = await getServerSession();
-    if (!session) throw new Error("Unauthorized");
+type GetMembersParams = {
+  page?: number;
+  limit?: number;
+  search?: string;
+};
 
-    const organization = session.session.activeOrganizationId;
-    if (!organization) throw new Error("Organization not found");
+export async function getAllMembers({
+  page = 1,
+  limit = 10,
+  search,
+}: GetMembersParams) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
 
-    const safePage = Math.max(1, page);
-    const safePageSize = Math.max(1, pageSize);
-    const skip = (safePage - 1) * safePageSize;
-    const take = safePageSize;
+  if (!session) throw new Error("Unauthorized");
 
-    const data = await auth.api.listMembers({
-        query: {
-            organizationId: organization,
-            limit: take,
-            offset: skip,
-        },
-        headers: await headers()
-    })
+  const organization = session.session.activeOrganizationId;
+  if (!organization) throw new Error("Organization not found");
 
-    return {
-        data: data.members,
-        total: data.total,
-        pageCount: Math.ceil(data.total / safePageSize),
-        page: safePage,
-        pageSize: safePageSize,
+  const offset = (page - 1) * limit;
+
+  // Let's use Prisma to get robust relations
+  const whereClause: any = {
+    organizationId: organization,
+  };
+
+  if (search) {
+    whereClause.user = {
+      name: { contains: search },
     };
+  }
+
+  const [members, total] = await Promise.all([
+    prisma.member.findMany({
+      where: whereClause,
+      include: {
+        user: true,
+        department: true,
+        divisi: true,
+      },
+      skip: offset,
+      take: limit,
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.member.count({ where: whereClause }),
+  ]);
+
+  return {
+    data: members,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit) || 1,
+    },
+  };
 }
-// LINK add member
-export async function addMember(formData: FormData) {
-    const session = await getServerSession();
-    if (!session) throw new Error("Unauthorized");
 
-    const organization = session.session.activeOrganizationId;
-    if (!organization) throw new Error("Organization not found");
+export async function createMemberAction(formData: FormData) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
 
-    const userId = formData.get("user-id") as string;
-    const roleRaw = formData.get("role") as string;
+  if (!session) throw new Error("Unauthorized");
+  const organization = session.session.activeOrganizationId;
+  if (!organization) throw new Error("Organization not found");
 
-    if (roleRaw !== "admin" && roleRaw !== "owner") {
-        throw new Error("Invalid role");
-    }
+  const userId = formData.get("userId") as string;
+  const role = formData.get("role") as string;
+  const departmentId = formData.get("departmentId") as string | null;
+  const divisiId = formData.get("divisiId") as string | null;
 
-    const role = roleRaw;
+  if (!userId || !role) throw new Error("User and Role are required");
 
-    if (!userId || !role) throw new Error("Required fields are missing");
+  const data = await auth.api.addMember({
+    body: {
+      userId,
+      role: role || ("member" as any),
+      organizationId: organization,
+    },
+    headers: await headers(),
+  });
 
-    const data = await auth.api.addMember({
-        body: {
-            userId: userId,
-            role: role,
-            organizationId: organization,
-        },
-        headers: await headers()
-    })
+  // Update custom fields natively with prisma
+  await prisma.member.updateMany({
+    where: { userId, organizationId: organization },
+    data: {
+      departmentId: departmentId || null,
+      divisiId: divisiId || null,
+      role: role, // ensure comma separated roles are saved properly if better-auth messes it up
+    },
+  });
 
-    return data;
+  revalidatePath("/members");
+  return data;
+}
+
+export async function updateMemberAction(id: string, formData: FormData) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session) throw new Error("Unauthorized");
+  const organization = session.session.activeOrganizationId;
+  if (!organization) throw new Error("Organization not found");
+
+  const role = formData.get("role") as string;
+  const departmentId = formData.get("departmentId") as string | null;
+  const divisiId = formData.get("divisiId") as string | null;
+
+  // Update directly using Prisma to capture custom fields
+  const updated = await prisma.member.update({
+    where: { id },
+    data: {
+      role,
+      departmentId: departmentId || null,
+      divisiId: divisiId || null,
+    },
+  });
+
+  revalidatePath("/members");
+  return updated;
+}
+
+export async function deleteMemberAction(id: string) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session) throw new Error("Unauthorized");
+  const organization = session.session.activeOrganizationId;
+  if (!organization) throw new Error("Organization not found");
+
+  const member = await prisma.member.findUnique({ where: { id } });
+  if (!member) throw new Error("Member not found");
+
+  const data = await auth.api.removeMember({
+    body: {
+      memberIdOrEmail: member.id,
+      organizationId: organization,
+    },
+    headers: await headers(),
+  });
+
+  revalidatePath("/members");
+  return data;
 }

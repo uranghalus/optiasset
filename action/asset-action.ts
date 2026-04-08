@@ -4,6 +4,8 @@ import { getServerSession } from "@/lib/get-session";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { recordAssetHistory } from "./asset-history-action";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
 /* =======================
    TYPES
@@ -13,13 +15,43 @@ export type AssetArgs = {
   pageSize: number;
 };
 
+function isGlobalAccess(role?: string | null) {
+  return role === "OWNER" || role === "ADMIN" || role === "ASSET_STAFF";
+}
+
+function buildAssetFilter({
+  role,
+  departmentId,
+}: {
+  role?: string | null;
+  departmentId?: string | null;
+}) {
+  if (isGlobalAccess(role)) {
+    return {}; // 👑 lihat semua
+  }
+
+  if (!departmentId) {
+    throw new Error("User has no department");
+  }
+
+  return {
+    departmentId,
+  };
+}
 /* =======================
    GET ALL ASSETS
  ======================= */
 export async function getAllAssets({ page, pageSize }: AssetArgs) {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
+  const { role } = await auth.api.getActiveMemberRole({
+    headers: await headers(),
+  });
 
+  const where = buildAssetFilter({
+    role,
+    departmentId: session.user.departmentId,
+  });
   const safePage = Math.max(1, page);
   const safePageSize = Math.max(1, pageSize);
   const skip = (safePage - 1) * safePageSize;
@@ -27,6 +59,7 @@ export async function getAllAssets({ page, pageSize }: AssetArgs) {
 
   const [data, total] = await Promise.all([
     prisma.asset.findMany({
+      where,
       skip,
       take,
       orderBy: { createdAt: "desc" },
@@ -40,7 +73,9 @@ export async function getAllAssets({ page, pageSize }: AssetArgs) {
         },
       },
     }),
-    prisma.asset.count(),
+    prisma.asset.count({
+      where,
+    }),
   ]);
 
   return {
@@ -105,7 +140,8 @@ export async function getDepartmentsForAssetSelect() {
 export async function createAsset(formData: FormData) {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
-
+  const departmentId = session.user.departmentId;
+  if (!departmentId) throw new Error("User has no department");
   const itemId = formData.get("itemId")?.toString();
   if (!itemId) throw new Error("Item is required");
 
@@ -129,7 +165,7 @@ export async function createAsset(formData: FormData) {
         condition: formData.get("condition")?.toString() || null,
         warrantyExpire: parseDateOrNull("warrantyExpire"),
         locationId: formData.get("locationId")?.toString() || null,
-        departmentId: formData.get("departmentId")?.toString() || null,
+        departmentId: departmentId,
         notes: formData.get("notes")?.toString() || null,
         barcode: formData.get("barcode")?.toString() || null,
         brand: formData.get("brand")?.toString() || null,
@@ -184,7 +220,8 @@ export async function updateAsset(id: string, formData: FormData) {
 
   const asset = await prisma.asset.findFirst({ where: { id } });
   if (!asset) throw new Error("Asset not found");
-
+  const departmentId = session.user.departmentId;
+  if (!departmentId) throw new Error("User has no department");
   const parseDateOrNull = (key: string) => {
     const val = formData.get(key)?.toString();
     return val ? new Date(val) : null;
@@ -211,8 +248,7 @@ export async function updateAsset(id: string, formData: FormData) {
         warrantyExpire:
           parseDateOrNull("warrantyExpire") ?? asset.warrantyExpire,
         locationId: newLocationId || asset.locationId,
-        departmentId:
-          formData.get("departmentId")?.toString() || asset.departmentId,
+        departmentId: departmentId,
         notes: formData.get("notes")?.toString() || asset.notes,
         barcode: formData.get("barcode")?.toString() || asset.barcode,
         brand: formData.get("brand")?.toString() || asset.brand,

@@ -8,36 +8,26 @@ datasource db {
 }
 
 model User {
-  id              String    @id
-  name            String    @db.Text
-  email           String    @unique
-  emailVerified   Boolean   @default(false)
-  image           String?   @db.Text
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  username        String?   @db.Text
-  displayUsername String?   @db.Text
-  role            String?   @db.Text
-  banned          Boolean?  @default(false)
-  banReason       String?   @db.Text
+  id              String         @id
+  name            String         @db.Text
+  email           String         @unique
+  emailVerified   Boolean        @default(false)
+  image           String?        @db.Text
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  username        String?        @db.Text
+  displayUsername String?        @db.Text
+  role            String?        @db.Text
+  banned          Boolean?       @default(false)
+  banReason       String?        @db.Text
   banExpires      DateTime?
-  // 🔥 Tambahan
-  departmentId    String?
-  divisiId        String?
+  accounts        Account[]
+  invitations     Invitation[]
+  members         Member[]
+  sessions        Session[]
+  teammember      teamMember[]
+  assetHistory    AssetHistory[]
 
-  // 🔥 Relasi baru
-  department department? @relation(fields: [departmentId], references: [id_department])
-  divisi     divisi?     @relation(fields: [divisiId], references: [id_divisi])
-
-  accounts     Account[]
-  invitations  Invitation[]
-  members      Member[]
-  sessions     Session[]
-  teammember   teamMember[]
-  assetHistory AssetHistory[]
-
-  @@index([departmentId])
-  @@index([divisiId])
   @@map("user")
 }
 
@@ -128,13 +118,23 @@ model Member {
   userId         String
   role           String @db.Text
 
+  // 🔥 Tambahan
+  departmentId String?
+  divisiId     String?
+
   createdAt DateTime
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // 🔥 Relasi baru
+  department department? @relation(fields: [departmentId], references: [id_department])
+  divisi     divisi?     @relation(fields: [divisiId], references: [id_divisi])
+
   @@index([organizationId])
   @@index([userId])
+  @@index([departmentId])
+  @@index([divisiId])
   @@map("member")
 }
 
@@ -296,7 +296,7 @@ model department {
   organization    Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade, map: "Department_organization_id_fkey")
   divisi          divisi[]
   assets          Asset[]      @relation("asset_dept_rel")
-  users           User[]
+  members         Member[]
 
   @@unique([organization_id, kode_department(length: 191)], map: "department_org_kode_unique_custom_v9")
   @@index([deleted_at], map: "department_deleted_at_idx_custom_v9")
@@ -316,7 +316,7 @@ model divisi {
   organization    Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade, map: "Divisi_organization_id_fkey")
   assets          Asset[]      @relation("asset_div_rel")
   team            Team[]       @relation("div_team_rel")
-  users           User[]
+  members         Member[]
 
   @@index([department_id], map: "Divisi_department_id_fkey")
   @@index([deleted_at], map: "divisi_deleted_at_idx_custom_v9")

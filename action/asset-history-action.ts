@@ -28,7 +28,11 @@ export async function recordAssetHistory(data: RecordAssetHistoryData) {
 
   return db.assetHistory.create({
     data: {
-      assetId: data.assetId,
+      ...(data.assetId && {
+        asset: {
+          connect: { id: data.assetId },
+        },
+      }),
       asset_info: data.asset_info,
       userId: data.userId,
       action: data.action,
@@ -38,7 +42,6 @@ export async function recordAssetHistory(data: RecordAssetHistoryData) {
     },
   });
 }
-
 /* =======================
    GET ALL ASSET HISTORY
    ======================= */

@@ -32,12 +32,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 
-import {
-  Field,
-  FieldGroup,
-  FieldLabel,
-  FieldError,
-} from "@/components/ui/field";
+import { Field, FieldLabel, FieldError } from "@/components/ui/field";
 
 import { Asset } from "@/generated/prisma/client";
 import {
@@ -45,7 +40,6 @@ import {
   useUpdateAsset,
   useItemsForSelect,
   useLocationsForSelect,
-  useDepartmentsForAssetSelect,
 } from "@/hooks/crud/use-assets";
 import { AssetForm, AssetFormSchema } from "@/schema/asset-schema";
 import { cn } from "@/lib/utils";
@@ -64,8 +58,6 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
 
   const { data: items } = useItemsForSelect();
   const { data: locations } = useLocationsForSelect();
-  const { data: departments } = useDepartmentsForAssetSelect();
-
   const form = useForm<AssetForm>({
     resolver: zodResolver(AssetFormSchema),
     defaultValues: {
@@ -100,7 +92,6 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
           ? format(new Date(currentRow.warrantyExpire), "yyyy-MM-dd")
           : "",
         locationId: currentRow.locationId ?? "",
-        departmentId: currentRow.departmentId ?? "",
         notes: currentRow.notes ?? "",
         barcode: currentRow.barcode ?? "",
         brand: currentRow.brand ?? "",
@@ -119,7 +110,6 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
         condition: "GOOD",
         warrantyExpire: "",
         locationId: "",
-        departmentId: "",
         notes: "",
         barcode: "",
         brand: "",
@@ -318,31 +308,6 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
                         {locations?.map((loc) => (
                           <SelectItem key={loc.id} value={loc.id}>
                             {loc.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                )}
-              />
-
-              <Controller
-                name="departmentId"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel>Department / PIC</FieldLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih department..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {departments?.map((dept) => (
-                          <SelectItem
-                            key={dept.id_department}
-                            value={dept.id_department}
-                          >
-                            {dept.nama_department}
                           </SelectItem>
                         ))}
                       </SelectContent>

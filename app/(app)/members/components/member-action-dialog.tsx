@@ -56,27 +56,17 @@ export function MemberActionDialog({ open, onOpenChange, currentRow }: Props) {
     limit: 100,
   });
   const { data: rolesData, isLoading: isLoadingRoles } = useRoles(1, 100);
-  const { data: deptData, isLoading: isLoadingDept } = useDepartments({
-    page: 1,
-    pageSize: 100,
-  });
-  const { data: divData, isLoading: isLoadingDiv } = useDivisi({
-    page: 1,
-    pageSize: 100,
-  });
 
   const users = usersData?.data || [];
   const orgRoles = rolesData?.data || [];
-  const depts = deptData?.data || [];
-  const divisis = divData?.data || [];
+
 
   const form = useForm<MemberForm>({
     resolver: zodResolver(MemberFormSchema),
     defaultValues: {
       userId: "",
       role: [],
-      departmentId: "",
-      divisiId: "",
+
     },
   });
 
@@ -89,15 +79,13 @@ export function MemberActionDialog({ open, onOpenChange, currentRow }: Props) {
       form.reset({
         userId: currentRow.userId || "",
         role: currentRoles,
-        departmentId: currentRow.departmentId || "",
-        divisiId: currentRow.divisiId || "",
+
       });
     } else {
       form.reset({
         userId: "",
         role: [],
-        departmentId: "",
-        divisiId: "",
+
       });
     }
   }, [currentRow, form, open]);
@@ -110,9 +98,6 @@ export function MemberActionDialog({ open, onOpenChange, currentRow }: Props) {
     if (values.role && values.role.length > 0) {
       formData.append("role", values.role.join(","));
     }
-    if (values.departmentId)
-      formData.append("departmentId", values.departmentId);
-    if (values.divisiId) formData.append("divisiId", values.divisiId);
 
     try {
       if (isEdit && currentRow) {
@@ -135,11 +120,6 @@ export function MemberActionDialog({ open, onOpenChange, currentRow }: Props) {
     }
   };
 
-  // Only allow divisions that belong to the selected department
-  const watchedDept = form.watch("departmentId");
-  const filteredDivisis = divisis.filter(
-    (d: any) => !watchedDept || d.department_id === watchedDept,
-  );
 
   return (
     <Dialog
@@ -258,97 +238,7 @@ export function MemberActionDialog({ open, onOpenChange, currentRow }: Props) {
               )}
             />
 
-            {/* DEPARTMENT */}
-            <Controller
-              name="departmentId"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Department (Opsional)</FieldLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    value={field.value}
-                  >
-                    <SelectTrigger aria-invalid={fieldState.invalid}>
-                      <SelectValue placeholder="Pilih department..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {isLoadingDept ? (
-                        <SelectItem value="loading" disabled>
-                          Memuat...
-                        </SelectItem>
-                      ) : depts.length > 0 ? (
-                        depts.map((d: any) => (
-                          <SelectItem
-                            key={d.id_department}
-                            value={d.id_department}
-                          >
-                            {d.nama_department}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="empty" disabled>
-                          Tidak ada department
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </Field>
-              )}
-            />
 
-            {/* DIVISI */}
-            <Controller
-              name="divisiId"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Divisi (Opsional)</FieldLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    value={field.value}
-                  >
-                    <SelectTrigger
-                      aria-invalid={fieldState.invalid}
-                      disabled={!watchedDept}
-                    >
-                      <SelectValue
-                        placeholder={
-                          watchedDept
-                            ? "Pilih divisi..."
-                            : "Pilih department dulu"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {isLoadingDiv ? (
-                        <SelectItem value="loading" disabled>
-                          Memuat...
-                        </SelectItem>
-                      ) : filteredDivisis.length > 0 ? (
-                        filteredDivisis.map((d: any) => (
-                          <SelectItem key={d.id_divisi} value={d.id_divisi}>
-                            {d.nama_divisi}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="empty" disabled>
-                          Tidak ada divisi
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </Field>
-              )}
-            />
           </FieldGroup>
 
           <DialogFooter>

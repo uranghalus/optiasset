@@ -20,8 +20,8 @@ export type MemberWithRelations = {
   organizationId: string;
   userId: string;
   role: string | null;
-  departmentId: string | null;
-  divisiId: string | null;
+  departmentId_department: string | null;
+  divisiId_divisi: string | null;
   createdAt: Date;
   user: User;
   department: department | null;
@@ -44,9 +44,9 @@ export default function MembersTable() {
     limit: pagination.pageSize,
     search: debouncedSearch,
   });
-
-  const { table } = useDataTable<MemberWithRelations>({
-    data: (data?.data as MemberWithRelations[]) ?? [],
+  console.log("Members data:", data);
+  const { table } = useDataTable({
+    data: (data?.data) ?? [],
     columns: memberColumns,
     columnResizeMode: "onEnd",
 

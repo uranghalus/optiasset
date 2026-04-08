@@ -42,9 +42,12 @@ export async function getAllMembers({
     prisma.member.findMany({
       where: whereClause,
       include: {
-        user: true,
-        department: true,
-        divisi: true,
+        user: {
+          include: {
+            department: true,
+            divisi: true,
+          },
+        },
       },
       skip: offset,
       take: limit,
@@ -75,8 +78,6 @@ export async function createMemberAction(formData: FormData) {
 
   const userId = formData.get("userId") as string;
   const role = formData.get("role") as string;
-  const departmentId = formData.get("departmentId") as string | null;
-  const divisiId = formData.get("divisiId") as string | null;
 
   if (!userId || !role) throw new Error("User and Role are required");
 
@@ -93,8 +94,6 @@ export async function createMemberAction(formData: FormData) {
   await prisma.member.updateMany({
     where: { userId, organizationId: organization },
     data: {
-      departmentId: departmentId || null,
-      divisiId: divisiId || null,
       role: role, // ensure comma separated roles are saved properly if better-auth messes it up
     },
   });
@@ -121,8 +120,6 @@ export async function updateMemberAction(id: string, formData: FormData) {
     where: { id },
     data: {
       role,
-      departmentId: departmentId || null,
-      divisiId: divisiId || null,
     },
   });
 

@@ -12,6 +12,8 @@ export const UserFormSchema = z.object({
     .min(6, { message: "Password minimal 6 karakter" })
     .optional()
     .or(z.literal("")),
+  departmentId: z.string().optional(),
+  divisiId: z.string().optional(),
   role: z
     .array(z.string())
     .min(1, { message: "Role wajib dipilih" })

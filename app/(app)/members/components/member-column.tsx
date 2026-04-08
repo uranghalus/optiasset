@@ -79,7 +79,7 @@ export const memberColumns: any[] = [
       <DataTableColumnHeader column={column} title="Department" />
     ),
     cell: ({ row }: any) => {
-      const deptName = row.original.department?.nama_department;
+      const deptName = row.original.user.department?.nama_department;
       return deptName ? (
         <span>{deptName}</span>
       ) : (
@@ -98,7 +98,7 @@ export const memberColumns: any[] = [
       <DataTableColumnHeader column={column} title="Divisi" />
     ),
     cell: ({ row }: any) => {
-      const divName = row.original.divisi?.nama_divisi;
+      const divName = row.original.user?.divisi?.nama_divisi;
       return divName ? (
         <span>{divName}</span>
       ) : (

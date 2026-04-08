@@ -73,6 +73,8 @@ export async function createUserAction(formData: FormData) {
   const password = formData.get("password") as string;
   const name = formData.get("name") as string;
   const role = formData.get("role") as any;
+  const departmentId = formData.get("departmentId") as string;
+  const divisiId = formData.get("divisiId") as string;
 
   const data = await auth.api.createUser({
     body: {
@@ -80,7 +82,10 @@ export async function createUserAction(formData: FormData) {
       password,
       name,
       role: "user",
-      data: {},
+      data: {
+        departmentId,
+        divisiId,
+      },
     },
   });
   const addMember = await auth.api.addMember({
@@ -105,12 +110,17 @@ export async function updateUserAction(id: string, formData: FormData) {
   if (!session) throw new Error("Unauthorized");
 
   const name = formData.get("name") as string;
-
+  const role = formData.get("role") as any;
+  const departmentId = formData.get("departmentId") as string;
+  const divisiId = formData.get("divisiId") as string;
   const data = await auth.api.adminUpdateUser({
     body: {
       userId: id,
       data: {
         name,
+        departmentId,
+        divisiId,
+        role,
       },
     },
     headers: await headers(),

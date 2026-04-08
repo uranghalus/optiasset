@@ -11,6 +11,7 @@ export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: 'mysql', // or "mysql", "postgresql", ...etc
   }),
+
   //...
   baseURL: process.env.BETTER_AUTH_URL,
   secret: process.env.BETTER_AUTH_SECRET,
@@ -52,6 +53,14 @@ export const auth = betterAuth({
         type: 'string',
         input: true,
       },
+      departmentId: {
+        type: 'string',
+        input: true,
+      },
+      divisiId: {
+        type: 'string',
+        input: true,
+      },
     },
   },
   plugins: [
@@ -74,3 +83,5 @@ export const auth = betterAuth({
     }),
   ],
 });
+
+export type Session = typeof auth.$Infer.Session

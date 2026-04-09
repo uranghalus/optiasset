@@ -28,17 +28,13 @@ export async function recordAssetHistory(data: RecordAssetHistoryData) {
 
   return db.assetHistory.create({
     data: {
-      ...(data.assetId && {
-        asset: {
-          connect: { id: data.assetId },
-        },
-      }),
-      asset_info: data.asset_info,
+      assetId: data.assetId ?? null, // 🔥 langsung pakai ini
+      asset_info: data.asset_info ?? null,
       userId: data.userId,
       action: data.action,
-      field: data.field,
-      oldValue: data.oldValue,
-      newValue: data.newValue,
+      field: data.field ?? null,
+      oldValue: data.oldValue ?? null,
+      newValue: data.newValue ?? null,
     },
   });
 }

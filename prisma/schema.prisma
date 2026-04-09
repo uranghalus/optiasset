@@ -129,12 +129,8 @@ model Member {
 
   createdAt DateTime
 
-  organization            Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user                    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  department              department?  @relation(fields: [departmentId_department], references: [id_department])
-  departmentId_department String?
-  divisi                  divisi?      @relation(fields: [divisiId_divisi], references: [id_divisi])
-  divisiId_divisi         String?
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
   @@index([userId])
@@ -299,7 +295,6 @@ model department {
   organization    Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade, map: "Department_organization_id_fkey")
   divisi          divisi[]
   assets          Asset[]      @relation("asset_dept_rel")
-  members         Member[]
   users           User[]
 
   @@unique([organization_id, kode_department(length: 191)], map: "department_org_kode_unique_custom_v9")
@@ -320,7 +315,6 @@ model divisi {
   organization    Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade, map: "Divisi_organization_id_fkey")
   assets          Asset[]      @relation("asset_div_rel")
   team            Team[]       @relation("div_team_rel")
-  members         Member[]
   users           User[]
 
   @@index([department_id], map: "Divisi_department_id_fkey")

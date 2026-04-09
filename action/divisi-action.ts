@@ -87,6 +87,37 @@ export async function getDepartmentsForSelect() {
 }
 
 /* =======================
+   GET DIVISI FOR SELECT
+   ======================= */
+export async function getDivisiForSelect(departmentId?: string) {
+  const session = await getServerSession();
+  if (!session) throw new Error("Unauthorized");
+
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId)
+    throw new Error("No active organizationId found in session");
+
+  const where: any = {
+    organization_id: activeOrgId,
+    deleted_at: null,
+  };
+
+  if (departmentId) {
+    where.department_id = departmentId;
+  }
+
+  return prisma.divisi.findMany({
+    where,
+    select: {
+      id_divisi: true,
+      nama_divisi: true,
+      department_id: true,
+    },
+    orderBy: { nama_divisi: "asc" },
+  });
+}
+
+/* =======================
    CREATE DIVISI
  ======================= */
 export async function createDivisi(formData: FormData) {

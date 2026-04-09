@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
@@ -60,6 +61,24 @@ export async function getAllUsers({
       totalPages: Math.ceil(total / limit) || 1, // 🔥 anti NaN
     },
   };
+}
+
+/* =======================
+   GET USERS FOR SELECT
+   ======================= */
+export async function getUsersForSelect() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session) throw new Error("Unauthorized");
+
+  const users = await prisma.user.findMany({
+    select: { id: true, name: true, email: true },
+    orderBy: { name: "asc" },
+  });
+
+  return users;
 }
 //LINK create user
 export async function createUserAction(formData: FormData) {

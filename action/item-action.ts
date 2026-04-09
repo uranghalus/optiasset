@@ -3,6 +3,7 @@
 import { getServerSession } from "@/lib/get-session";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { createAuditLog } from "@/lib/logger";
 
 /* =======================
    TYPES
@@ -133,6 +134,19 @@ export async function createItem(formData: FormData) {
         createdBy: session.user.id,
       },
     });
+
+    // Record Audit Log
+    await createAuditLog({
+      userId: session.user.id,
+      action: "CREATE",
+      entityType: "ITEM",
+      entityId: item.id,
+      entityInfo: `${item.code} - ${item.name}`,
+      details: {
+        newData: item,
+      },
+    });
+
     revalidatePath("/assets/items");
     return item;
   } catch (error: any) {
@@ -172,6 +186,19 @@ export async function updateItem(id: string, formData: FormData) {
         updatedAt: new Date(),
       },
     });
+
+    // Record Audit Log
+    await createAuditLog({
+      userId: session.user.id,
+      action: "UPDATE",
+      entityType: "ITEM",
+      entityId: id,
+      entityInfo: `${updated.code} - ${updated.name}`,
+      details: {
+        newData: updated,
+      },
+    });
+
     revalidatePath("/assets/items");
     return updated;
   } catch (error: any) {
@@ -190,6 +217,19 @@ export async function deleteItem(id: string) {
   if (!session) throw new Error("Unauthorized");
 
   const item = await prisma.item.delete({ where: { id } });
+
+  // Record Audit Log
+  await createAuditLog({
+    userId: session.user.id,
+    action: "DELETE",
+    entityType: "ITEM",
+    entityId: id,
+    entityInfo: `${item.code} - ${item.name}`,
+    details: {
+      deletedData: item,
+    },
+  });
+
   revalidatePath("/assets/items");
   return item;
 }

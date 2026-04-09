@@ -36,7 +36,7 @@ export default async function DashboardPage() {
         </div>
         <div className="space-y-6">
           <LowStockAlerts items={data.lowStockItems} />
-          <RecentActivity assets={data.recentAssets} />
+          <RecentActivity recentActivity={data.recentActivity as any} />
         </div>
       </div>
     </div>

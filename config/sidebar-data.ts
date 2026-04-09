@@ -104,8 +104,8 @@ export const sidebarData: SidebarData = {
           icon: ArchiveX,
         },
         {
-          title: "Riwayat Aset",
-          url: "/asset-history",
+          title: "Audit Log",
+          url: "/audit-logs",
           icon: History,
         },
       ],

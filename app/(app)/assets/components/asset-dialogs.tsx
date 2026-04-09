@@ -5,6 +5,8 @@ import { AssetActionDialog } from "./asset-action-dialog";
 import { Asset } from "@/generated/prisma/client";
 import { AssetDeleteDialog } from "./asset-delete-dialog";
 import { AssetQRDialog } from "./asset-qr-dialog";
+import { AssetTransferDialog } from "./asset-transfer-dialog";
+import { AssetLoanDialog } from "./asset-loan-dialog";
 
 export default function AssetDialogs() {
   const { currentRow, open, setCurrentRow, setOpen } = useDialog();
@@ -33,6 +35,24 @@ export default function AssetDialogs() {
             open={open === "view-qr"}
             onOpenChange={() => {
               setOpen("view-qr");
+              setCurrentRow(undefined);
+            }}
+          />
+          <AssetTransferDialog
+            key={`asset-transfer-${(currentRow as Asset).id}`}
+            asset={currentRow as Asset}
+            open={open === "transfer"}
+            onOpenChange={() => {
+              setOpen("transfer");
+              setCurrentRow(undefined);
+            }}
+          />
+          <AssetLoanDialog
+            key={`asset-loan-${(currentRow as Asset).id}`}
+            asset={currentRow as Asset}
+            open={open === "loan"}
+            onOpenChange={() => {
+              setOpen("loan");
               setCurrentRow(undefined);
             }}
           />

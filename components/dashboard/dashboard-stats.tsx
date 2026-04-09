@@ -15,28 +15,28 @@ interface DashboardStatsProps {
 export function DashboardStats({ stats }: DashboardStatsProps) {
   const cards = [
     {
-      title: "Total Fixed Assets",
+      title: "Total Aset Tetap",
       value: stats.totalAssets,
       icon: Smartphone,
-      description: "Registered physical assets",
+      description: "Aset fisik terdaftar",
       className:
         "border-l-4 border-l-blue-500 bg-linear-to-br from-blue-50/50 to-transparent dark:from-blue-950/20",
       iconColor: "text-blue-500",
     },
     {
-      title: "Stock Level",
+      title: "Tingkat Stok",
       value: stats.totalStock,
       icon: Boxes,
-      description: "Total items in stock (Supplies)",
+      description: "Total unit barang Supply",
       className:
         "border-l-4 border-l-emerald-500 bg-linear-to-br from-emerald-50/50 to-transparent dark:from-emerald-950/20",
       iconColor: "text-emerald-500",
     },
     {
-      title: "Catalog Items",
+      title: "Item Katalog",
       value: stats.totalItems,
       icon: Package,
-      description: "Unique items in master catalog",
+      description: "Item unik dalam master katalog",
       className:
         "border-l-4 border-l-purple-500 bg-linear-to-br from-purple-50/50 to-transparent dark:from-purple-950/20",
       iconColor: "text-purple-500",
@@ -63,6 +63,7 @@ export function DashboardStats({ stats }: DashboardStatsProps) {
               {card.value}
             </div>
             <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+              <Info className="h-3 w-3" />
               {card.description}
             </p>
           </CardContent>

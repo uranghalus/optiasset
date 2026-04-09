@@ -42,18 +42,18 @@ export async function getDashboardData() {
       },
     }),
 
-    // 5. Recent additions
-    prisma.item.findMany({
-      take: 5,
+    // 5. Recent Activity from Audit Logs
+    prisma.auditLog.findMany({
+      take: 10,
       orderBy: { createdAt: "desc" },
       include: {
-        category: {
-          select: { name: true },
+        user: {
+          select: { name: true, image: true },
         },
       },
     }),
 
-    // 9. Low Stock Items (Supply with quantity < 5)
+    // 6. Low Stock Items (Supply with quantity < 5)
     prisma.stock.findMany({
       where: {
         quantity: { lt: 5 },
@@ -82,13 +82,13 @@ export async function getDashboardData() {
         value: cat._count.items,
       }))
       .filter((c) => c.value > 0),
-    recentAssets: recentAssets.map((item) => ({
-      id: item.id,
-      name: item.name,
-      code: item.code,
-      type: item.assetType,
-      category: item.category?.name || "Uncategorized",
-      createdAt: item.createdAt,
+    recentActivity: recentAssets.map((log: any) => ({
+      id: log.id,
+      action: log.action,
+      entityType: log.entityType,
+      entityInfo: log.entityInfo,
+      userName: log.user?.name || "System",
+      createdAt: log.createdAt,
     })),
     lowStockItems: lowStockItems.map((s) => ({
       name: s.item.name,

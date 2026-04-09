@@ -4,7 +4,7 @@ import { ButtonGroup } from "@/components/ui/button-group";
 import { useDialog } from "@/context/dialog-provider";
 import { Asset } from "@/generated/prisma/client";
 import { Row } from "@tanstack/react-table";
-import { Pencil, Trash2, QrCode } from "lucide-react";
+import { Pencil, Trash2, QrCode, Move, Handshake } from "lucide-react";
 import React from "react";
 
 interface DataTableRowActionsProps<TData> {
@@ -45,8 +45,31 @@ export default function AssetRowAction<TData>({
           setCurrentRow(asset);
           setOpen("view-qr");
         }}
+        title="QR Code"
       >
         <QrCode className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={() => {
+          setCurrentRow(asset);
+          setOpen("transfer");
+        }}
+        title="Mutasi Aset"
+      >
+        <Move className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={() => {
+          setCurrentRow(asset);
+          setOpen("loan");
+        }}
+        title="Pinjamkan Aset"
+      >
+        <Handshake className="h-4 w-4" />
       </Button>
     </ButtonGroup>
   );

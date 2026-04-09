@@ -1,13 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-'use server';
+"use server";
 
-import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
-import { LoginSchema } from '@/schema/auth-schema';
-import { ActionState } from '@/types';
-import { APIError } from 'better-auth';
-import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { LoginSchema } from "@/schema/auth-schema";
+import { ActionState } from "@/types";
+import { APIError } from "better-auth";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { createAuditLog } from "@/lib/logger";
 
 interface AuthPayload {
   email: string;
@@ -20,12 +21,12 @@ export async function loginAction(formData: AuthPayload): Promise<ActionState> {
 
     if (!parsed.success) {
       return {
-        status: 'error',
+        status: "error",
         fieldErrors: {
-          email: parsed.error.format().email?._errors[0] ?? '',
-          password: parsed.error.format().password?._errors[0] ?? '',
+          email: parsed.error.format().email?._errors[0] ?? "",
+          password: parsed.error.format().password?._errors[0] ?? "",
         },
-        message: 'Data login tidak valid',
+        message: "Data login tidak valid",
       };
     }
 
@@ -38,11 +39,11 @@ export async function loginAction(formData: AuthPayload): Promise<ActionState> {
 
     if (!user) {
       return {
-        status: 'error',
+        status: "error",
         fieldErrors: {
-          email: 'Email belum terdaftar',
+          email: "Email belum terdaftar",
         },
-        message: 'Email belum terdaftar',
+        message: "Email belum terdaftar",
       };
     }
 
@@ -55,36 +56,60 @@ export async function loginAction(formData: AuthPayload): Promise<ActionState> {
       headers: await headers(),
     });
 
+    // Record Audit Log
+    await createAuditLog({
+      userId: user.id,
+      action: "LOGIN",
+      entityType: "AUTH",
+      entityInfo: email,
+    });
+
     return {
-      status: 'success',
-      message: 'Login berhasil',
+      status: "success",
+      message: "Login berhasil",
     };
   } catch (error: any) {
-    console.error('LOGIN ERROR FULL:', error);
+    console.error("LOGIN ERROR FULL:", error);
 
     // better-auth throws APIError with a message + status
     const message: string =
-      error?.body?.message ?? error?.message ?? 'Terjadi kesalahan';
+      error?.body?.message ?? error?.message ?? "Terjadi kesalahan";
 
     // Map known better-auth error messages to user-friendly Indonesian messages
     if (
-      message.toLowerCase().includes('invalid email or password') ||
-      message.toLowerCase().includes('invalid credentials')
+      message.toLowerCase().includes("invalid email or password") ||
+      message.toLowerCase().includes("invalid credentials")
     ) {
-      return { status: 'error', message: 'Email atau password salah' };
+      return { status: "error", message: "Email atau password salah" };
     }
 
-    if (message.toLowerCase().includes('email is not verified')) {
+    if (message.toLowerCase().includes("email is not verified")) {
       return {
-        status: 'error',
-        message: 'Email belum diverifikasi. Silakan cek inbox email Anda.',
+        status: "error",
+        message: "Email belum diverifikasi. Silakan cek inbox email Anda.",
       };
     }
 
     return {
-      status: 'error',
+      status: "error",
       message,
     };
+  }
+}
+
+export async function logoutLogAction(): Promise<void> {
+  const { session, user } =
+    (await auth.api.getSession({
+      headers: await headers(),
+    })) || {};
+
+  if (user) {
+    await createAuditLog({
+      userId: user.id,
+      action: "LOGOUT",
+      entityType: "AUTH",
+      entityInfo: user.email,
+    });
   }
 }
 

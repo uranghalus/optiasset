@@ -3,7 +3,7 @@
 import { getServerSession } from "@/lib/get-session";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { recordAssetHistory } from "./asset-history-action";
+import { createAuditLog } from "@/lib/logger";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
@@ -135,6 +135,38 @@ export async function getDepartmentsForAssetSelect() {
 }
 
 /* =======================
+   GET ASSETS FOR LOAN SELECT
+   ======================= */
+export async function getAvailableAssetsForLoanSelect({
+  departmentId,
+  divisiId,
+}: {
+  departmentId: string;
+  divisiId?: string;
+}) {
+  const session = await getServerSession();
+  if (!session) throw new Error("Unauthorized");
+
+  const where: any = {
+    status: { in: ["ACTIVE", "GOOD"] },
+  };
+
+  if (departmentId) where.departmentId = departmentId;
+  if (divisiId) where.divisiId = divisiId;
+
+  return prisma.asset.findMany({
+    where,
+    select: {
+      id: true,
+      barcode: true,
+      serialNumber: true,
+      item: { select: { name: true } },
+    },
+    orderBy: { item: { name: "asc" } },
+  });
+}
+
+/* =======================
    CREATE ASSET
  ======================= */
 export async function createAsset(formData: FormData) {
@@ -196,12 +228,16 @@ export async function createAsset(formData: FormData) {
       });
     }
 
-    // Record History
-    await recordAssetHistory({
-      assetId: newAsset.id,
+    // Record Audit Log
+    await createAuditLog({
       userId: session.user.id,
       action: "CREATE",
-      newValue: JSON.stringify(newAsset),
+      entityType: "ASSET",
+      entityId: newAsset.id,
+      entityInfo: `${newAsset.barcode || "N/A"} - ${newAsset.serialNumber || "N/A"}`,
+      details: {
+        newData: newAsset,
+      },
       tx,
     });
 
@@ -291,24 +327,30 @@ export async function updateAsset(id: string, formData: FormData) {
       });
     }
 
-    // Record History (Check for location change specifically)
+    // Record Audit Log (Check for location change specifically)
     if (newLocationId && newLocationId !== oldLocationId) {
-      await recordAssetHistory({
-        assetId: id,
+      await createAuditLog({
         userId: session.user.id,
         action: "TRANSFER",
-        field: "locationId",
-        oldValue: oldLocationId || "N/A",
-        newValue: newLocationId,
+        entityType: "ASSET",
+        entityId: id,
+        details: {
+          field: "locationId",
+          oldValue: oldLocationId || "N/A",
+          newValue: newLocationId,
+        },
         tx,
       });
     }
 
-    await recordAssetHistory({
-      assetId: id,
+    await createAuditLog({
       userId: session.user.id,
       action: "UPDATE",
-      newValue: "Asset updated",
+      entityType: "ASSET",
+      entityId: id,
+      details: {
+        message: "Asset updated",
+      },
       tx,
     });
 
@@ -368,11 +410,15 @@ export async function deleteAsset(id: string) {
     // If the user wants to KEEP history even after asset is deleted, we should change schema.
     // For now, let's keep it consistent with Cascade.
 
-    await recordAssetHistory({
-      assetId: deleted.id,
+    await createAuditLog({
       userId: session.user.id,
       action: "DELETE",
-      oldValue: JSON.stringify(deleted),
+      entityType: "ASSET",
+      entityId: deleted.id,
+      entityInfo: `${deleted.barcode || "N/A"} - ${deleted.serialNumber || "N/A"}`,
+      details: {
+        deletedData: deleted,
+      },
       tx,
     });
 

@@ -3,6 +3,54 @@
 import { getServerSession } from "@/lib/get-session";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { createAuditLog } from "@/lib/logger";
+
+export type StockArgs = {
+  page: number;
+  pageSize: number;
+};
+
+/* =======================
+   GET ALL STOCKS
+   ======================= */
+export async function getAllStocks({ page, pageSize }: StockArgs) {
+  const session = await getServerSession();
+  if (!session) throw new Error("Unauthorized");
+
+  const safePage = Math.max(1, page);
+  const safePageSize = Math.max(1, pageSize);
+  const skip = (safePage - 1) * safePageSize;
+  const take = safePageSize;
+
+  const [data, total] = await Promise.all([
+    prisma.stock.findMany({
+      skip,
+      take,
+      orderBy: { updatedAt: "desc" },
+      include: {
+        item: {
+          include: {
+            category: {
+              select: { id: true, name: true },
+            },
+          },
+        },
+        location: {
+          select: { id: true, name: true },
+        },
+      },
+    }),
+    prisma.stock.count(),
+  ]);
+
+  return {
+    data,
+    total,
+    pageCount: Math.ceil(total / safePageSize),
+    page: safePage,
+    pageSize: safePageSize,
+  };
+}
 
 /* =======================
    GET STOCK BY ITEM
@@ -145,9 +193,72 @@ export async function recordStockTransaction(data: {
       },
     });
 
+    // Record Audit Log
+    await createAuditLog({
+      userId: session.user.id,
+      action: data.type === "ADJUSTMENT" ? "ADJUSTMENT" : "UPDATE",
+      entityType: "STOCK",
+      entityId: stockId,
+      details: {
+        transactionId: transaction.id,
+        type: data.type,
+        quantity: data.quantity,
+        reference: data.reference,
+      },
+      tx,
+    });
+
     revalidatePath("/assets/items");
     revalidatePath("/dashboard");
 
     return transaction;
   });
+}
+
+/* =======================
+   GET ALL STOCK TRANSACTIONS
+   ======================= */
+export async function getAllStockTransactions({
+  page,
+  pageSize,
+}: {
+  page: number;
+  pageSize: number;
+}) {
+  const session = await getServerSession();
+  if (!session) throw new Error("Unauthorized");
+
+  const safePage = Math.max(1, page);
+  const safePageSize = Math.max(1, pageSize);
+  const skip = (safePage - 1) * safePageSize;
+  const take = safePageSize;
+
+  const [data, total] = await Promise.all([
+    prisma.stockTransaction.findMany({
+      skip,
+      take,
+      orderBy: { createdAt: "desc" },
+      include: {
+        stock: {
+          include: {
+            item: {
+              select: { name: true, code: true },
+            },
+            location: {
+              select: { name: true },
+            },
+          },
+        },
+      },
+    }),
+    prisma.stockTransaction.count(),
+  ]);
+
+  return {
+    data,
+    total,
+    pageCount: Math.ceil(total / safePageSize),
+    page: safePage,
+    pageSize: safePageSize,
+  };
 }

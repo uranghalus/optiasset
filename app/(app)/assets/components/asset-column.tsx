@@ -14,6 +14,9 @@ type AssetWithItem = Asset & {
     name: string;
     code: string;
     assetType: string;
+    brand?: string | null;
+    model?: string | null;
+    serialNumber?: string | null;
   };
 };
 
@@ -59,7 +62,10 @@ export const assetColumns: ColumnDef<AssetWithItem>[] = [
       <DataTableColumnHeader column={column} title="Item / Model" />
     ),
     cell: ({ row }) => {
-      const { item, brand, model } = row.original;
+      const { item } = row.original;
+      const brand = item?.brand;
+      const model = item?.model;
+
       return (
         <div className="ps-2 flex flex-col">
           <span className="font-medium">{item.name}</span>
@@ -72,7 +78,7 @@ export const assetColumns: ColumnDef<AssetWithItem>[] = [
     size: 250,
   },
   {
-    accessorKey: "serialNumber",
+    accessorKey: "item.serialNumber",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Serial Number" />
     ),

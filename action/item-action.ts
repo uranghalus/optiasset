@@ -126,12 +126,14 @@ export async function createItem(formData: FormData) {
         code,
         name,
         assetType,
-        categoryId: formData.get("categoryId")?.toString() || null,
         brand: formData.get("brand")?.toString() || null,
         model: formData.get("model")?.toString() || null,
         partNumber: formData.get("partNumber")?.toString() || null,
         description: formData.get("description")?.toString() || null,
         createdBy: session.user.id,
+        category: formData.get("categoryId")
+          ? { connect: { id: formData.get("categoryId") as string } }
+          : undefined,
       },
     });
 
@@ -176,7 +178,6 @@ export async function updateItem(id: string, formData: FormData) {
         assetType:
           (formData.get("assetType")?.toString() as "FIXED" | "SUPPLY") ??
           item.assetType,
-        categoryId: formData.get("categoryId")?.toString() || item.categoryId,
         brand: formData.get("brand")?.toString() || item.brand,
         model: formData.get("model")?.toString() || item.model,
         partNumber: formData.get("partNumber")?.toString() || item.partNumber,
@@ -184,6 +185,9 @@ export async function updateItem(id: string, formData: FormData) {
           formData.get("description")?.toString() || item.description,
         updatedBy: session.user.id,
         updatedAt: new Date(),
+        category: formData.get("categoryId")
+          ? { connect: { id: formData.get("categoryId") as string } }
+          : { disconnect: true },
       },
     });
 

@@ -190,135 +190,142 @@ export function ItemActionDialog({ open, onOpenChange, currentRow }: Props) {
               )}
             />
 
-            {/* KODE */}
-            <Controller
-              name="code"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Kode Item</FieldLabel>
-                  <Input
-                    {...field}
-                    placeholder={
-                      isEdit ? "ITM-001" : "Otomatis (F-ITM-xxx / S-ITM-xxx)"
-                    }
-                    readOnly={!isEdit}
-                    className={!isEdit ? "bg-muted" : ""}
-                    aria-invalid={fieldState.invalid}
-                  />
-                  {!isEdit && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Kode akan dibuat otomatis berdasarkan tipe aset.
-                    </p>
-                  )}
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </Field>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-4">
+              {/* KODE */}
+              <Controller
+                name="code"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel>Kode Item</FieldLabel>
+                    <Input
+                      {...field}
+                      placeholder={
+                        isEdit ? "ITM-001" : "Otomatis (F-ITM-xxx / S-ITM-xxx)"
+                      }
+                      readOnly={!isEdit}
+                      className={!isEdit ? "bg-muted" : ""}
+                      aria-invalid={fieldState.invalid}
+                    />
+                    {!isEdit && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Kode akan dibuat otomatis berdasarkan tipe aset.
+                      </p>
+                    )}
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
 
-            {/* NAMA */}
-            <Controller
-              name="name"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Nama Item</FieldLabel>
-                  <Input
-                    {...field}
-                    placeholder="Laptop Lenovo ThinkPad"
-                    aria-invalid={fieldState.invalid}
-                  />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </Field>
-              )}
-            />
+              {/* NAMA */}
+              <Controller
+                name="name"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel>Nama Item</FieldLabel>
+                    <Input
+                      {...field}
+                      placeholder="Laptop Lenovo ThinkPad"
+                      aria-invalid={fieldState.invalid}
+                    />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
 
-            {/* KATEGORI */}
-            <Controller
-              name="categoryId"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Kategori</FieldLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger aria-invalid={fieldState.invalid}>
-                      <SelectValue placeholder="Pilih kategori..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories?.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </Field>
-              )}
-            />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {/* KATEGORI */}
+              <Controller
+                name="categoryId"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel>Kategori</FieldLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger aria-invalid={fieldState.invalid}>
+                        <SelectValue placeholder="Pilih kategori..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories?.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
 
-            {/* BRAND */}
-            <Controller
-              name="brand"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Brand</FieldLabel>
-                  <Input
-                    {...field}
-                    placeholder="Lenovo"
-                    aria-invalid={fieldState.invalid}
-                  />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </Field>
-              )}
-            />
+              {/* BRAND */}
+              <Controller
+                name="brand"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel>Brand</FieldLabel>
+                    <Input
+                      {...field}
+                      placeholder="Lenovo"
+                      aria-invalid={fieldState.invalid}
+                    />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
+            </div>
 
-            {/* MODEL */}
-            <Controller
-              name="model"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Model</FieldLabel>
-                  <Input
-                    {...field}
-                    placeholder="ThinkPad X1 Carbon"
-                    aria-invalid={fieldState.invalid}
-                  />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </Field>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-4">
+              {/* MODEL */}
+              <Controller
+                name="model"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel>Model</FieldLabel>
+                    <Input
+                      {...field}
+                      placeholder="ThinkPad X1 Carbon"
+                      aria-invalid={fieldState.invalid}
+                    />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
 
-            {/* PART NUMBER */}
-            <Controller
-              name="partNumber"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Part Number</FieldLabel>
-                  <Input
-                    {...field}
-                    placeholder="TP-X1C-2024"
-                    aria-invalid={fieldState.invalid}
-                  />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </Field>
-              )}
-            />
+              {/* PART NUMBER */}
+              <Controller
+                name="partNumber"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel>Part Number</FieldLabel>
+                    <Input
+                      {...field}
+                      placeholder="TP-X1C-2024"
+                      aria-invalid={fieldState.invalid}
+                    />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
+            </div>
+
 
             {/* DESKRIPSI */}
             <Controller

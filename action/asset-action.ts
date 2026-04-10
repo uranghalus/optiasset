@@ -57,7 +57,7 @@ export async function getAllAssets({ page, pageSize }: AssetArgs) {
   const skip = (safePage - 1) * safePageSize;
   const take = safePageSize;
 
-  const [data, total] = await Promise.all([
+  const [data, total] = await prisma.$transaction([
     prisma.asset.findMany({
       where,
       skip,
@@ -69,6 +69,9 @@ export async function getAllAssets({ page, pageSize }: AssetArgs) {
             name: true,
             code: true,
             assetType: true,
+            brand: true,
+            model: true,
+            serialNumber: true,
           },
         },
       },
@@ -159,8 +162,7 @@ export async function getAvailableAssetsForLoanSelect({
     select: {
       id: true,
       barcode: true,
-      serialNumber: true,
-      item: { select: { name: true } },
+      item: { select: { name: true, brand: true, model: true, serialNumber: true } },
     },
     orderBy: { item: { name: "asc" } },
   });
@@ -191,7 +193,6 @@ export async function createAsset(formData: FormData) {
     const newAsset = await tx.asset.create({
       data: {
         itemId,
-        serialNumber: formData.get("serialNumber")?.toString() || null,
         purchaseDate: parseDateOrNull("purchaseDate"),
         purchasePrice: parseFloatOrNull("purchasePrice"),
         condition: formData.get("condition")?.toString() || null,
@@ -200,8 +201,6 @@ export async function createAsset(formData: FormData) {
         departmentId: departmentId,
         notes: formData.get("notes")?.toString() || null,
         barcode: formData.get("barcode")?.toString() || null,
-        brand: formData.get("brand")?.toString() || null,
-        model: formData.get("model")?.toString() || null,
         vendorName: formData.get("vendorName")?.toString() || null,
         garansi_exp: parseDateOrNull("garansi_exp"),
       },
@@ -234,7 +233,7 @@ export async function createAsset(formData: FormData) {
       action: "CREATE",
       entityType: "ASSET",
       entityId: newAsset.id,
-      entityInfo: `${newAsset.barcode || "N/A"} - ${newAsset.serialNumber || "N/A"}`,
+      entityInfo: `${newAsset.barcode || "N/A"} - ${newAsset.itemId || "N/A"}`,
       details: {
         newData: newAsset,
       },
@@ -276,8 +275,6 @@ export async function updateAsset(id: string, formData: FormData) {
       where: { id },
       data: {
         itemId: formData.get("itemId")?.toString() ?? asset.itemId,
-        serialNumber:
-          formData.get("serialNumber")?.toString() || asset.serialNumber,
         purchaseDate: parseDateOrNull("purchaseDate") ?? asset.purchaseDate,
         purchasePrice: parseFloatOrNull("purchasePrice") ?? asset.purchasePrice,
         condition: formData.get("condition")?.toString() || asset.condition,
@@ -287,8 +284,6 @@ export async function updateAsset(id: string, formData: FormData) {
         departmentId: departmentId,
         notes: formData.get("notes")?.toString() || asset.notes,
         barcode: formData.get("barcode")?.toString() || asset.barcode,
-        brand: formData.get("brand")?.toString() || asset.brand,
-        model: formData.get("model")?.toString() || asset.model,
         vendorName: formData.get("vendorName")?.toString() || asset.vendorName,
         garansi_exp: parseDateOrNull("garansi_exp") ?? asset.garansi_exp,
         updatedAt: new Date(),
@@ -415,7 +410,7 @@ export async function deleteAsset(id: string) {
       action: "DELETE",
       entityType: "ASSET",
       entityId: deleted.id,
-      entityInfo: `${deleted.barcode || "N/A"} - ${deleted.serialNumber || "N/A"}`,
+      entityInfo: `${deleted.barcode || "N/A"} - ${deleted.itemId || "N/A"}`,
       details: {
         deletedData: deleted,
       },

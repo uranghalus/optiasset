@@ -62,7 +62,7 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
     resolver: zodResolver(AssetFormSchema),
     defaultValues: {
       itemId: "",
-      serialNumber: "",
+
       purchaseDate: "",
       purchasePrice: "",
       condition: "GOOD",
@@ -71,8 +71,6 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
       departmentId: "",
       notes: "",
       barcode: "",
-      brand: "",
-      model: "",
       vendorName: "",
       garansi_exp: "",
     },
@@ -82,7 +80,6 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
     if (currentRow) {
       form.reset({
         itemId: currentRow.itemId,
-        serialNumber: currentRow.serialNumber ?? "",
         purchaseDate: currentRow.purchaseDate
           ? format(new Date(currentRow.purchaseDate), "yyyy-MM-dd")
           : "",
@@ -92,10 +89,9 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
           ? format(new Date(currentRow.warrantyExpire), "yyyy-MM-dd")
           : "",
         locationId: currentRow.locationId ?? "",
+        departmentId: currentRow.departmentId ?? "",
         notes: currentRow.notes ?? "",
         barcode: currentRow.barcode ?? "",
-        brand: currentRow.brand ?? "",
-        model: currentRow.model ?? "",
         vendorName: currentRow.vendorName ?? "",
         garansi_exp: currentRow.garansi_exp
           ? format(new Date(currentRow.garansi_exp), "yyyy-MM-dd")
@@ -104,16 +100,14 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
     } else {
       form.reset({
         itemId: "",
-        serialNumber: "",
         purchaseDate: format(new Date(), "yyyy-MM-dd"),
         purchasePrice: "",
         condition: "GOOD",
         warrantyExpire: "",
         locationId: "",
+        departmentId: "",
         notes: "",
         barcode: "",
-        brand: "",
-        model: "",
         vendorName: "",
         garansi_exp: "",
       });
@@ -245,43 +239,6 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
                       {fieldState.invalid && (
                         <FieldError errors={[fieldState.error]} />
                       )}
-                    </Field>
-                  )}
-                />
-              </div>
-
-              <Controller
-                name="serialNumber"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel>Serial Number</FieldLabel>
-                    <Input {...field} placeholder="S/N: XXX-XXX" />
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
-                )}
-              />
-
-              <div className="grid grid-cols-2 gap-2">
-                <Controller
-                  name="brand"
-                  control={form.control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel>Brand (Override)</FieldLabel>
-                      <Input {...field} placeholder="e.g. Dell" />
-                    </Field>
-                  )}
-                />
-                <Controller
-                  name="model"
-                  control={form.control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel>Model/Tipe</FieldLabel>
-                      <Input {...field} placeholder="e.g. Latitude 5420" />
                     </Field>
                   )}
                 />

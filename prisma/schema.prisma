@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../generated/prisma"
 }
 
@@ -8,35 +8,36 @@ datasource db {
 }
 
 model User {
-  id              String       @id
-  name            String       @db.Text
-  email           String       @unique
-  emailVerified   Boolean      @default(false)
-  image           String?      @db.Text
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  username        String?      @db.Text
-  displayUsername String?      @db.Text
-  role            String?      @db.Text
-  banned          Boolean?     @default(false)
-  banReason       String?      @db.Text
+  id              String         @id
+  name            String         @db.Text
+  email           String         @unique
+  emailVerified   Boolean        @default(false)
+  image           String?        @db.Text
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  username        String?        @db.Text
+  displayUsername String?        @db.Text
+  role            String?        @db.Text
+  banned          Boolean?       @default(false)
+  banReason       String?        @db.Text
   banExpires      DateTime?
   accounts        Account[]
   invitations     Invitation[]
   members         Member[]
   sessions        Session[]
   teammember      teamMember[]
+  assetHistory    AssetHistory[]
   auditLogs       AuditLog[]
-  loans           AssetLoan[]  @relation("borrower_rel")
-  requestedLoans  AssetLoan[]  @relation("requester_rel")
-  approvedLoans   AssetLoan[]  @relation("approver_rel")
+  loansRequested  AssetLoan[]    @relation("requestedBy")
+  loansBorrowed   AssetLoan[]    @relation("borrower")
+  loansApproved   AssetLoan[]    @relation("approvedBy")
   // 🔥 Tambahan
   departmentId    String?
   divisiId        String?
 
+  // 🔥 Relasi baru
   department department? @relation(fields: [departmentId], references: [id_department])
   divisi     divisi?     @relation(fields: [divisiId], references: [id_divisi])
-  assetLoans AssetLoan[]
 
   @@index([departmentId])
   @@index([divisiId])
@@ -187,31 +188,32 @@ model teamMember {
 }
 
 model Item {
-  id          String    @id @default(uuid())
-  code        String    @unique
-  name        String
-  categoryId  String?
-  brand       String?
-  model       String?
-  partNumber  String?
-  description String?
-  assetType   AssetType
-  createdAt   DateTime  @default(now())
-  createdBy   String?
-  updatedAt   DateTime?
-  updatedBy   String?
-  assets      Asset[]
-  category    Category? @relation(fields: [categoryId], references: [id])
-  stocks      Stock[]
+  id           String    @id @default(uuid())
+  code         String    @unique
+  name         String
+  categoryId   String?
+  serialNumber String?   @unique
+  brand        String?   @db.Char(100)
+  model        String?   @db.Char(100)
+  partNumber   String?   @db.Char(100)
+  description  String?
+  assetType    AssetType
+  createdAt    DateTime  @default(now())
+  createdBy    String?
+  updatedAt    DateTime?
+  updatedBy    String?
+  assets       Asset[]
+  category     Category? @relation(fields: [categoryId], references: [id])
+  stocks       Stock[]
 
   @@index([categoryId], map: "items_categoryId_fkey")
   @@map("items")
 }
 
 model Asset {
-  id             String          @id @default(uuid())
-  itemId         String
-  serialNumber   String?         @unique
+  id     String @id @default(uuid())
+  itemId String
+
   purchaseDate   DateTime?
   purchasePrice  Float?
   condition      String?
@@ -220,41 +222,21 @@ model Asset {
   departmentId   String?
   assignedUserId String?
   notes          String?
-  status         AssetStatus     @default(ACTIVE)
-  createdAt      DateTime        @default(now())
+  createdAt      DateTime  @default(now())
   updatedAt      DateTime?
-  barcode        String?         @db.Char(100)
-  brand          String?         @db.Char(100)
+  barcode        String?   @db.Char(100)
   garansi_exp    DateTime?
-  model          String?         @db.Char(100)
-  vendorName     String?         @db.Char(100)
-  item           Item            @relation(fields: [itemId], references: [id])
-  department     department[]    @relation("asset_dept_rel")
-  divisi         divisi[]        @relation("asset_div_rel")
-  transfers      AssetTransfer[]
-  loans          AssetLoan[]
+  status         String    @default("ACTIVE") @db.VarChar(50)
+
+  vendorName String?        @db.Char(100)
+  item       Item           @relation(fields: [itemId], references: [id])
+  department department[]   @relation("asset_dept_rel")
+  divisi     divisi[]       @relation("asset_div_rel")
+  history    AssetHistory[]
+  loans      AssetLoan[]
 
   @@index([itemId], map: "assets_itemId_fkey")
   @@map("assets")
-}
-
-model AssetTransfer {
-  id             String    @id @default(uuid())
-  assetId        String
-  fromLocationId String?
-  toLocationId   String?
-  fromDeptId     String?
-  toDeptId       String?
-  fromDivId      String?
-  toDivId        String?
-  transferDate   DateTime  @default(now())
-  reason         String?   @db.Text
-  transferBy     String?
-  asset          Asset     @relation(fields: [assetId], references: [id])
-  fromLocation   Location? @relation("from_loc", fields: [fromLocationId], references: [id])
-  toLocation     Location? @relation("to_loc", fields: [toLocationId], references: [id])
-
-  @@map("asset_transfers")
 }
 
 model Stock {
@@ -285,42 +267,6 @@ model StockTransaction {
   @@map("stock_transactions")
 }
 
-model AssetLoan {
-  id                String     @id @default(uuid())
-  assetId           String
-  borrowerId        String
-  requestedById     String?
-  approvedById      String?
-  loanDate          DateTime   @default(now())
-  dueDate           DateTime?
-  returnDate        DateTime?
-  conditionOnLoan   String?
-  conditionOnReturn String?
-  notes             String?    @db.Text
-  rejectionReason   String?    @db.Text
-  status            LoanStatus @default(PENDING)
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
-
-  asset       Asset   @relation(fields: [assetId], references: [id])
-  borrower    User    @relation("borrower_rel", fields: [borrowerId], references: [id])
-  requestedBy User?   @relation("requester_rel", fields: [requestedById], references: [id])
-  approvedBy  User?   @relation("approver_rel", fields: [approvedById], references: [id])
-  user        User?   @relation(fields: [userId], references: [id])
-  userId      String?
-
-  @@index([assetId])
-  @@index([borrowerId])
-  @@map("asset_loans")
-}
-
-enum LoanStatus {
-  PENDING
-  REJECTED
-  BORROWED
-  RETURNED
-}
-
 enum TransactionType {
   IN
   OUT
@@ -336,11 +282,9 @@ model Category {
 }
 
 model Location {
-  id            String          @id @default(uuid())
-  name          String
-  stocks        Stock[]
-  fromTransfers AssetTransfer[] @relation("from_loc")
-  toTransfers   AssetTransfer[] @relation("to_loc")
+  id     String  @id @default(uuid())
+  name   String
+  stocks Stock[]
 
   @@map("locations")
 }
@@ -389,28 +333,67 @@ enum AssetType {
   SUPPLY
 }
 
-enum AssetStatus {
-  ACTIVE
-  UNDER_MAINTENANCE
-  DISPOSED
-  LOANED
+model AssetHistory {
+  id         String   @id @default(uuid())
+  assetId    String?
+  asset_info String?  @db.Text // Store Asset Name & Barcode for permanent record
+  userId     String
+  action     String   @db.VarChar(50) // "CREATE", "UPDATE", "DELETE", "ASSIGN", "TRANSFER"
+  field      String?  @db.VarChar(50) // Which field changed (if UPDATE)
+  oldValue   String?  @db.Text
+  newValue   String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  asset Asset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  user  User   @relation(fields: [userId], references: [id])
+
+  @@index([assetId])
+  @@map("asset_history")
 }
 
 model AuditLog {
-  id         String   @id @default(uuid())
-  userId     String?
-  action     String   @db.VarChar(50) // "CREATE", "UPDATE", "DELETE", "LOGIN", "LOGOUT"
-  entityType String   @db.VarChar(50) // "ASSET", "ITEM", "STOCK", "AUTH"
-  entityId   String?  @db.VarChar(191)
-  entityInfo String?  @db.Text // Store Name/Code for permanent record
-  details    String?  @db.Text // JSON string for flexible data
-  ipAddress  String?  @db.VarChar(45)
-  userAgent  String?  @db.Text
-  createdAt  DateTime @default(now())
+  id          String   @id @default(uuid())
+  userId      String?
+  action      String   @db.VarChar(100)
+  entityType  String   @db.VarChar(100)
+  entityId    String?  @db.VarChar(100)
+  entityInfo  String?  @db.Text
+  details     String?  @db.LongText
+  ipAddress   String?  @db.VarChar(50)
+  userAgent   String?  @db.Text
+  createdAt   DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId])
-  @@index([entityType, entityId])
-  @@map("audit_logs")
+  @@map("audit_log")
+}
+
+model AssetLoan {
+  id                String    @id @default(uuid())
+  assetId           String
+  borrowerId        String
+  requestedById     String
+  approvedById      String?
+  loanDate          DateTime?
+  dueDate           DateTime?
+  returnDate        DateTime?
+  conditionOnLoan   String?   @db.Text
+  conditionOnReturn String?   @db.Text
+  status            String    @default("PENDING") @db.VarChar(50) // "PENDING", "BORROWED", "RETURNED", "REJECTED"
+  notes             String?   @db.Text
+  rejectionReason   String?   @db.Text
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  asset       Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  borrower    User   @relation("borrower", fields: [borrowerId], references: [id])
+  requestedBy User   @relation("requestedBy", fields: [requestedById], references: [id])
+  approvedBy  User?  @relation("approvedBy", fields: [approvedById], references: [id])
+
+  @@index([assetId])
+  @@index([borrowerId])
+  @@index([requestedById])
+  @@index([approvedById])
+  @@map("asset_loans")
 }

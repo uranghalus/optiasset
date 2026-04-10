@@ -21,23 +21,20 @@ model User {
   banned          Boolean?       @default(false)
   banReason       String?        @db.Text
   banExpires      DateTime?
+  departmentId    String?
+  divisiId        String?
   accounts        Account[]
+  assetHistory    AssetHistory[]
+  loansApproved   AssetLoan[]    @relation("approvedBy")
+  loansBorrowed   AssetLoan[]    @relation("borrower")
+  loansRequested  AssetLoan[]    @relation("requestedBy")
+  auditLogs       AuditLog[]
   invitations     Invitation[]
   members         Member[]
   sessions        Session[]
   teammember      teamMember[]
-  assetHistory    AssetHistory[]
-  auditLogs       AuditLog[]
-  loansRequested  AssetLoan[]    @relation("requestedBy")
-  loansBorrowed   AssetLoan[]    @relation("borrower")
-  loansApproved   AssetLoan[]    @relation("approvedBy")
-  // 🔥 Tambahan
-  departmentId    String?
-  divisiId        String?
-
-  // 🔥 Relasi baru
-  department department? @relation(fields: [departmentId], references: [id_department])
-  divisi     divisi?     @relation(fields: [divisiId], references: [id_divisi])
+  department      department?    @relation(fields: [departmentId], references: [id_department])
+  divisi          divisi?        @relation(fields: [divisiId], references: [id_divisi])
 
   @@index([departmentId])
   @@index([divisiId])
@@ -107,34 +104,41 @@ model Organization {
   members          Member[]
   organizationrole organizationRole[]
   teams            Team[]
+  items            Item[]
+  assets           Asset[]
+  categories       Category[]
+  locations        Location[]
+  stocks           Stock[]
+  assetLoans       AssetLoan[]
+  assetTransfers   AssetTransfer[]
+  auditLogs        AuditLog[]
+  assetHistory     AssetHistory[]
 
   @@map("organization")
 }
 
 model Team {
-  id             String       @id
-  name           String       @db.Text
+  id             String         @id
+  name           String         @db.Text
   organizationId String
   createdAt      DateTime
-  updatedAt      DateTime?    @updatedAt
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  updatedAt      DateTime?      @updatedAt
+  div_team_rel   div_team_rel[]
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   teammember     teamMember[]
-  divisi         divisi[]     @relation("div_team_rel")
 
   @@index([organizationId])
   @@map("team")
 }
 
 model Member {
-  id             String @id
+  id             String       @id
   organizationId String
   userId         String
-  role           String @db.Text
-
-  createdAt DateTime
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           String       @db.Text
+  createdAt      DateTime
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
   @@index([userId])
@@ -188,32 +192,37 @@ model teamMember {
 }
 
 model Item {
-  id           String    @id @default(uuid())
-  code         String    @unique
-  name         String
-  categoryId   String?
-  serialNumber String?   @unique
-  brand        String?   @db.Char(100)
-  model        String?   @db.Char(100)
-  partNumber   String?   @db.Char(100)
-  description  String?
-  assetType    AssetType
-  createdAt    DateTime  @default(now())
-  createdBy    String?
-  updatedAt    DateTime?
-  updatedBy    String?
-  assets       Asset[]
-  category     Category? @relation(fields: [categoryId], references: [id])
-  stocks       Stock[]
+  id             String       @id @default(uuid())
+  code           String
+  name           String
+  categoryId     String?
+  serialNumber   String?
+  brand          String?      @db.Char(100)
+  model          String?      @db.Char(100)
+  partNumber     String?      @db.Char(100)
+  description    String?
+  assetType      AssetType
+  createdAt      DateTime     @default(now())
+  createdBy      String?
+  updatedAt      DateTime?
+  updatedBy      String?
+  organizationId String
+  assets         Asset[]
+  category       Category?    @relation(fields: [categoryId, organizationId], references: [id, organizationId])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  stocks         Stock[]
 
-  @@index([categoryId], map: "items_categoryId_fkey")
+  @@unique([code, organizationId])
+  @@unique([serialNumber, organizationId])
+  @@unique([id, organizationId])
+  @@index([categoryId, organizationId])
+  @@index([organizationId])
   @@map("items")
 }
 
 model Asset {
-  id     String @id @default(uuid())
-  itemId String
-
+  id             String          @id @default(uuid())
+  itemId         String
   purchaseDate   DateTime?
   purchasePrice  Float?
   condition      String?
@@ -222,35 +231,44 @@ model Asset {
   departmentId   String?
   assignedUserId String?
   notes          String?
-  createdAt      DateTime  @default(now())
+  createdAt      DateTime        @default(now())
   updatedAt      DateTime?
-  barcode        String?   @db.Char(100)
+  barcode        String?         @db.Char(100)
   garansi_exp    DateTime?
-  status         String    @default("ACTIVE") @db.VarChar(50)
+  status         String          @default("ACTIVE") @db.VarChar(50)
+  vendorName     String?         @db.Char(100)
+  history        AssetHistory[]
+  loans          AssetLoan[]
+  item           Item            @relation(fields: [itemId, organizationId], references: [id, organizationId])
+  location       Location?       @relation(fields: [locationId, organizationId], references: [id, organizationId])
+  department     department?     @relation(fields: [departmentId], references: [id_department])
+  transfers      AssetTransfer[] @relation("AssetTransfers")
+  organizationId String
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  vendorName String?        @db.Char(100)
-  item       Item           @relation(fields: [itemId], references: [id])
-  department department[]   @relation("asset_dept_rel")
-  divisi     divisi[]       @relation("asset_div_rel")
-  history    AssetHistory[]
-  loans      AssetLoan[]
-
-  @@index([itemId], map: "assets_itemId_fkey")
+  @@unique([id, organizationId])
+  @@unique([barcode, organizationId])
+  @@index([itemId, organizationId])
+  @@index([organizationId])
   @@map("assets")
 }
 
 model Stock {
-  id           String             @id @default(uuid())
-  itemId       String
-  quantity     Int
-  locationId   String?
-  departmentId String?
-  updatedAt    DateTime           @updatedAt
-  item         Item               @relation(fields: [itemId], references: [id])
-  transactions StockTransaction[]
-  location     Location?          @relation(fields: [locationId], references: [id])
+  id             String             @id @default(uuid())
+  itemId         String
+  quantity       Int
+  locationId     String?
+  departmentId   String?
+  updatedAt      DateTime           @updatedAt
+  transactions   StockTransaction[]
+  item           Item               @relation(fields: [itemId, organizationId], references: [id, organizationId])
+  location       Location?          @relation(fields: [locationId, organizationId], references: [id, organizationId])
+  organizationId String
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([itemId, locationId])
+  @@index([locationId, organizationId])
+  @@index([organizationId])
   @@map("stocks")
 }
 
@@ -264,7 +282,185 @@ model StockTransaction {
   createdAt DateTime        @default(now())
   stock     Stock           @relation(fields: [stockId], references: [id], onDelete: Cascade)
 
+  @@index([stockId], map: "stock_transactions_stockId_fkey")
   @@map("stock_transactions")
+}
+
+model Category {
+  id             String       @id @default(uuid())
+  name           String
+  organizationId String
+  items          Item[]
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@map("categories")
+}
+
+model Location {
+  id             String          @id @default(uuid())
+  name           String
+  stocks         Stock[]
+  transfersFrom  AssetTransfer[] @relation("FromLocation")
+  transfersTo    AssetTransfer[] @relation("ToLocation")
+  organizationId String
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assets         Asset[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@map("locations")
+}
+
+model department {
+  id_department   String          @id
+  organization_id String
+  kode_department String          @db.Text
+  nama_department String          @db.Text
+  id_hod          String          @db.Text
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime
+  deleted_at      DateTime?
+  organization    Organization    @relation(fields: [organization_id], references: [id], onDelete: Cascade, map: "Department_organization_id_fkey")
+  divisi          divisi[]
+  users           User[]
+  assets          Asset[]
+  transfersFrom   AssetTransfer[] @relation("FromDept")
+  transfersTo     AssetTransfer[] @relation("ToDept")
+
+  @@unique([organization_id, kode_department(length: 191)], map: "department_org_kode_unique_custom_v9")
+  @@index([deleted_at], map: "department_deleted_at_idx_custom_v9")
+  @@index([organization_id], map: "department_organization_id_idx_custom_v9")
+}
+
+model divisi {
+  id_divisi       String         @id
+  department_id   String
+  organization_id String
+  nama_divisi     String         @db.Text
+  ext_tlp         String         @db.Text
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime
+  deleted_at      DateTime?
+  div_team_rel    div_team_rel[]
+  department      department     @relation(fields: [department_id], references: [id_department], map: "Divisi_department_id_fkey")
+  organization    Organization   @relation(fields: [organization_id], references: [id], onDelete: Cascade, map: "Divisi_organization_id_fkey")
+  users           User[]
+
+  @@index([department_id], map: "Divisi_department_id_fkey")
+  @@index([deleted_at], map: "divisi_deleted_at_idx_custom_v9")
+  @@index([organization_id, department_id], map: "divisi_org_dept_idx_custom_v9")
+}
+
+model AssetHistory {
+  id             String        @id @default(uuid())
+  assetId        String?
+  asset_info     String?       @db.Text
+  userId         String
+  action         String        @db.VarChar(50)
+  field          String?       @db.VarChar(50)
+  oldValue       String?       @db.Text
+  newValue       String?       @db.Text
+  createdAt      DateTime      @default(now())
+  asset          Asset?        @relation(fields: [assetId, organizationId], references: [id, organizationId])
+  user           User          @relation(fields: [userId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, organizationId])
+  @@index([userId], map: "asset_history_userId_fkey")
+  @@index([organizationId])
+  @@map("asset_history")
+}
+
+model AuditLog {
+  id             String        @id @default(uuid())
+  userId         String?
+  action         String        @db.VarChar(100)
+  entityType     String        @db.VarChar(100)
+  entityId       String?       @db.VarChar(100)
+  entityInfo     String?       @db.Text
+  details        String?       @db.LongText
+  ipAddress      String?       @db.VarChar(50)
+  userAgent      String?       @db.Text
+  createdAt      DateTime      @default(now())
+  user           User?         @relation(fields: [userId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([organizationId])
+  @@map("audit_logs")
+}
+
+model AssetLoan {
+  id                String       @id @default(uuid())
+  assetId           String
+  borrowerId        String
+  requestedById     String
+  approvedById      String?
+  loanDate          DateTime?
+  dueDate           DateTime?
+  returnDate        DateTime?
+  conditionOnLoan   String?      @db.Text
+  conditionOnReturn String?      @db.Text
+  status            String       @default("PENDING") @db.VarChar(50)
+  notes             String?      @db.Text
+  rejectionReason   String?      @db.Text
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  approvedBy        User?        @relation("approvedBy", fields: [approvedById], references: [id])
+  asset             Asset        @relation(fields: [assetId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  borrower          User         @relation("borrower", fields: [borrowerId], references: [id])
+  requestedBy       User         @relation("requestedBy", fields: [requestedById], references: [id])
+  organizationId    String
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, organizationId])
+  @@index([borrowerId])
+  @@index([requestedById])
+  @@index([approvedById])
+  @@index([organizationId])
+  @@map("asset_loans")
+}
+
+model AssetTransfer {
+  id             String       @id @default(uuid())
+  assetId        String
+  fromLocationId String?
+  toLocationId   String?
+  fromDeptId     String?
+  toDeptId       String?
+  fromDivId      String?
+  toDivId        String?
+  reason         String?      @db.Text
+  transferBy     String?
+  transferDate   DateTime     @default(now())
+  fromLocation   Location?    @relation("FromLocation", fields: [fromLocationId, organizationId], references: [id, organizationId])
+  toLocation     Location?    @relation("ToLocation", fields: [toLocationId, organizationId], references: [id, organizationId])
+  fromDept       department?  @relation("FromDept", fields: [fromDeptId], references: [id_department])
+  toDept         department?  @relation("ToDept", fields: [toDeptId], references: [id_department])
+  asset          Asset        @relation("AssetTransfers", fields: [assetId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, organizationId])
+  @@index([fromLocationId, organizationId])
+  @@index([toLocationId, organizationId])
+  @@index([organizationId])
+  @@map("asset_transfers")
+}
+
+model div_team_rel {
+  A      String
+  B      String
+  team   Team   @relation(fields: [A], references: [id], onDelete: Cascade)
+  divisi divisi @relation(fields: [B], references: [id_divisi], onDelete: Cascade)
+
+  @@unique([A, B], map: "_div_team_rel_AB_unique")
+  @@index([B], map: "_div_team_rel_B_index")
+  @@map("_div_team_rel")
 }
 
 enum TransactionType {
@@ -273,127 +469,7 @@ enum TransactionType {
   ADJUSTMENT
 }
 
-model Category {
-  id    String @id @default(uuid())
-  name  String
-  items Item[]
-
-  @@map("categories")
-}
-
-model Location {
-  id     String  @id @default(uuid())
-  name   String
-  stocks Stock[]
-
-  @@map("locations")
-}
-
-model department {
-  id_department   String       @id
-  organization_id String
-  kode_department String       @db.Text
-  nama_department String       @db.Text
-  id_hod          String       @db.Text
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime
-  deleted_at      DateTime?
-  organization    Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade, map: "Department_organization_id_fkey")
-  divisi          divisi[]
-  assets          Asset[]      @relation("asset_dept_rel")
-  users           User[]
-
-  @@unique([organization_id, kode_department(length: 191)], map: "department_org_kode_unique_custom_v9")
-  @@index([deleted_at], map: "department_deleted_at_idx_custom_v9")
-  @@index([organization_id], map: "department_organization_id_idx_custom_v9")
-}
-
-model divisi {
-  id_divisi       String       @id
-  department_id   String
-  organization_id String
-  nama_divisi     String       @db.Text
-  ext_tlp         String       @db.Text
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime
-  deleted_at      DateTime?
-  department      department   @relation(fields: [department_id], references: [id_department], map: "Divisi_department_id_fkey")
-  organization    Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade, map: "Divisi_organization_id_fkey")
-  assets          Asset[]      @relation("asset_div_rel")
-  team            Team[]       @relation("div_team_rel")
-  users           User[]
-
-  @@index([department_id], map: "Divisi_department_id_fkey")
-  @@index([deleted_at], map: "divisi_deleted_at_idx_custom_v9")
-  @@index([organization_id, department_id], map: "divisi_org_dept_idx_custom_v9")
-}
-
 enum AssetType {
   FIXED
   SUPPLY
-}
-
-model AssetHistory {
-  id         String   @id @default(uuid())
-  assetId    String?
-  asset_info String?  @db.Text // Store Asset Name & Barcode for permanent record
-  userId     String
-  action     String   @db.VarChar(50) // "CREATE", "UPDATE", "DELETE", "ASSIGN", "TRANSFER"
-  field      String?  @db.VarChar(50) // Which field changed (if UPDATE)
-  oldValue   String?  @db.Text
-  newValue   String?  @db.Text
-  createdAt  DateTime @default(now())
-
-  asset Asset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
-  user  User   @relation(fields: [userId], references: [id])
-
-  @@index([assetId])
-  @@map("asset_history")
-}
-
-model AuditLog {
-  id          String   @id @default(uuid())
-  userId      String?
-  action      String   @db.VarChar(100)
-  entityType  String   @db.VarChar(100)
-  entityId    String?  @db.VarChar(100)
-  entityInfo  String?  @db.Text
-  details     String?  @db.LongText
-  ipAddress   String?  @db.VarChar(50)
-  userAgent   String?  @db.Text
-  createdAt   DateTime @default(now())
-
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@index([userId])
-  @@map("audit_log")
-}
-
-model AssetLoan {
-  id                String    @id @default(uuid())
-  assetId           String
-  borrowerId        String
-  requestedById     String
-  approvedById      String?
-  loanDate          DateTime?
-  dueDate           DateTime?
-  returnDate        DateTime?
-  conditionOnLoan   String?   @db.Text
-  conditionOnReturn String?   @db.Text
-  status            String    @default("PENDING") @db.VarChar(50) // "PENDING", "BORROWED", "RETURNED", "REJECTED"
-  notes             String?   @db.Text
-  rejectionReason   String?   @db.Text
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-
-  asset       Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  borrower    User   @relation("borrower", fields: [borrowerId], references: [id])
-  requestedBy User   @relation("requestedBy", fields: [requestedById], references: [id])
-  approvedBy  User?  @relation("approvedBy", fields: [approvedById], references: [id])
-
-  @@index([assetId])
-  @@index([borrowerId])
-  @@index([requestedById])
-  @@index([approvedById])
-  @@map("asset_loans")
 }

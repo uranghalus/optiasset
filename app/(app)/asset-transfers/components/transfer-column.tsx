@@ -13,10 +13,10 @@ type TransferWithRelations = {
   transferBy: string | null;
   asset: {
     barcode: string | null;
-    serialNumber: string | null;
     item: {
       name: string;
       code: string;
+      serialNumber: string | null;
     };
   };
   fromLocation: { name: string } | null;
@@ -45,7 +45,9 @@ export const transferColumns: ColumnDef<TransferWithRelations>[] = [
       <div className="ps-2 flex flex-col">
         <span className="font-medium">{row.original.asset.item.name}</span>
         <span className="text-xs text-muted-foreground font-mono">
-          {row.original.asset.barcode || row.original.asset.serialNumber || "-"}
+          {row.original.asset.barcode ||
+            row.original.asset.item.serialNumber ||
+            "-"}
         </span>
       </div>
     ),

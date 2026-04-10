@@ -22,12 +22,16 @@ function isGlobalAccess(role?: string | null) {
 function buildAssetFilter({
   role,
   departmentId,
+  organizationId,
 }: {
   role?: string | null;
   departmentId?: string | null;
+  organizationId: string;
 }) {
+  const baseFilter = { organizationId };
+
   if (isGlobalAccess(role)) {
-    return {}; // 👑 lihat semua
+    return baseFilter;
   }
 
   if (!departmentId) {
@@ -35,6 +39,7 @@ function buildAssetFilter({
   }
 
   return {
+    ...baseFilter,
     departmentId,
   };
 }
@@ -48,9 +53,13 @@ export async function getAllAssets({ page, pageSize }: AssetArgs) {
     headers: await headers(),
   });
 
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error("No active organizationId found");
+
   const where = buildAssetFilter({
     role,
     departmentId: session.user.departmentId,
+    organizationId: activeOrgId,
   });
   const safePage = Math.max(1, page);
   const safePageSize = Math.max(1, pageSize);
@@ -71,7 +80,7 @@ export async function getAllAssets({ page, pageSize }: AssetArgs) {
             assetType: true,
             brand: true,
             model: true,
-            serialNumber: true,
+            partNumber: true,
           },
         },
       },
@@ -96,8 +105,11 @@ export async function getAllAssets({ page, pageSize }: AssetArgs) {
 export async function getItemsForSelect() {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) return [];
 
   return prisma.item.findMany({
+    where: { organizationId: activeOrgId },
     select: { id: true, name: true, code: true, assetType: true },
     orderBy: { name: "asc" },
   });
@@ -109,8 +121,11 @@ export async function getItemsForSelect() {
 export async function getLocationsForSelect() {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) return [];
 
   return prisma.location.findMany({
+    where: { organizationId: activeOrgId },
     select: { id: true, name: true },
     orderBy: { name: "asc" },
   });
@@ -150,7 +165,11 @@ export async function getAvailableAssetsForLoanSelect({
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
 
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error("No active organizationId found");
+
   const where: any = {
+    organizationId: activeOrgId,
     status: { in: ["ACTIVE", "GOOD"] },
   };
 
@@ -162,7 +181,9 @@ export async function getAvailableAssetsForLoanSelect({
     select: {
       id: true,
       barcode: true,
-      item: { select: { name: true, brand: true, model: true, serialNumber: true } },
+      item: {
+        select: { name: true, brand: true, model: true, partNumber: true },
+      },
     },
     orderBy: { item: { name: "asc" } },
   });
@@ -189,10 +210,14 @@ export async function createAsset(formData: FormData) {
     return val ? parseFloat(val) : null;
   };
 
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error("No active organizationId found");
+
   const asset = await prisma.$transaction(async (tx) => {
     const newAsset = await tx.asset.create({
       data: {
         itemId,
+        organizationId: activeOrgId,
         purchaseDate: parseDateOrNull("purchaseDate"),
         purchasePrice: parseFloatOrNull("purchasePrice"),
         condition: formData.get("condition")?.toString() || null,
@@ -219,6 +244,7 @@ export async function createAsset(formData: FormData) {
         create: {
           itemId,
           locationId,
+          organizationId: activeOrgId,
           quantity: 1,
         },
         update: {
@@ -230,6 +256,7 @@ export async function createAsset(formData: FormData) {
     // Record Audit Log
     await createAuditLog({
       userId: session.user.id,
+      organizationId: activeOrgId,
       action: "CREATE",
       entityType: "ASSET",
       entityId: newAsset.id,
@@ -253,7 +280,12 @@ export async function updateAsset(id: string, formData: FormData) {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
 
-  const asset = await prisma.asset.findFirst({ where: { id } });
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error("No active organizationId found");
+
+  const asset = await prisma.asset.findFirst({
+    where: { id, organizationId: activeOrgId },
+  });
   if (!asset) throw new Error("Asset not found");
   const departmentId = session.user.departmentId;
   if (!departmentId) throw new Error("User has no department");
@@ -314,6 +346,7 @@ export async function updateAsset(id: string, formData: FormData) {
         create: {
           itemId: asset.itemId,
           locationId: newLocationId,
+          organizationId: activeOrgId,
           quantity: 1,
         },
         update: {
@@ -326,6 +359,7 @@ export async function updateAsset(id: string, formData: FormData) {
     if (newLocationId && newLocationId !== oldLocationId) {
       await createAuditLog({
         userId: session.user.id,
+        organizationId: activeOrgId,
         action: "TRANSFER",
         entityType: "ASSET",
         entityId: id,
@@ -340,6 +374,7 @@ export async function updateAsset(id: string, formData: FormData) {
 
     await createAuditLog({
       userId: session.user.id,
+      organizationId: activeOrgId,
       action: "UPDATE",
       entityType: "ASSET",
       entityId: id,
@@ -362,15 +397,22 @@ export async function getAssetsByManyIds(ids: string[]) {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
 
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error("No active organizationId found");
+
   const assets = await prisma.asset.findMany({
     where: {
       id: { in: ids },
+      organizationId: activeOrgId,
     },
     include: {
       item: {
         select: {
           name: true,
           code: true,
+          brand: true,
+          model: true,
+          serialNumber: true,
         },
       },
     },
@@ -385,7 +427,16 @@ export async function deleteAsset(id: string) {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
 
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error("No active organizationId found");
+
   const asset = await prisma.$transaction(async (tx) => {
+    // Check if asset exists in this organization
+    const existing = await tx.asset.findFirst({
+      where: { id, organizationId: activeOrgId },
+    });
+    if (!existing) throw new Error("Asset not found");
+
     const deleted = await tx.asset.delete({ where: { id } });
 
     // Sync to Stock
@@ -394,6 +445,7 @@ export async function deleteAsset(id: string) {
         where: {
           itemId: deleted.itemId,
           locationId: deleted.locationId,
+          organizationId: activeOrgId,
         },
         data: { quantity: { decrement: 1 } },
       });
@@ -407,6 +459,7 @@ export async function deleteAsset(id: string) {
 
     await createAuditLog({
       userId: session.user.id,
+      organizationId: activeOrgId,
       action: "DELETE",
       entityType: "ASSET",
       entityId: deleted.id,

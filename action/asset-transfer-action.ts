@@ -24,13 +24,16 @@ export async function getAllTransfers({
 }: TransferArgs) {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error("No active organizationId found");
 
   const safePage = Math.max(1, page);
   const safePageSize = Math.max(1, pageSize);
   const skip = (safePage - 1) * safePageSize;
   const take = safePageSize;
 
-  const where = assetId ? { assetId } : {};
+  const where: any = { organizationId: activeOrgId };
+  if (assetId) where.assetId = assetId;
 
   const [data, total] = await Promise.all([
     prisma.assetTransfer.findMany({
@@ -42,8 +45,7 @@ export async function getAllTransfers({
         asset: {
           select: {
             barcode: true,
-            serialNumber: true,
-            item: { select: { name: true, code: true } },
+            item: { select: { name: true, code: true, serialNumber: true } },
           },
         },
         fromLocation: { select: { name: true } },
@@ -68,6 +70,8 @@ export async function getAllTransfers({
 export async function transferAssetAction(formData: FormData) {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error("No active organizationId found");
 
   const assetId = formData.get("assetId")?.toString();
   const toLocationId = formData.get("toLocationId")?.toString();
@@ -77,8 +81,8 @@ export async function transferAssetAction(formData: FormData) {
 
   if (!assetId) throw new Error("Asset ID is required");
 
-  const asset = await prisma.asset.findUnique({
-    where: { id: assetId },
+  const asset = await prisma.asset.findFirst({
+    where: { id: assetId, organizationId: activeOrgId },
   });
 
   if (!asset) throw new Error("Asset not found");
@@ -105,10 +109,11 @@ export async function transferAssetAction(formData: FormData) {
         toLocationId: toLocationId || oldLocationId,
         fromDeptId: oldDeptId,
         toDeptId: toDeptId || oldDeptId,
-        fromDivId: null, // We'll skip div for now if not needed, or add if present
+        fromDivId: null,
         toDivId: toDivId,
         reason,
         transferBy: session.user.name,
+        organizationId: activeOrgId,
       },
     });
 
@@ -119,6 +124,7 @@ export async function transferAssetAction(formData: FormData) {
           where: {
             itemId: asset.itemId,
             locationId: oldLocationId,
+            organizationId: activeOrgId,
           },
           data: { quantity: { decrement: 1 } },
         });
@@ -134,6 +140,7 @@ export async function transferAssetAction(formData: FormData) {
         create: {
           itemId: asset.itemId,
           locationId: toLocationId,
+          organizationId: activeOrgId,
           quantity: 1,
         },
         update: {
@@ -145,10 +152,11 @@ export async function transferAssetAction(formData: FormData) {
     // 4. Record Audit Log
     await createAuditLog({
       userId: session.user.id,
+      organizationId: activeOrgId,
       action: "TRANSFER",
       entityType: "ASSET",
       entityId: assetId,
-      entityInfo: `${updatedAsset.barcode || "N/A"} - ${updatedAsset.serialNumber || "N/A"}`,
+      entityInfo: `${updatedAsset.barcode || "N/A"} - ${updatedAsset.itemId || "N/A"}`,
       details: {
         fromLocationId: oldLocationId,
         toLocationId,

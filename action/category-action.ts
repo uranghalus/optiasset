@@ -2,6 +2,7 @@
 import { getServerSession } from "@/lib/get-session";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { createAuditLog } from "@/lib/logger";
 
 /* =======================
    TYPES
@@ -17,6 +18,8 @@ export type AssetCategoryArgs = {
 export async function getAllCategories({ page, pageSize }: AssetCategoryArgs) {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error("No active organizationId found");
 
   const safePage = Math.max(1, page);
   const safePageSize = Math.max(1, pageSize);
@@ -25,6 +28,7 @@ export async function getAllCategories({ page, pageSize }: AssetCategoryArgs) {
 
   const [categories, total] = await Promise.all([
     prisma.category.findMany({
+      where: { organizationId: activeOrgId },
       skip,
       take,
       orderBy: {
@@ -47,7 +51,9 @@ export async function getAllCategories({ page, pageSize }: AssetCategoryArgs) {
         },
       },
     }),
-    prisma.category.count(),
+    prisma.category.count({
+      where: { organizationId: activeOrgId },
+    }),
   ]);
 
   // Aggregate asset counts from items
@@ -80,17 +86,35 @@ export async function getAllCategories({ page, pageSize }: AssetCategoryArgs) {
 export async function createCategory(formData: FormData) {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error("No active organizationId found");
 
   const name = formData.get("name")?.toString();
 
   if (!name) {
     throw new Error("Required fields are missing");
   }
+
   const category = await prisma.category.create({
     data: {
       name,
+      organizationId: activeOrgId,
     },
   });
+
+  // Record Audit Log
+  await createAuditLog({
+    userId: session.user.id,
+    organizationId: activeOrgId,
+    action: "CREATE",
+    entityType: "CATEGORY",
+    entityId: category.id,
+    entityInfo: category.name,
+    details: {
+      newData: category,
+    },
+  });
+
   revalidatePath("/assets/categories");
   return category;
 }
@@ -101,9 +125,13 @@ export async function createCategory(formData: FormData) {
 export async function updateCategory(id: string, formData: FormData) {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error("No active organizationId found");
+
   const category = await prisma.category.findFirst({
     where: {
       id,
+      organizationId: activeOrgId,
     },
   });
 
@@ -113,6 +141,7 @@ export async function updateCategory(id: string, formData: FormData) {
   if (!id || !name) {
     throw new Error("Required fields are missing");
   }
+
   const updated = await prisma.category.update({
     where: {
       id,
@@ -121,8 +150,22 @@ export async function updateCategory(id: string, formData: FormData) {
       name: formData.get("name")?.toString() ?? category.name,
     },
   });
+
+  // Record Audit Log
+  await createAuditLog({
+    userId: session.user.id,
+    organizationId: activeOrgId,
+    action: "UPDATE",
+    entityType: "CATEGORY",
+    entityId: id,
+    entityInfo: updated.name,
+    details: {
+      newData: updated,
+    },
+  });
+
   revalidatePath("/assets/categories");
-  return category;
+  return updated;
 }
 
 /* =======================
@@ -131,12 +174,29 @@ export async function updateCategory(id: string, formData: FormData) {
 export async function deleteCategory(id: string) {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error("No active organizationId found");
 
   const category = await prisma.category.delete({
     where: {
       id,
+      organizationId: activeOrgId,
     },
   });
+
+  // Record Audit Log
+  await createAuditLog({
+    userId: session.user.id,
+    organizationId: activeOrgId,
+    action: "DELETE",
+    entityType: "CATEGORY",
+    entityId: id,
+    entityInfo: category.name,
+    details: {
+      deletedData: category,
+    },
+  });
+
   revalidatePath("/assets/categories");
   return category;
 }

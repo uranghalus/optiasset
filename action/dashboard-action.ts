@@ -21,13 +21,14 @@ export async function getDashboardData() {
     lowStockItems,
   ] = await Promise.all([
     // 1. Total Assets (Fixed Assets)
-    prisma.asset.count(),
+    prisma.asset.count({ where: { organizationId: activeOrgId } }),
 
     // 2. Total Items (Catalog)
-    prisma.item.count(),
+    prisma.item.count({ where: { organizationId: activeOrgId } }),
 
     // 3. Stock Level (Sum of quantity for SUPPLY items)
     prisma.stock.aggregate({
+      where: { organizationId: activeOrgId },
       _sum: {
         quantity: true,
       },
@@ -35,6 +36,7 @@ export async function getDashboardData() {
 
     // 4. Category distribution (for chart)
     prisma.category.findMany({
+      where: { organizationId: activeOrgId },
       include: {
         _count: {
           select: { items: true },
@@ -44,6 +46,7 @@ export async function getDashboardData() {
 
     // 5. Recent Activity from Audit Logs
     prisma.auditLog.findMany({
+      where: { organizationId: activeOrgId },
       take: 10,
       orderBy: { createdAt: "desc" },
       include: {
@@ -56,6 +59,7 @@ export async function getDashboardData() {
     // 6. Low Stock Items (Supply with quantity < 5)
     prisma.stock.findMany({
       where: {
+        organizationId: activeOrgId,
         quantity: { lt: 5 },
         item: {
           assetType: "SUPPLY",

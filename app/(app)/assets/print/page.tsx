@@ -55,17 +55,19 @@ export default async function PrintLabelsPage({
               <div
                 className="text-sm font-bold uppercase truncate px-2"
                 title={
-                  asset.brand
-                    ? `${asset.brand} ${asset.model || ""}`
+                  asset.item.brand
+                    ? `${asset.item.brand} ${asset.item.model || ""}`
                     : asset.item.name
                 }
               >
-                {asset.brand
-                  ? `${asset.brand} ${asset.model || ""}`
+                {asset.item.brand
+                  ? `${asset.item.brand} ${asset.item.model || ""}`
                   : asset.item.name}
               </div>
               <div className="text-[11px] font-mono bg-muted/50 py-0.5 px-2 rounded inline-block">
-                {asset.barcode || asset.serialNumber || asset.id.slice(0, 8)}
+                {asset.barcode ||
+                  asset.item.serialNumber ||
+                  asset.id.slice(0, 8)}
               </div>
               {asset.item.code && (
                 <div className="text-[9px] text-muted-foreground italic">

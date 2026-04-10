@@ -198,7 +198,7 @@ export function LoanRequestDialog({ open, onOpenChange }: Props) {
                     {assets?.map((a: any) => (
                       <SelectItem key={a.id} value={a.id}>
                         {a.item.name} (
-                        {a.barcode || a.serialNumber || "Tanpa Kode"})
+                        {a.barcode || a.item.serialNumber || "Tanpa Kode"})
                       </SelectItem>
                     ))}
                     {assets?.length === 0 && (

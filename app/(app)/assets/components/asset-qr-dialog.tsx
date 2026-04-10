@@ -12,8 +12,17 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
+type AssetWithItem = Asset & {
+  item: {
+    name: string;
+    brand?: string | null;
+    model?: string | null;
+    serialNumber?: string | null;
+  };
+};
+
 interface AssetQRDialogProps {
-  asset: Asset | null;
+  asset: AssetWithItem | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -57,8 +66,8 @@ export function AssetQRDialog({
         </head>
         <body>
           <div class="label-container">
-            <div class="asset-name">${asset.brand || ""} ${asset.model || ""}</div>
-            <div class="asset-code">${asset.barcode || asset.serialNumber || asset.id}</div>
+            <div class="asset-name">${asset.item.brand || ""} ${asset.item.model || ""}</div>
+            <div class="asset-code">${asset.barcode || asset.item.serialNumber || asset.id}</div>
             <div id="qr-container"></div>
           </div>
           <script>
@@ -86,14 +95,14 @@ export function AssetQRDialog({
         </DialogHeader>
         <div className="flex flex-col items-center justify-center space-y-4 py-4">
           <div id="asset-qr-canvas">
-            <AssetQRCode value={qrValue} size={200} />
+            <AssetQRCode assetId={asset.id} value={qrValue} size={200} />
           </div>
           <div className="text-center">
             <p className="font-bold text-lg">
-              {asset.brand} {asset.model}
+              {asset.item.brand} {asset.item.model}
             </p>
             <p className="text-sm text-muted-foreground">
-              {asset.barcode || asset.serialNumber}
+              {asset.barcode || asset.item.serialNumber}
             </p>
           </div>
         </div>

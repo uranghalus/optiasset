@@ -33,10 +33,17 @@ import {
 } from "@/hooks/crud/use-asset-loans";
 import { AssetLoanForm, AssetLoanSchema } from "@/schema/asset-loan-schema";
 
+type AssetWithItem = Asset & {
+  item: {
+    name: string;
+    serialNumber?: string | null;
+  };
+};
+
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  asset: Asset;
+  asset: AssetWithItem;
 };
 
 export function AssetLoanDialog({ open, onOpenChange, asset }: Props) {
@@ -88,7 +95,7 @@ export function AssetLoanDialog({ open, onOpenChange, asset }: Props) {
           <DialogDescription>
             Pinjamkan aset{" "}
             <span className="font-bold text-foreground">
-              {asset.barcode || asset.serialNumber}
+              {asset.barcode || asset.item.serialNumber}
             </span>{" "}
             kepada personil.
           </DialogDescription>

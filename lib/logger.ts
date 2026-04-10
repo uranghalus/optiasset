@@ -18,6 +18,7 @@ export type LogAction =
 
 export type AuditLogData = {
   userId?: string;
+  organizationId?: string;
   action: LogAction | string;
   entityType: LogEntity | string;
   entityId?: string;
@@ -44,6 +45,7 @@ export async function createAuditLog(data: AuditLogData) {
   return db.auditLog.create({
     data: {
       userId: data.userId ?? null,
+      organizationId: data.organizationId ?? null,
       action: data.action,
       entityType: data.entityType,
       entityId: data.entityId ?? null,

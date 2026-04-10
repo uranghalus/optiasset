@@ -17,8 +17,7 @@ type LoanWithRelations = {
   status: "PENDING" | "REJECTED" | "BORROWED" | "RETURNED";
   asset: {
     barcode: string | null;
-    serialNumber: string | null;
-    item: { name: string; code: string };
+    item: { name: string; code: string; serialNumber: string | null };
   };
   borrower: { name: string; email: string };
 };
@@ -45,7 +44,9 @@ export const loanColumns: ColumnDef<LoanWithRelations>[] = [
       <div className="ps-2 flex flex-col">
         <span className="font-medium">{row.original.asset.item.name}</span>
         <span className="text-xs text-muted-foreground font-mono">
-          {row.original.asset.barcode || row.original.asset.serialNumber || "-"}
+          {row.original.asset.barcode ||
+            row.original.asset.item.serialNumber ||
+            "-"}
         </span>
       </div>
     ),

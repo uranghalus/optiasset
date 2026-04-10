@@ -26,13 +26,15 @@ export async function getAllLoans({
 }: LoanArgs) {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error("No active organizationId found");
 
   const safePage = Math.max(1, page);
   const safePageSize = Math.max(1, pageSize);
   const skip = (safePage - 1) * safePageSize;
   const take = safePageSize;
 
-  const where: any = {};
+  const where: any = { organizationId: activeOrgId };
   if (assetId) where.assetId = assetId;
   if (status) where.status = status;
 
@@ -46,8 +48,7 @@ export async function getAllLoans({
         asset: {
           select: {
             barcode: true,
-            serialNumber: true,
-            item: { select: { name: true, code: true } },
+            item: { select: { name: true, code: true, serialNumber: true } },
           },
         },
         borrower: {
@@ -73,6 +74,8 @@ export async function getAllLoans({
 export async function requestLoanAction(formData: FormData) {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error("No active organizationId found");
 
   const assetId = formData.get("assetId")?.toString();
   const borrowerId = formData.get("borrowerId")?.toString();
@@ -83,8 +86,9 @@ export async function requestLoanAction(formData: FormData) {
   if (!assetId || !borrowerId)
     throw new Error("Asset and Borrower are required");
 
-  const asset = await prisma.asset.findUnique({
-    where: { id: assetId },
+  // Verify asset exists in this organization
+  const asset = await prisma.asset.findFirst({
+    where: { id: assetId, organizationId: activeOrgId },
   });
 
   if (!asset) throw new Error("Asset not found");
@@ -97,6 +101,7 @@ export async function requestLoanAction(formData: FormData) {
         assetId,
         borrowerId,
         requestedById: session.user.id,
+        organizationId: activeOrgId,
         dueDate: dueDateStr ? new Date(dueDateStr) : null,
         conditionOnLoan,
         notes,
@@ -107,10 +112,11 @@ export async function requestLoanAction(formData: FormData) {
     // 2. Record Audit Log
     await createAuditLog({
       userId: session.user.id,
+      organizationId: activeOrgId,
       action: "CREATE",
       entityType: "ASSET",
       entityId: assetId,
-      entityInfo: `${asset.barcode || "N/A"} - ${asset.serialNumber || "N/A"}`,
+      entityInfo: `${asset.barcode || "N/A"} - ${asset.itemId || "N/A"}`,
       details: {
         action: "LOAN_REQUEST",
         borrowerId,
@@ -133,9 +139,11 @@ export async function requestLoanAction(formData: FormData) {
 export async function approveLoanAction(loanId: string) {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error("No active organizationId found");
 
-  const loan = await prisma.assetLoan.findUnique({
-    where: { id: loanId },
+  const loan = await prisma.assetLoan.findFirst({
+    where: { id: loanId, organizationId: activeOrgId },
     include: { asset: true },
   });
 
@@ -163,10 +171,11 @@ export async function approveLoanAction(loanId: string) {
     // 3. Record Audit Log
     await createAuditLog({
       userId: session.user.id,
+      organizationId: activeOrgId,
       action: "UPDATE",
       entityType: "ASSET",
       entityId: loan.assetId,
-      entityInfo: `${loan.asset.barcode || "N/A"} - ${loan.asset.serialNumber || "N/A"}`,
+      entityInfo: `${loan.asset.barcode || "N/A"} - ${loan.asset.itemId || "N/A"}`,
       details: {
         action: "LOAN_APPROVED",
         loanId,
@@ -189,9 +198,11 @@ export async function approveLoanAction(loanId: string) {
 export async function rejectLoanAction(loanId: string, reason: string) {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error("No active organizationId found");
 
-  const loan = await prisma.assetLoan.findUnique({
-    where: { id: loanId },
+  const loan = await prisma.assetLoan.findFirst({
+    where: { id: loanId, organizationId: activeOrgId },
     include: { asset: true },
   });
 
@@ -213,10 +224,11 @@ export async function rejectLoanAction(loanId: string, reason: string) {
     // Record Audit Log
     await createAuditLog({
       userId: session.user.id,
+      organizationId: activeOrgId,
       action: "UPDATE",
       entityType: "ASSET",
       entityId: loan.assetId,
-      entityInfo: `${loan.asset.barcode || "N/A"} - ${loan.asset.serialNumber || "N/A"}`,
+      entityInfo: `${loan.asset.barcode || "N/A"} - ${loan.asset.itemId || "N/A"}`,
       details: {
         action: "LOAN_REJECTED",
         loanId,
@@ -238,13 +250,15 @@ export async function rejectLoanAction(loanId: string, reason: string) {
 export async function returnAssetAction(loanId: string, formData: FormData) {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error("No active organizationId found");
 
   const conditionOnReturn =
     formData.get("conditionOnReturn")?.toString() || null;
   const notes = formData.get("notes")?.toString() || null;
 
-  const loan = await prisma.assetLoan.findUnique({
-    where: { id: loanId },
+  const loan = await prisma.assetLoan.findFirst({
+    where: { id: loanId, organizationId: activeOrgId },
     include: { asset: true },
   });
 
@@ -272,10 +286,11 @@ export async function returnAssetAction(loanId: string, formData: FormData) {
     // 3. Record Audit Log
     await createAuditLog({
       userId: session.user.id,
+      organizationId: activeOrgId,
       action: "UPDATE",
       entityType: "ASSET",
       entityId: loan.assetId,
-      entityInfo: `${loan.asset.barcode || "N/A"} - ${loan.asset.serialNumber || "N/A"}`,
+      entityInfo: `${loan.asset.barcode || "N/A"} - ${loan.asset.itemId || "N/A"}`,
       details: {
         action: "RETURN",
         loanId,

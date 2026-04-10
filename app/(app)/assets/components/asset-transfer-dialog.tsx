@@ -40,10 +40,17 @@ import {
   AssetTransferSchema,
 } from "@/schema/asset-transfer-schema";
 
+type AssetWithItem = Asset & {
+  item: {
+    name: string;
+    serialNumber?: string | null;
+  };
+};
+
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  asset: Asset;
+  asset: AssetWithItem;
 };
 
 export function AssetTransferDialog({ open, onOpenChange, asset }: Props) {
@@ -99,7 +106,7 @@ export function AssetTransferDialog({ open, onOpenChange, asset }: Props) {
           <DialogDescription>
             Pindahkan aset{" "}
             <span className="font-bold text-foreground">
-              {asset.barcode || asset.serialNumber}
+              {asset.barcode || asset.item.serialNumber}
             </span>{" "}
             ke lokasi atau departemen baru.
           </DialogDescription>

@@ -19,6 +19,8 @@ export type ItemArgs = {
 export async function getAllItems({ page, pageSize }: ItemArgs) {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error("No active organizationId found");
 
   const safePage = Math.max(1, page);
   const safePageSize = Math.max(1, pageSize);
@@ -27,6 +29,7 @@ export async function getAllItems({ page, pageSize }: ItemArgs) {
 
   const [data, total] = await Promise.all([
     prisma.item.findMany({
+      where: { organizationId: activeOrgId },
       skip,
       take,
       orderBy: { createdAt: "desc" },
@@ -42,7 +45,9 @@ export async function getAllItems({ page, pageSize }: ItemArgs) {
         },
       },
     }),
-    prisma.item.count(),
+    prisma.item.count({
+      where: { organizationId: activeOrgId },
+    }),
   ]);
 
   return {
@@ -60,8 +65,11 @@ export async function getAllItems({ page, pageSize }: ItemArgs) {
 export async function getCategoriesForSelect() {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) return [];
 
   return prisma.category.findMany({
+    where: { organizationId: activeOrgId },
     select: { id: true, name: true },
     orderBy: { name: "asc" },
   });
@@ -70,11 +78,15 @@ export async function getCategoriesForSelect() {
 /* =======================
    HELPERS
  ======================= */
-export async function getNextItemCode(assetType: "FIXED" | "SUPPLY") {
+export async function getNextItemCode(
+  assetType: "FIXED" | "SUPPLY",
+  organizationId: string,
+) {
   const prefix = assetType === "FIXED" ? "F-ITM-" : "S-ITM-";
 
   const lastItem = await prisma.item.findFirst({
     where: {
+      organizationId,
       code: {
         startsWith: prefix,
       },
@@ -103,6 +115,8 @@ export async function getNextItemCode(assetType: "FIXED" | "SUPPLY") {
 export async function createItem(formData: FormData) {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error("No active organizationId found");
 
   const name = formData.get("name")?.toString();
   const assetType = formData.get("assetType")?.toString() as
@@ -117,7 +131,7 @@ export async function createItem(formData: FormData) {
   // Generate code if not provided or empty
   let code = formData.get("code")?.toString();
   if (!code || code.trim() === "" || code === "AUTO") {
-    code = await getNextItemCode(assetType);
+    code = await getNextItemCode(assetType, activeOrgId);
   }
 
   try {
@@ -126,20 +140,20 @@ export async function createItem(formData: FormData) {
         code,
         name,
         assetType,
+        organizationId: activeOrgId,
         brand: formData.get("brand")?.toString() || null,
         model: formData.get("model")?.toString() || null,
         partNumber: formData.get("partNumber")?.toString() || null,
         description: formData.get("description")?.toString() || null,
         createdBy: session.user.id,
-        category: formData.get("categoryId")
-          ? { connect: { id: formData.get("categoryId") as string } }
-          : undefined,
+        categoryId: formData.get("categoryId")?.toString() || null,
       },
     });
 
     // Record Audit Log
     await createAuditLog({
       userId: session.user.id,
+      organizationId: activeOrgId,
       action: "CREATE",
       entityType: "ITEM",
       entityId: item.id,
@@ -165,8 +179,12 @@ export async function createItem(formData: FormData) {
 export async function updateItem(id: string, formData: FormData) {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error("No active organizationId found");
 
-  const item = await prisma.item.findFirst({ where: { id } });
+  const item = await prisma.item.findFirst({
+    where: { id, organizationId: activeOrgId },
+  });
   if (!item) throw new Error("Item not found");
 
   try {
@@ -185,15 +203,14 @@ export async function updateItem(id: string, formData: FormData) {
           formData.get("description")?.toString() || item.description,
         updatedBy: session.user.id,
         updatedAt: new Date(),
-        category: formData.get("categoryId")
-          ? { connect: { id: formData.get("categoryId") as string } }
-          : { disconnect: true },
+        categoryId: formData.get("categoryId")?.toString() || null,
       },
     });
 
     // Record Audit Log
     await createAuditLog({
       userId: session.user.id,
+      organizationId: activeOrgId,
       action: "UPDATE",
       entityType: "ITEM",
       entityId: id,
@@ -219,12 +236,17 @@ export async function updateItem(id: string, formData: FormData) {
 export async function deleteItem(id: string) {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error("No active organizationId found");
 
-  const item = await prisma.item.delete({ where: { id } });
+  const item = await prisma.item.delete({
+    where: { id, organizationId: activeOrgId },
+  });
 
   // Record Audit Log
   await createAuditLog({
     userId: session.user.id,
+    organizationId: activeOrgId,
     action: "DELETE",
     entityType: "ITEM",
     entityId: id,

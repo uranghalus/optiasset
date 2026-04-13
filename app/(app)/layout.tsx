@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import React from "react";
+import { BarcodeScannerDialog } from "@/components/assets/barcode-scanner-dialog";
 
 export default async function AppLayout({
   children,

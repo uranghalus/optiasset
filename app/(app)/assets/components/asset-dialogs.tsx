@@ -7,6 +7,7 @@ import { AssetDeleteDialog } from "./asset-delete-dialog";
 import { AssetQRDialog } from "./asset-qr-dialog";
 import { AssetTransferDialog } from "./asset-transfer-dialog";
 import { AssetLoanDialog } from "./asset-loan-dialog";
+import { BarcodeScannerDialog } from "@/components/assets/barcode-scanner-dialog";
 
 export default function AssetDialogs() {
   const { currentRow, open, setCurrentRow, setOpen } = useDialog();
@@ -17,6 +18,7 @@ export default function AssetDialogs() {
         open={open === "add"}
         onOpenChange={() => setOpen("add")}
       />
+      <BarcodeScannerDialog />
       {currentRow && (
         <>
           <AssetActionDialog

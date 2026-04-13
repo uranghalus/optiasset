@@ -2,6 +2,7 @@ import {
   createAsset,
   deleteAsset,
   getAllAssets,
+  getAssetById,
   getDepartmentsForAssetSelect,
   getItemsForSelect,
   getLocationsForSelect,
@@ -17,7 +18,35 @@ export function useAssets({ page, pageSize }: PaginationState) {
     queryFn: () => getAllAssets({ page, pageSize }),
   });
 }
+interface UseAssetByIdProps {
+  id?: string;
+  organizationId: string;
+}
 
+export function useAssetById({ id, organizationId }: UseAssetByIdProps) {
+  return useQuery({
+    queryKey: ["asset", id, organizationId],
+    queryFn: () => {
+      if (!id) throw new Error("Asset ID is required");
+      return getAssetById(id);
+    },
+    enabled: !!id, // hanya jalan kalau ada id
+    retry: 1, // biar tidak spam query
+  });
+}
+export function useAssetLookup() {
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await getAssetById(id);
+
+      if (!res) {
+        throw new Error("Asset tidak ditemukan");
+      }
+
+      return res;
+    },
+  });
+}
 // Get items for select
 export function useItemsForSelect() {
   return useQuery({

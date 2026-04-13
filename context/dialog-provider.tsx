@@ -30,7 +30,8 @@ export type DialogType =
   | "approve_gm"
   | "waiting_stock"
   | "reject"
-  | "complete";
+  | "complete"
+  | "scan";
 
 type DialogContextType<T> = {
   open: DialogType | null;

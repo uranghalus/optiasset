@@ -421,6 +421,35 @@ export async function getAssetsByManyIds(ids: string[]) {
 }
 
 /* =======================
+   GET ASSET BY ID (for detail page)
+ ======================= */
+export async function getAssetById(id: string) {
+  const session = await getServerSession();
+  if (!session) throw new Error("Unauthorized");
+
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error("No active organizationId found");
+  try {
+    const asset = await prisma.asset.findFirst({
+      where: {
+        id,
+        organizationId: activeOrgId, // 🔐 penting (multi-tenant)
+      },
+      include: {
+        item: true,
+        location: true,
+        department: true,
+      },
+    });
+
+    return asset;
+  } catch (error) {
+    console.error(error);
+    throw new Error("Failed to fetch asset");
+  }
+}
+
+/* =======================
    DELETE ASSET
  ======================= */
 export async function deleteAsset(id: string) {

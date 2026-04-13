@@ -8,7 +8,7 @@ import { DataTable } from "@/components/datatable/data-table";
 import { DataTablePagination } from "@/components/datatable/datatable-pagination";
 import { useDialog } from "@/context/dialog-provider";
 import { Button } from "@/components/ui/button";
-import { Plus, Printer } from "lucide-react";
+import { Plus, Printer, ScanLine } from "lucide-react";
 
 export default function AssetTable() {
   const { setOpen } = useDialog();
@@ -58,6 +58,9 @@ export default function AssetTable() {
           <Button onClick={() => setOpen("add")} className="gap-2">
             <Plus className="size-4" />
             Tambah Aset
+          </Button>
+          <Button onClick={() => setOpen("scan")} className="gap-2">
+            <ScanLine className="size-4" />
           </Button>
         </div>
       </DataTableToolbar>

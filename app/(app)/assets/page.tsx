@@ -1,8 +1,8 @@
 import { DialogProvider } from "@/context/dialog-provider";
 import { Metadata } from "next";
-import React from "react";
 import AssetTable from "./components/asset-table";
 import AssetDialogs from "./components/asset-dialogs";
+import { BarcodeScannerDialog } from "@/components/assets/barcode-scanner-dialog";
 
 export const metadata: Metadata = {
   title: "Daftar Aset",
@@ -23,6 +23,8 @@ export default function AssetsPage() {
         </div>
         <AssetTable />
       </div>
+
+      {/* Dialog khusus asset */}
       <AssetDialogs />
     </DialogProvider>
   );

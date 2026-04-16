@@ -192,11 +192,10 @@ model teamMember {
 }
 
 model Item {
-  id         String  @id @default(uuid())
-  code       String
-  name       String
-  categoryId String?
-
+  id             String       @id @default(uuid())
+  code           String
+  name           String
+  categoryId     String?
   description    String?
   assetType      AssetType
   createdAt      DateTime     @default(now())

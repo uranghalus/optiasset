@@ -31,7 +31,8 @@ export type DialogType =
   | "waiting_stock"
   | "reject"
   | "complete"
-  | "scan";
+  | "scan"
+  | "print";
 
 type DialogContextType<T> = {
   open: DialogType | null;

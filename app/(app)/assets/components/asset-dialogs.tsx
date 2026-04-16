@@ -6,8 +6,9 @@ import { Asset } from "@/generated/prisma/client";
 import { AssetDeleteDialog } from "./asset-delete-dialog";
 import { AssetQRDialog } from "./asset-qr-dialog";
 import { AssetTransferDialog } from "./asset-transfer-dialog";
-import { AssetLoanDialog } from "./asset-loan-dialog";
+import { AssetPrintDialog } from "./asset-print-dialog";
 import { BarcodeScannerDialog } from "@/components/assets/barcode-scanner-dialog";
+import { AssetLoanDialog } from "./asset-loan-dialog";
 
 export default function AssetDialogs() {
   const { currentRow, open, setCurrentRow, setOpen } = useDialog();
@@ -19,6 +20,7 @@ export default function AssetDialogs() {
         onOpenChange={() => setOpen("add")}
       />
       <BarcodeScannerDialog />
+      <AssetPrintDialog />
       {currentRow && (
         <>
           <AssetActionDialog

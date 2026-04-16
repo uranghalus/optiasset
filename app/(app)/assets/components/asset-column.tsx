@@ -5,20 +5,21 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ColumnDef } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
-import { Asset } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 import AssetRowAction from "./asset-row-action";
 import { format } from "date-fns";
 
-type AssetWithItem = Asset & {
-  item: {
-    name: string;
-    code: string;
-    assetType: string;
-    brand?: string | null;
-    model?: string | null;
-    serialNumber?: string | null;
+type AssetWithItem = Prisma.AssetGetPayload<{
+  include: {
+    item: {
+      select: {
+        name: true;
+        code: true;
+        assetType: true;
+      };
+    };
   };
-};
+}>;
 
 export const assetColumns: ColumnDef<AssetWithItem>[] = [
   {
@@ -30,63 +31,71 @@ export const assetColumns: ColumnDef<AssetWithItem>[] = [
           (table.getIsSomePageRowsSelected() && "indeterminate")
         }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
       />
     ),
     cell: ({ row }) => (
       <Checkbox
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
       />
     ),
     enableSorting: false,
     enableHiding: false,
     size: 40,
   },
+
+  // ✅ Barcode
   {
     accessorKey: "barcode",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Barcode/Tag" />
     ),
     cell: ({ cell }) => (
-      <div className="ps-2 font-mono text-xs font-medium">
+      <div className="ps-2 font-mono text-xs">
         {(cell.getValue() as string) || "-"}
       </div>
     ),
     size: 140,
   },
+
+  // ✅ Item + Brand Model
   {
     id: "item_name",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Item / Model" />
+      <DataTableColumnHeader column={column} title="Item / Detail" />
     ),
     cell: ({ row }) => {
-      const { item } = row.original;
-      const brand = item?.brand;
-      const model = item?.model;
-
+      const asset = row.original;
+      console.log(row.original);
       return (
         <div className="ps-2 flex flex-col">
-          <span className="font-medium">{item.name}</span>
+          <span className="font-medium">{asset.item.name}</span>
+
           <span className="text-xs text-muted-foreground italic">
-            {brand && model ? `${brand} ${model}` : brand || model || "-"}
+            {[asset.brand, asset.model].filter(Boolean).join(" ") || "-"}
           </span>
         </div>
       );
     },
     size: 250,
   },
+
+
+  // ✅ Part Number (tambahan karena ada di schema kamu)
   {
-    accessorKey: "item.serialNumber",
+    accessorKey: "partNumber",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Serial Number" />
+      <DataTableColumnHeader column={column} title="Part Number" />
     ),
-    cell: ({ cell }) => (
-      <div className="ps-2">{(cell.getValue() as string) || "-"}</div>
+    cell: ({ row }) => (
+      <div className="ps-2">
+        {row.original.partNumber || "-"}
+      </div>
     ),
     size: 150,
   },
+
+  // ✅ Condition
   {
     accessorKey: "condition",
     header: ({ column }) => (
@@ -94,6 +103,7 @@ export const assetColumns: ColumnDef<AssetWithItem>[] = [
     ),
     cell: ({ cell }) => {
       const condition = cell.getValue() as string;
+
       return (
         <div className="ps-2">
           <Badge
@@ -111,6 +121,8 @@ export const assetColumns: ColumnDef<AssetWithItem>[] = [
     },
     size: 100,
   },
+
+  // ✅ Purchase Date
   {
     accessorKey: "purchaseDate",
     header: ({ column }) => (
@@ -118,6 +130,7 @@ export const assetColumns: ColumnDef<AssetWithItem>[] = [
     ),
     cell: ({ cell }) => {
       const date = cell.getValue() as Date;
+
       return (
         <div className="ps-2 text-sm text-muted-foreground">
           {date ? format(new Date(date), "dd MMM yyyy") : "-"}
@@ -126,24 +139,20 @@ export const assetColumns: ColumnDef<AssetWithItem>[] = [
     },
     size: 120,
   },
+
+  // ✅ Actions
   {
     id: "actions",
     header: ({ column }) => (
-      <DataTableColumnHeader
-        column={column}
-        title="Action"
-        className="ml-auto"
-      />
+      <DataTableColumnHeader column={column} title="Action" />
     ),
-    size: 48,
-    minSize: 48,
-    maxSize: 48,
+    size: 60,
     enableResizing: false,
     cell: AssetRowAction,
     meta: {
       className: cn(
-        "sticky right-0 z-10 w-[60px] px-2",
-        "bg-background group-hover/row:bg-muted group-data-[state=selected]/row:bg-muted transition-colors duration-200",
+        "sticky right-0 z-10 px-2",
+        "bg-background group-hover/row:bg-muted group-data-[state=selected]/row:bg-muted"
       ),
     },
   },

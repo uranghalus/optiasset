@@ -1,11 +1,13 @@
-"use server";
-
-import { getServerSession } from "@/lib/get-session";
-import { prisma } from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
-import { createAuditLog } from "@/lib/logger";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
+/* eslint-disable prefer-const */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+'use server';
+import PDFDocument from 'pdfkit';
+import { getServerSession } from '@/lib/get-session';
+import { prisma } from '@/lib/prisma';
+import { revalidatePath } from 'next/cache';
+import { createAuditLog } from '@/lib/logger';
+import { auth } from '@/lib/auth';
+import { headers } from 'next/headers';
 
 /* =======================
    TYPES
@@ -16,7 +18,7 @@ export type AssetArgs = {
 };
 
 function isGlobalAccess(role?: string | null) {
-  return role === "OWNER" || role === "ADMIN" || role === "ASSET_STAFF";
+  return role === 'OWNER' || role === 'ADMIN' || role === 'ASSET_STAFF';
 }
 
 function buildAssetFilter({
@@ -35,7 +37,7 @@ function buildAssetFilter({
   }
 
   if (!departmentId) {
-    throw new Error("User has no department");
+    throw new Error('User has no department');
   }
 
   return {
@@ -48,13 +50,13 @@ function buildAssetFilter({
  ======================= */
 export async function getAllAssets({ page, pageSize }: AssetArgs) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
   const { role } = await auth.api.getActiveMemberRole({
     headers: await headers(),
   });
 
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
+  if (!activeOrgId) throw new Error('No active organizationId found');
 
   const where = buildAssetFilter({
     role,
@@ -71,16 +73,24 @@ export async function getAllAssets({ page, pageSize }: AssetArgs) {
       where,
       skip,
       take,
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
       include: {
         item: {
           select: {
             name: true,
             code: true,
             assetType: true,
-            brand: true,
-            model: true,
-            partNumber: true,
+          },
+        },
+        location: {
+          select: {
+            name: true,
+          },
+        },
+        department: {
+          select: {
+            nama_department: true,
+            kode_department: true,
           },
         },
       },
@@ -104,14 +114,14 @@ export async function getAllAssets({ page, pageSize }: AssetArgs) {
  ======================= */
 export async function getItemsForSelect() {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
   const activeOrgId = session.session?.activeOrganizationId;
   if (!activeOrgId) return [];
 
   return prisma.item.findMany({
     where: { organizationId: activeOrgId },
     select: { id: true, name: true, code: true, assetType: true },
-    orderBy: { name: "asc" },
+    orderBy: { name: 'asc' },
   });
 }
 
@@ -120,14 +130,14 @@ export async function getItemsForSelect() {
  ======================= */
 export async function getLocationsForSelect() {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
   const activeOrgId = session.session?.activeOrganizationId;
   if (!activeOrgId) return [];
 
   return prisma.location.findMany({
     where: { organizationId: activeOrgId },
     select: { id: true, name: true },
-    orderBy: { name: "asc" },
+    orderBy: { name: 'asc' },
   });
 }
 
@@ -136,7 +146,7 @@ export async function getLocationsForSelect() {
  ======================= */
 export async function getDepartmentsForAssetSelect() {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const activeOrgId = session.session?.activeOrganizationId;
   if (!activeOrgId) return [];
@@ -148,7 +158,7 @@ export async function getDepartmentsForAssetSelect() {
       nama_department: true,
       kode_department: true,
     },
-    orderBy: { nama_department: "asc" },
+    orderBy: { nama_department: 'asc' },
   });
 }
 
@@ -163,14 +173,14 @@ export async function getAvailableAssetsForLoanSelect({
   divisiId?: string;
 }) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
+  if (!activeOrgId) throw new Error('No active organizationId found');
 
   const where: any = {
     organizationId: activeOrgId,
-    status: { in: ["ACTIVE", "GOOD"] },
+    status: { in: ['ACTIVE', 'GOOD'] },
   };
 
   if (departmentId) where.departmentId = departmentId;
@@ -182,10 +192,10 @@ export async function getAvailableAssetsForLoanSelect({
       id: true,
       barcode: true,
       item: {
-        select: { name: true, brand: true, model: true, partNumber: true },
+        select: { name: true },
       },
     },
-    orderBy: { item: { name: "asc" } },
+    orderBy: { item: { name: 'asc' } },
   });
 }
 
@@ -194,11 +204,11 @@ export async function getAvailableAssetsForLoanSelect({
  ======================= */
 export async function createAsset(formData: FormData) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
   const departmentId = session.user.departmentId;
-  if (!departmentId) throw new Error("User has no department");
-  const itemId = formData.get("itemId")?.toString();
-  if (!itemId) throw new Error("Item is required");
+  if (!departmentId) throw new Error('User has no department');
+  const itemId = formData.get('itemId')?.toString();
+  if (!itemId) throw new Error('Item is required');
 
   const parseDateOrNull = (key: string) => {
     const val = formData.get(key)?.toString();
@@ -211,28 +221,31 @@ export async function createAsset(formData: FormData) {
   };
 
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
+  if (!activeOrgId) throw new Error('No active organizationId found');
 
   const asset = await prisma.$transaction(async (tx) => {
     const newAsset = await tx.asset.create({
       data: {
         itemId,
         organizationId: activeOrgId,
-        purchaseDate: parseDateOrNull("purchaseDate"),
-        purchasePrice: parseFloatOrNull("purchasePrice"),
-        condition: formData.get("condition")?.toString() || null,
-        warrantyExpire: parseDateOrNull("warrantyExpire"),
-        locationId: formData.get("locationId")?.toString() || null,
+        purchaseDate: parseDateOrNull('purchaseDate'),
+        purchasePrice: parseFloatOrNull('purchasePrice'),
+        condition: formData.get('condition')?.toString() || null,
+        warrantyExpire: parseDateOrNull('warrantyExpire'),
+        locationId: formData.get('locationId')?.toString() || null,
+        brand: formData.get('brand')?.toString() || null,
+        model: formData.get('model')?.toString() || null,
+        partNumber: formData.get('partNumber')?.toString() || null,
         departmentId: departmentId,
-        notes: formData.get("notes")?.toString() || null,
-        barcode: formData.get("barcode")?.toString() || null,
-        vendorName: formData.get("vendorName")?.toString() || null,
-        garansi_exp: parseDateOrNull("garansi_exp"),
+        notes: formData.get('notes')?.toString() || null,
+        barcode: formData.get('barcode')?.toString() || null,
+        vendorName: formData.get('vendorName')?.toString() || null,
+        garansi_exp: parseDateOrNull('garansi_exp'),
       },
     });
 
     // Sync to Stock table if location is provided
-    const locationId = formData.get("locationId")?.toString();
+    const locationId = formData.get('locationId')?.toString();
     if (locationId) {
       await tx.stock.upsert({
         where: {
@@ -257,10 +270,10 @@ export async function createAsset(formData: FormData) {
     await createAuditLog({
       userId: session.user.id,
       organizationId: activeOrgId,
-      action: "CREATE",
-      entityType: "ASSET",
+      action: 'CREATE',
+      entityType: 'ASSET',
       entityId: newAsset.id,
-      entityInfo: `${newAsset.barcode || "N/A"} - ${newAsset.itemId || "N/A"}`,
+      entityInfo: `${newAsset.barcode || 'N/A'} - ${newAsset.itemId || 'N/A'}`,
       details: {
         newData: newAsset,
       },
@@ -269,7 +282,7 @@ export async function createAsset(formData: FormData) {
 
     return newAsset;
   });
-  revalidatePath("/assets");
+  revalidatePath('/assets');
   return asset;
 }
 
@@ -278,17 +291,17 @@ export async function createAsset(formData: FormData) {
  ======================= */
 export async function updateAsset(id: string, formData: FormData) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
+  if (!activeOrgId) throw new Error('No active organizationId found');
 
   const asset = await prisma.asset.findFirst({
     where: { id, organizationId: activeOrgId },
   });
-  if (!asset) throw new Error("Asset not found");
+  if (!asset) throw new Error('Asset not found');
   const departmentId = session.user.departmentId;
-  if (!departmentId) throw new Error("User has no department");
+  if (!departmentId) throw new Error('User has no department');
   const parseDateOrNull = (key: string) => {
     const val = formData.get(key)?.toString();
     return val ? new Date(val) : null;
@@ -300,24 +313,27 @@ export async function updateAsset(id: string, formData: FormData) {
   };
 
   const updated = await prisma.$transaction(async (tx) => {
-    const newLocationId = formData.get("locationId")?.toString();
+    const newLocationId = formData.get('locationId')?.toString();
     const oldLocationId = asset.locationId;
 
     const result = await tx.asset.update({
       where: { id },
       data: {
-        itemId: formData.get("itemId")?.toString() ?? asset.itemId,
-        purchaseDate: parseDateOrNull("purchaseDate") ?? asset.purchaseDate,
-        purchasePrice: parseFloatOrNull("purchasePrice") ?? asset.purchasePrice,
-        condition: formData.get("condition")?.toString() || asset.condition,
+        itemId: formData.get('itemId')?.toString() ?? asset.itemId,
+        purchaseDate: parseDateOrNull('purchaseDate') ?? asset.purchaseDate,
+        purchasePrice: parseFloatOrNull('purchasePrice') ?? asset.purchasePrice,
+        condition: formData.get('condition')?.toString() || asset.condition,
         warrantyExpire:
-          parseDateOrNull("warrantyExpire") ?? asset.warrantyExpire,
+          parseDateOrNull('warrantyExpire') ?? asset.warrantyExpire,
+        brand: formData.get('brand')?.toString() || asset.brand,
+        model: formData.get('model')?.toString() || asset.model,
+        partNumber: formData.get('partNumber')?.toString() || asset.partNumber,
         locationId: newLocationId || asset.locationId,
         departmentId: departmentId,
-        notes: formData.get("notes")?.toString() || asset.notes,
-        barcode: formData.get("barcode")?.toString() || asset.barcode,
-        vendorName: formData.get("vendorName")?.toString() || asset.vendorName,
-        garansi_exp: parseDateOrNull("garansi_exp") ?? asset.garansi_exp,
+        notes: formData.get('notes')?.toString() || asset.notes,
+        barcode: formData.get('barcode')?.toString() || asset.barcode,
+        vendorName: formData.get('vendorName')?.toString() || asset.vendorName,
+        garansi_exp: parseDateOrNull('garansi_exp') ?? asset.garansi_exp,
         updatedAt: new Date(),
       },
     });
@@ -360,12 +376,12 @@ export async function updateAsset(id: string, formData: FormData) {
       await createAuditLog({
         userId: session.user.id,
         organizationId: activeOrgId,
-        action: "TRANSFER",
-        entityType: "ASSET",
+        action: 'TRANSFER',
+        entityType: 'ASSET',
         entityId: id,
         details: {
-          field: "locationId",
-          oldValue: oldLocationId || "N/A",
+          field: 'locationId',
+          oldValue: oldLocationId || 'N/A',
           newValue: newLocationId,
         },
         tx,
@@ -375,18 +391,18 @@ export async function updateAsset(id: string, formData: FormData) {
     await createAuditLog({
       userId: session.user.id,
       organizationId: activeOrgId,
-      action: "UPDATE",
-      entityType: "ASSET",
+      action: 'UPDATE',
+      entityType: 'ASSET',
       entityId: id,
       details: {
-        message: "Asset updated",
+        message: 'Asset updated',
       },
       tx,
     });
 
     return result;
   });
-  revalidatePath("/assets");
+  revalidatePath('/assets');
   return updated;
 }
 
@@ -395,10 +411,10 @@ export async function updateAsset(id: string, formData: FormData) {
  ======================= */
 export async function getAssetsByManyIds(ids: string[]) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
+  if (!activeOrgId) throw new Error('No active organizationId found');
 
   const assets = await prisma.asset.findMany({
     where: {
@@ -410,9 +426,6 @@ export async function getAssetsByManyIds(ids: string[]) {
         select: {
           name: true,
           code: true,
-          brand: true,
-          model: true,
-          serialNumber: true,
         },
       },
     },
@@ -425,10 +438,10 @@ export async function getAssetsByManyIds(ids: string[]) {
  ======================= */
 export async function getAssetById(id: string) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
+  if (!activeOrgId) throw new Error('No active organizationId found');
   try {
     const asset = await prisma.asset.findFirst({
       where: {
@@ -445,7 +458,7 @@ export async function getAssetById(id: string) {
     return asset;
   } catch (error) {
     console.error(error);
-    throw new Error("Failed to fetch asset");
+    throw new Error('Failed to fetch asset');
   }
 }
 
@@ -454,17 +467,17 @@ export async function getAssetById(id: string) {
  ======================= */
 export async function deleteAsset(id: string) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
+  if (!activeOrgId) throw new Error('No active organizationId found');
 
   const asset = await prisma.$transaction(async (tx) => {
     // Check if asset exists in this organization
     const existing = await tx.asset.findFirst({
       where: { id, organizationId: activeOrgId },
     });
-    if (!existing) throw new Error("Asset not found");
+    if (!existing) throw new Error('Asset not found');
 
     const deleted = await tx.asset.delete({ where: { id } });
 
@@ -489,10 +502,10 @@ export async function deleteAsset(id: string) {
     await createAuditLog({
       userId: session.user.id,
       organizationId: activeOrgId,
-      action: "DELETE",
-      entityType: "ASSET",
+      action: 'DELETE',
+      entityType: 'ASSET',
       entityId: deleted.id,
-      entityInfo: `${deleted.barcode || "N/A"} - ${deleted.itemId || "N/A"}`,
+      entityInfo: `${deleted.barcode || 'N/A'} - ${deleted.itemId || 'N/A'}`,
       details: {
         deletedData: deleted,
       },
@@ -501,6 +514,75 @@ export async function deleteAsset(id: string) {
 
     return deleted;
   });
-  revalidatePath("/assets");
+  revalidatePath('/assets');
   return asset;
+}
+
+/* =======================
+   GET ASSETS FOR PRINT
+ ======================= */
+export async function exportAssetPDF({
+  type,
+  dateFrom,
+  dateTo,
+  organizationId,
+}: {
+  type: 'all' | 'latest' | 'range';
+  dateFrom?: Date;
+  dateTo?: Date;
+  organizationId: string;
+}) {
+  let where: any = {
+    organizationId,
+  };
+
+  // ✅ RANGE FILTER
+  if (type === 'range' && dateFrom && dateTo) {
+    where.createdAt = {
+      gte: new Date(dateFrom),
+      lte: new Date(dateTo),
+    };
+  }
+
+  const assets = await prisma.asset.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    take: type === 'latest' ? 20 : undefined,
+    include: {
+      item: true,
+    },
+  });
+
+  // PDF
+  const doc = new PDFDocument();
+  const chunks: Uint8Array[] = [];
+
+  doc.on('data', (c) => chunks.push(c));
+
+  return new Promise<string>((resolve) => {
+    doc.on('end', () => {
+      const buffer = Buffer.concat(chunks);
+      resolve(buffer.toString('base64'));
+    });
+
+    doc.text('Asset Report');
+    doc.moveDown();
+
+    doc.text(`Filter: ${type}`);
+    if (dateFrom && dateTo) {
+      doc.text(`Range: ${dateFrom.toDateString()} - ${dateTo.toDateString()}`);
+    }
+
+    doc.moveDown();
+
+    assets.forEach((a, i) => {
+      doc.text(
+        `${i + 1}. ${a.item?.name ?? '-'} | ${a.brand ?? '-'} | ${
+          a.model ?? '-'
+        }`,
+      );
+    });
+
+    doc.end();
+  });
 }

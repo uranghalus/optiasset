@@ -1,9 +1,10 @@
-"use server";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+'use server';
 
-import { getServerSession } from "@/lib/get-session";
-import { prisma } from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
-import { createAuditLog } from "@/lib/logger";
+import { getServerSession } from '@/lib/get-session';
+import { prisma } from '@/lib/prisma';
+import { revalidatePath } from 'next/cache';
+import { createAuditLog } from '@/lib/logger';
 
 /* =======================
    TYPES
@@ -18,9 +19,9 @@ export type ItemArgs = {
  ======================= */
 export async function getAllItems({ page, pageSize }: ItemArgs) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
+  if (!activeOrgId) throw new Error('No active organizationId found');
 
   const safePage = Math.max(1, page);
   const safePageSize = Math.max(1, pageSize);
@@ -32,7 +33,7 @@ export async function getAllItems({ page, pageSize }: ItemArgs) {
       where: { organizationId: activeOrgId },
       skip,
       take,
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
       include: {
         category: {
           select: {
@@ -64,14 +65,14 @@ export async function getAllItems({ page, pageSize }: ItemArgs) {
  ======================= */
 export async function getCategoriesForSelect() {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
   const activeOrgId = session.session?.activeOrganizationId;
   if (!activeOrgId) return [];
 
   return prisma.category.findMany({
     where: { organizationId: activeOrgId },
     select: { id: true, name: true },
-    orderBy: { name: "asc" },
+    orderBy: { name: 'asc' },
   });
 }
 
@@ -79,10 +80,10 @@ export async function getCategoriesForSelect() {
    HELPERS
  ======================= */
 export async function getNextItemCode(
-  assetType: "FIXED" | "SUPPLY",
+  assetType: 'FIXED' | 'SUPPLY',
   organizationId: string,
 ) {
-  const prefix = assetType === "FIXED" ? "F-ITM-" : "S-ITM-";
+  const prefix = assetType === 'FIXED' ? 'F-ITM-' : 'S-ITM-';
 
   const lastItem = await prisma.item.findFirst({
     where: {
@@ -92,7 +93,7 @@ export async function getNextItemCode(
       },
     },
     orderBy: {
-      code: "desc",
+      code: 'desc',
     },
   });
 
@@ -106,7 +107,7 @@ export async function getNextItemCode(
     }
   }
 
-  return `${prefix}${nextNumber.toString().padStart(3, "0")}`;
+  return `${prefix}${nextNumber.toString().padStart(3, '0')}`;
 }
 
 /* =======================
@@ -114,23 +115,23 @@ export async function getNextItemCode(
  ======================= */
 export async function createItem(formData: FormData) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
+  if (!activeOrgId) throw new Error('No active organizationId found');
 
-  const name = formData.get("name")?.toString();
-  const assetType = formData.get("assetType")?.toString() as
-    | "FIXED"
-    | "SUPPLY"
+  const name = formData.get('name')?.toString();
+  const assetType = formData.get('assetType')?.toString() as
+    | 'FIXED'
+    | 'SUPPLY'
     | undefined;
 
   if (!name || !assetType) {
-    throw new Error("Required fields are missing");
+    throw new Error('Required fields are missing');
   }
 
   // Generate code if not provided or empty
-  let code = formData.get("code")?.toString();
-  if (!code || code.trim() === "" || code === "AUTO") {
+  let code = formData.get('code')?.toString();
+  if (!code || code.trim() === '' || code === 'AUTO') {
     code = await getNextItemCode(assetType, activeOrgId);
   }
 
@@ -141,12 +142,10 @@ export async function createItem(formData: FormData) {
         name,
         assetType,
         organizationId: activeOrgId,
-        brand: formData.get("brand")?.toString() || null,
-        model: formData.get("model")?.toString() || null,
-        partNumber: formData.get("partNumber")?.toString() || null,
-        description: formData.get("description")?.toString() || null,
+
+        description: formData.get('description')?.toString() || null,
         createdBy: session.user.id,
-        categoryId: formData.get("categoryId")?.toString() || null,
+        categoryId: formData.get('categoryId')?.toString() || null,
       },
     });
 
@@ -154,8 +153,8 @@ export async function createItem(formData: FormData) {
     await createAuditLog({
       userId: session.user.id,
       organizationId: activeOrgId,
-      action: "CREATE",
-      entityType: "ITEM",
+      action: 'CREATE',
+      entityType: 'ITEM',
       entityId: item.id,
       entityInfo: `${item.code} - ${item.name}`,
       details: {
@@ -163,10 +162,10 @@ export async function createItem(formData: FormData) {
       },
     });
 
-    revalidatePath("/assets/items");
+    revalidatePath('/assets/items');
     return item;
   } catch (error: any) {
-    if (error?.code === "P2002") {
+    if (error?.code === 'P2002') {
       throw new Error(`Kode item "${code}" sudah digunakan.`);
     }
     throw error;
@@ -178,32 +177,30 @@ export async function createItem(formData: FormData) {
  ======================= */
 export async function updateItem(id: string, formData: FormData) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
+  if (!activeOrgId) throw new Error('No active organizationId found');
 
   const item = await prisma.item.findFirst({
     where: { id, organizationId: activeOrgId },
   });
-  if (!item) throw new Error("Item not found");
+  if (!item) throw new Error('Item not found');
 
   try {
     const updated = await prisma.item.update({
       where: { id },
       data: {
-        code: formData.get("code")?.toString() ?? item.code,
-        name: formData.get("name")?.toString() ?? item.name,
+        code: formData.get('code')?.toString() ?? item.code,
+        name: formData.get('name')?.toString() ?? item.name,
         assetType:
-          (formData.get("assetType")?.toString() as "FIXED" | "SUPPLY") ??
+          (formData.get('assetType')?.toString() as 'FIXED' | 'SUPPLY') ??
           item.assetType,
-        brand: formData.get("brand")?.toString() || item.brand,
-        model: formData.get("model")?.toString() || item.model,
-        partNumber: formData.get("partNumber")?.toString() || item.partNumber,
+
         description:
-          formData.get("description")?.toString() || item.description,
+          formData.get('description')?.toString() || item.description,
         updatedBy: session.user.id,
         updatedAt: new Date(),
-        categoryId: formData.get("categoryId")?.toString() || null,
+        categoryId: formData.get('categoryId')?.toString() || null,
       },
     });
 
@@ -211,8 +208,8 @@ export async function updateItem(id: string, formData: FormData) {
     await createAuditLog({
       userId: session.user.id,
       organizationId: activeOrgId,
-      action: "UPDATE",
-      entityType: "ITEM",
+      action: 'UPDATE',
+      entityType: 'ITEM',
       entityId: id,
       entityInfo: `${updated.code} - ${updated.name}`,
       details: {
@@ -220,10 +217,10 @@ export async function updateItem(id: string, formData: FormData) {
       },
     });
 
-    revalidatePath("/assets/items");
+    revalidatePath('/assets/items');
     return updated;
   } catch (error: any) {
-    if (error?.code === "P2002") {
+    if (error?.code === 'P2002') {
       throw new Error(`Kode item sudah digunakan.`);
     }
     throw error;
@@ -235,9 +232,9 @@ export async function updateItem(id: string, formData: FormData) {
  ======================= */
 export async function deleteItem(id: string) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
+  if (!activeOrgId) throw new Error('No active organizationId found');
 
   const item = await prisma.item.delete({
     where: { id, organizationId: activeOrgId },
@@ -247,8 +244,8 @@ export async function deleteItem(id: string) {
   await createAuditLog({
     userId: session.user.id,
     organizationId: activeOrgId,
-    action: "DELETE",
-    entityType: "ITEM",
+    action: 'DELETE',
+    entityType: 'ITEM',
     entityId: id,
     entityInfo: `${item.code} - ${item.name}`,
     details: {
@@ -256,6 +253,6 @@ export async function deleteItem(id: string) {
     },
   });
 
-  revalidatePath("/assets/items");
+  revalidatePath('/assets/items');
   return item;
 }

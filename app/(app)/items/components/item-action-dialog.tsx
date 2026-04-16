@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -59,9 +60,7 @@ export function ItemActionDialog({ open, onOpenChange, currentRow }: Props) {
       code: "",
       name: "",
       categoryId: "",
-      brand: "",
-      model: "",
-      partNumber: "",
+
       description: "",
       assetType: "FIXED",
     },
@@ -76,9 +75,6 @@ export function ItemActionDialog({ open, onOpenChange, currentRow }: Props) {
         code: currentRow.code,
         name: currentRow.name,
         categoryId: currentRow.categoryId ?? "",
-        brand: currentRow.brand ?? "",
-        model: currentRow.model ?? "",
-        partNumber: currentRow.partNumber ?? "",
         description: currentRow.description ?? "",
         assetType: currentRow.assetType,
       });
@@ -87,9 +83,6 @@ export function ItemActionDialog({ open, onOpenChange, currentRow }: Props) {
         code: nextCode ?? "",
         name: "",
         categoryId: "",
-        brand: "",
-        model: "",
-        partNumber: "",
         description: "",
         assetType: "FIXED",
       });
@@ -111,9 +104,6 @@ export function ItemActionDialog({ open, onOpenChange, currentRow }: Props) {
     formData.append("name", values.name);
     formData.append("assetType", values.assetType);
     if (values.categoryId) formData.append("categoryId", values.categoryId);
-    if (values.brand) formData.append("brand", values.brand);
-    if (values.model) formData.append("model", values.model);
-    if (values.partNumber) formData.append("partNumber", values.partNumber);
     if (values.description) formData.append("description", values.description);
 
     try {
@@ -266,64 +256,7 @@ export function ItemActionDialog({ open, onOpenChange, currentRow }: Props) {
                 )}
               />
 
-              {/* BRAND */}
-              <Controller
-                name="brand"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel>Brand</FieldLabel>
-                    <Input
-                      {...field}
-                      placeholder="Lenovo"
-                      aria-invalid={fieldState.invalid}
-                    />
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
-                )}
-              />
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              {/* MODEL */}
-              <Controller
-                name="model"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel>Model</FieldLabel>
-                    <Input
-                      {...field}
-                      placeholder="ThinkPad X1 Carbon"
-                      aria-invalid={fieldState.invalid}
-                    />
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
-                )}
-              />
-
-              {/* PART NUMBER */}
-              <Controller
-                name="partNumber"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel>Part Number</FieldLabel>
-                    <Input
-                      {...field}
-                      placeholder="TP-X1C-2024"
-                      aria-invalid={fieldState.invalid}
-                    />
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
-                )}
-              />
             </div>
 
 

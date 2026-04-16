@@ -21,6 +21,7 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { Skeleton } from "./ui/skeleton";
 import { useRouter } from "next/navigation";
+import { useOrganizations } from "@/hooks/crud/use-organizations";
 
 export function OrganizationSwitcher() {
   const { isMobile } = useSidebar();
@@ -28,8 +29,12 @@ export function OrganizationSwitcher() {
 
   const { data: activeOrg, isPending: isPendingActive } =
     authClient.useActiveOrganization();
-  const { data: organizations, isPending: isPendingList } =
-    authClient.useListOrganizations();
+  const { data: organizationsData, isPending: isPendingList } = useOrganizations({
+    page: 1,
+    pageSize: 1000,
+  });
+
+  const organizations = organizationsData?.data || [];
 
   const isPending = isPendingActive || isPendingList;
 

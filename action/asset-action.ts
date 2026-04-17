@@ -8,7 +8,8 @@ import { revalidatePath } from 'next/cache';
 import { createAuditLog } from '@/lib/logger';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
-
+import path from 'path';
+import fs from 'fs';
 /* =======================
    TYPES
  ======================= */
@@ -554,11 +555,10 @@ export async function exportAssetPDF({
   });
 
   // PDF
-  const doc = new PDFDocument();
+  const fontPath = path.join(process.cwd(), 'public/fonts/Roboto-Regular.ttf');
+  const doc = new PDFDocument({ font: fontPath, size: 'A4', margin: 50 });
   const chunks: Uint8Array[] = [];
-
   doc.on('data', (c) => chunks.push(c));
-
   return new Promise<string>((resolve) => {
     doc.on('end', () => {
       const buffer = Buffer.concat(chunks);

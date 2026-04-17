@@ -1,6 +1,10 @@
+/* eslint-disable react-hooks/set-state-in-effect */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
+
 import { useDialog } from "@/context/dialog-provider";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+
 import {
     Dialog,
     DialogContent,
@@ -9,36 +13,102 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+    Field,
+    FieldContent,
+    FieldDescription,
+    FieldLabel,
+    FieldTitle,
+} from "@/components/ui/field";
+
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { useExportAssets } from "@/hooks/crud/use-assets";
+import { SpinnerEmpty } from "@/components/loader";
 
 export function AssetPrintDialog() {
     const { open, setOpen } = useDialog();
-    const [printType, setPrintType] = useState<"all" | "monthly">("all");
-    const [month, setMonth] = useState("");
-    const [year, setYear] = useState(new Date().getFullYear().toString());
 
-    const handlePrint = () => {
-        let url = "/assets/print-pdf?type=" + printType;
-        if (printType === "monthly" && month && year) {
-            url += `&month=${month}&year=${year}`;
+    const [printType, setPrintType] = useState<"all" | "latest" | "monthly">("all");
+
+    const [dateRange, setDateRange] = useState<{
+        from?: Date;
+        to?: Date;
+    }>({});
+
+    const [fileUrl, setFileUrl] = useState<string | null>(null);
+
+    const { mutateAsync, isPending } = useExportAssets();
+
+    // ✅ Reset saat dialog dibuka ulang
+    useEffect(() => {
+        if (open === "print-pdf") {
+            setFileUrl(null);
         }
-        window.open(url, "_blank");
-        setOpen(null);
+    }, [open]);
+
+    // ✅ Cleanup blob (hindari memory leak)
+    useEffect(() => {
+        return () => {
+            if (fileUrl) URL.revokeObjectURL(fileUrl);
+        };
+    }, [fileUrl]);
+
+    const handlePrint = async () => {
+        try {
+            setFileUrl(null);
+
+            const payload: any = {
+                type: printType === "monthly" ? "range" : printType,
+                organizationId: "ORG_ID_KAMU", // 🔥 ganti dari session
+            };
+
+            if (printType === "monthly" && dateRange.from) {
+                const from = new Date(dateRange.from);
+                const to = new Date(dateRange.to ?? dateRange.from);
+
+                // ✅ FIX timezone
+                from.setHours(0, 0, 0, 0);
+                to.setHours(23, 59, 59, 999);
+
+                payload.dateFrom = from;
+                payload.dateTo = to;
+            }
+
+            const base64 = await mutateAsync(payload);
+
+            // ✅ base64 → blob
+            const binary = atob(base64);
+            const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+            const blob = new Blob([bytes], { type: "application/pdf" });
+
+            const url = URL.createObjectURL(blob);
+
+            // ❗ simpan, tidak langsung download
+            setFileUrl(url);
+        } catch (error) {
+            console.error("Export failed:", error);
+        }
     };
 
-    const currentYear = new Date().getFullYear();
-    const years = Array.from({ length: 10 }, (_, i) => (currentYear - i).toString());
+    const handleDownload = () => {
+        if (!fileUrl) return;
+
+        const a = document.createElement("a");
+        a.href = fileUrl;
+        a.download = `assets-${printType}.pdf`;
+        a.click();
+    };
 
     return (
-        <Dialog open={open === "print"} onOpenChange={() => setOpen("print")}>
+        <Dialog
+            open={open === "print-pdf"}
+            onOpenChange={(isOpen) => !isOpen && setOpen(null)}
+        >
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>Cetak Laporan Aset</DialogTitle>
@@ -48,69 +118,94 @@ export function AssetPrintDialog() {
                 </DialogHeader>
 
                 <div className="space-y-4">
+                    {/* TYPE */}
                     <div className="space-y-2">
                         <Label>Jenis Cetakan</Label>
-                        <Select value={printType} onValueChange={(value: "all" | "monthly") => setPrintType(value)}>
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Cetak Semua Data</SelectItem>
-                                <SelectItem value="monthly">Cetak Data Bulan Tertentu</SelectItem>
-                            </SelectContent>
-                        </Select>
+
+                        <RadioGroup
+                            value={printType}
+                            onValueChange={(val) =>
+                                setPrintType(val as "all" | "latest" | "monthly")
+                            }
+                        >
+                            <FieldLabel htmlFor="all">
+                                <Field orientation="horizontal">
+                                    <FieldContent>
+                                        <FieldTitle>Semua Aset</FieldTitle>
+                                        <FieldDescription>
+                                            Cetak semua data aset
+                                        </FieldDescription>
+                                    </FieldContent>
+                                    <RadioGroupItem value="all" id="all" />
+                                </Field>
+                            </FieldLabel>
+
+                            <FieldLabel htmlFor="latest">
+                                <Field orientation="horizontal">
+                                    <FieldContent>
+                                        <FieldTitle>Data Terbaru</FieldTitle>
+                                        <FieldDescription>
+                                            Cetak data aset terbaru
+                                        </FieldDescription>
+                                    </FieldContent>
+                                    <RadioGroupItem value="latest" id="latest" />
+                                </Field>
+                            </FieldLabel>
+
+                            <FieldLabel htmlFor="monthly">
+                                <Field orientation="horizontal">
+                                    <FieldContent>
+                                        <FieldTitle>Periode Tanggal</FieldTitle>
+                                        <FieldDescription>
+                                            Cetak berdasarkan rentang tanggal
+                                        </FieldDescription>
+                                    </FieldContent>
+                                    <RadioGroupItem value="monthly" id="monthly" />
+                                </Field>
+                            </FieldLabel>
+                        </RadioGroup>
                     </div>
 
+                    {/* DATE RANGE */}
                     {printType === "monthly" && (
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label>Bulan</Label>
-                                <Select value={month} onValueChange={setMonth}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Pilih bulan" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="01">Januari</SelectItem>
-                                        <SelectItem value="02">Februari</SelectItem>
-                                        <SelectItem value="03">Maret</SelectItem>
-                                        <SelectItem value="04">April</SelectItem>
-                                        <SelectItem value="05">Mei</SelectItem>
-                                        <SelectItem value="06">Juni</SelectItem>
-                                        <SelectItem value="07">Juli</SelectItem>
-                                        <SelectItem value="08">Agustus</SelectItem>
-                                        <SelectItem value="09">September</SelectItem>
-                                        <SelectItem value="10">Oktober</SelectItem>
-                                        <SelectItem value="11">November</SelectItem>
-                                        <SelectItem value="12">Desember</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Tahun</Label>
-                                <Select value={year} onValueChange={setYear}>
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {years.map((y) => (
-                                            <SelectItem key={y} value={y}>
-                                                {y}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                        <div className="space-y-2">
+                            <Label>Rentang Tanggal</Label>
+
+                            <DateRangePicker
+                                onChange={(range) => setDateRange(range || {})}
+                            />
                         </div>
                     )}
-                </div>
 
+                    {/* LOADING */}
+                    {isPending && (
+                        <div className="flex justify-center">
+                            <SpinnerEmpty />
+                        </div>
+                    )}
+
+                </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setOpen(null)}>
                         Batal
                     </Button>
-                    <Button onClick={handlePrint} disabled={printType === "monthly" && (!month || !year)}>
-                        Cetak PDF
-                    </Button>
+
+                    {!fileUrl ? (
+                        <Button
+                            onClick={handlePrint}
+                            disabled={
+                                isPending ||
+                                (printType === "monthly" &&
+                                    (!dateRange.from || !dateRange.to))
+                            }
+                        >
+                            {isPending ? "Memproses..." : "Generate PDF"}
+                        </Button>
+                    ) : (
+                        <Button onClick={handleDownload}>
+                            Unduh PDF
+                        </Button>
+                    )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>

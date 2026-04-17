@@ -29,6 +29,7 @@ import {
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { useExportAssets } from "@/hooks/crud/use-assets";
 import { SpinnerEmpty } from "@/components/loader";
+import { authClient } from "@/lib/auth-client";
 
 export function AssetPrintDialog() {
     const { open, setOpen } = useDialog();
@@ -58,13 +59,13 @@ export function AssetPrintDialog() {
         };
     }, [fileUrl]);
 
+    const { data: session } = authClient.useSession();
     const handlePrint = async () => {
         try {
             setFileUrl(null);
-
             const payload: any = {
                 type: printType === "monthly" ? "range" : printType,
-                organizationId: "ORG_ID_KAMU", // 🔥 ganti dari session
+                organizationId: session?.session.activeOrganizationId, // 🔥 ganti dari session
             };
 
             if (printType === "monthly" && dateRange.from) {

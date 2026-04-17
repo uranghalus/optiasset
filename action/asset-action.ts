@@ -522,6 +522,7 @@ export async function deleteAsset(id: string) {
 /* =======================
    GET ASSETS FOR PRINT
  ======================= */
+
 export async function exportAssetPDF({
   type,
   dateFrom,
@@ -529,19 +530,22 @@ export async function exportAssetPDF({
   organizationId,
 }: {
   type: 'all' | 'latest' | 'range';
-  dateFrom?: Date;
-  dateTo?: Date;
+  dateFrom?: string;
+  dateTo?: string;
   organizationId: string;
 }) {
-  let where: any = {
-    organizationId,
-  };
+  let where: any = { organizationId };
 
-  // ✅ RANGE FILTER
   if (type === 'range' && dateFrom && dateTo) {
+    const from = new Date(dateFrom);
+    const to = new Date(dateTo);
+
+    from.setHours(0, 0, 0, 0);
+    to.setHours(23, 59, 59, 999);
+
     where.createdAt = {
-      gte: new Date(dateFrom),
-      lte: new Date(dateTo),
+      gte: from,
+      lte: to,
     };
   }
 
@@ -554,34 +558,116 @@ export async function exportAssetPDF({
     },
   });
 
-  // PDF
-  const fontPath = path.join(process.cwd(), 'public/fonts/Roboto-Regular.ttf');
-  const doc = new PDFDocument({ font: fontPath, size: 'A4', margin: 50 });
+  const fontRegular = path.join(
+    process.cwd(),
+    'public/fonts/Roboto-Regular.ttf',
+  );
+  const fontBold = path.join(process.cwd(), 'public/fonts/Roboto-Bold.ttf');
+
+  const doc = new PDFDocument({
+    font: fontRegular,
+    size: 'A4',
+    margin: 40,
+  });
   const chunks: Uint8Array[] = [];
   doc.on('data', (c) => chunks.push(c));
+
   return new Promise<string>((resolve) => {
     doc.on('end', () => {
       const buffer = Buffer.concat(chunks);
       resolve(buffer.toString('base64'));
     });
 
-    doc.text('Asset Report');
-    doc.moveDown();
+    // ================= HEADER =================
+    doc.font(fontBold).fontSize(16).text('LAPORAN DATA ASET', {
+      align: 'center',
+    });
 
-    doc.text(`Filter: ${type}`);
+    doc.moveDown(0.5);
+
+    doc
+      .font(fontRegular)
+      .fontSize(10)
+      .text(`Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}`, {
+        align: 'center',
+      });
+
     if (dateFrom && dateTo) {
-      doc.text(`Range: ${dateFrom.toDateString()} - ${dateTo.toDateString()}`);
+      doc.text(
+        `Periode: ${new Date(dateFrom).toLocaleDateString(
+          'id-ID',
+        )} - ${new Date(dateTo).toLocaleDateString('id-ID')}`,
+        { align: 'center' },
+      );
     }
 
-    doc.moveDown();
+    doc.moveDown(1.5);
+
+    // ================= TABLE =================
+
+    const tableTop = doc.y;
+    const col = {
+      no: 40,
+      item: 70,
+      brand: 200,
+      model: 300,
+      serial: 400,
+      status: 500,
+    };
+
+    const rowHeight = 20;
+
+    // HEADER TABLE
+    doc.font(fontBold).fontSize(10);
+
+    doc.text('No', col.no, tableTop);
+    doc.text('Item', col.item, tableTop);
+    doc.text('Brand', col.brand, tableTop);
+    doc.text('Model', col.model, tableTop);
+    doc.text('Serial', col.serial, tableTop);
+    doc.text('Status', col.status, tableTop);
+
+    // garis bawah header
+    doc
+      .moveTo(40, tableTop + 15)
+      .lineTo(550, tableTop + 15)
+      .stroke();
+
+    let y = tableTop + 20;
+
+    doc.font(fontRegular);
 
     assets.forEach((a, i) => {
-      doc.text(
-        `${i + 1}. ${a.item?.name ?? '-'} | ${a.brand ?? '-'} | ${
-          a.model ?? '-'
-        }`,
-      );
+      // PAGE BREAK
+      if (y > 750) {
+        doc.addPage();
+        y = 50;
+      }
+
+      doc.text(String(i + 1), col.no, y);
+      doc.text(a.item?.name ?? '-', col.item, y, { width: 120 });
+      doc.text(a.brand ?? '-', col.brand, y, { width: 90 });
+      doc.text(a.model ?? '-', col.model, y, { width: 90 });
+      doc.text(a.serialNumber ?? '-', col.serial, y, { width: 90 });
+      doc.text(a.status ?? '-', col.status, y, { width: 60 });
+
+      // garis row
+      doc
+        .moveTo(40, y + 15)
+        .lineTo(550, y + 15)
+        .strokeOpacity(0.2)
+        .stroke()
+        .strokeOpacity(1);
+
+      y += rowHeight;
     });
+
+    // ================= FOOTER =================
+    doc.moveDown(2);
+
+    doc.fontSize(10).text('Mengetahui,', { align: 'right' });
+    doc.moveDown(3);
+    doc.text('(_____________________)', { align: 'right' });
 
     doc.end();
   });

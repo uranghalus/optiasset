@@ -9,7 +9,8 @@ import { createAuditLog } from '@/lib/logger';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 import path from 'path';
-import fs from 'fs';
+import ExcelJS from 'exceljs';
+
 /* =======================
    TYPES
  ======================= */
@@ -671,4 +672,120 @@ export async function exportAssetPDF({
 
     doc.end();
   });
+}
+type ExportType = 'all' | 'latest' | 'monthly';
+// LINK export excel
+export async function exportAssetExcel({
+  type,
+  dateFrom,
+  dateTo,
+  organizationId,
+}: {
+  type: ExportType;
+  dateFrom?: Date;
+  dateTo?: Date;
+  organizationId: string;
+}) {
+  let where: any = {
+    organizationId,
+  };
+
+  // ✅ FILTER LOGIC
+  if (type === 'latest') {
+    where.createdAt = {
+      gte: new Date(new Date().setDate(new Date().getDate() - 7)), // 7 hari terakhir
+    };
+  }
+
+  if (type === 'monthly' && dateFrom && dateTo) {
+    where.purchaseDate = {
+      gte: dateFrom,
+      lte: dateTo,
+    };
+  }
+
+  const assets = await prisma.asset.findMany({
+    where,
+    include: {
+      item: true,
+      location: true,
+      department: true,
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+
+  // ✅ CREATE EXCEL
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Assets');
+
+  // HEADER
+  worksheet.columns = [
+    { header: 'No', key: 'no', width: 5 },
+    { header: 'Item Name', key: 'item', width: 25 },
+    { header: 'Brand', key: 'brand', width: 20 },
+    { header: 'Model', key: 'model', width: 20 },
+    { header: 'Part Number', key: 'partNumber', width: 20 },
+    { header: 'Serial Number', key: 'serialNumber', width: 25 },
+    { header: 'Condition', key: 'condition', width: 15 },
+    { header: 'Purchase Date', key: 'purchaseDate', width: 20 },
+    { header: 'Price', key: 'price', width: 15 },
+    { header: 'Location', key: 'location', width: 20 },
+    { header: 'Department', key: 'department', width: 20 },
+    { header: 'Status', key: 'status', width: 15 },
+    { header: 'Vendor', key: 'vendor', width: 20 },
+  ];
+
+  // STYLE HEADER
+  worksheet.getRow(1).eachCell((cell) => {
+    cell.font = { bold: true };
+    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    cell.border = {
+      top: { style: 'thin' },
+      bottom: { style: 'thin' },
+      left: { style: 'thin' },
+      right: { style: 'thin' },
+    };
+  });
+
+  // DATA
+  assets.forEach((asset, index) => {
+    worksheet.addRow({
+      no: index + 1,
+      item: asset.item?.name || '-',
+      brand: asset.brand || '-',
+      model: asset.model || '-',
+      partNumber: asset.partNumber || '-',
+      serialNumber: asset.serialNumber || '-',
+      condition: asset.condition || '-',
+      purchaseDate: asset.purchaseDate
+        ? new Date(asset.purchaseDate).toLocaleDateString()
+        : '-',
+      price: asset.purchasePrice || 0,
+      location: asset.location?.name || '-',
+      department: asset.department?.nama_department || '-',
+      status: asset.status,
+      vendor: asset.vendorName || '-',
+    });
+  });
+
+  // AUTO BORDER DATA
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return;
+
+    row.eachCell((cell) => {
+      cell.border = {
+        top: { style: 'thin' },
+        bottom: { style: 'thin' },
+        left: { style: 'thin' },
+        right: { style: 'thin' },
+      };
+    });
+  });
+
+  // BUFFER
+  const buffer = await workbook.xlsx.writeBuffer();
+
+  return buffer;
 }

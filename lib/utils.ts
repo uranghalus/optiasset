@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
-
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge'; // sesuaikan path
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -23,27 +22,27 @@ export function getPageNumbers(currentPage: number, totalPages: number) {
       for (let i = 2; i <= 4; i++) {
         rangeWithDots.push(i);
       }
-      rangeWithDots.push("...", totalPages);
+      rangeWithDots.push('...', totalPages);
     } else if (currentPage >= totalPages - 2) {
       // Near the end: [1] ... [7] [8] [9] [10]
-      rangeWithDots.push("...");
+      rangeWithDots.push('...');
       for (let i = totalPages - 3; i <= totalPages; i++) {
         rangeWithDots.push(i);
       }
     } else {
       // In the middle: [1] ... [4] [5] [6] ... [10]
-      rangeWithDots.push("...");
+      rangeWithDots.push('...');
       for (let i = currentPage - 1; i <= currentPage + 1; i++) {
         rangeWithDots.push(i);
       }
-      rangeWithDots.push("...", totalPages);
+      rangeWithDots.push('...', totalPages);
     }
   }
 
   return rangeWithDots;
 }
 export function formatPhone(value: string) {
-  const digits = value.replace(/\D/g, "");
+  const digits = value.replace(/\D/g, '');
 
   if (digits.length <= 4) return digits;
   if (digits.length <= 8) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
@@ -70,12 +69,12 @@ export function serializePrisma<T>(data: T): T {
   // 2. has toDecimalPlaces (unique to decimal.js / Prisma Decimal)
   // 3. has toNumber + toString but is NOT a plain number
   if (
-    typeof data === "object" &&
+    typeof data === 'object' &&
     data !== null &&
-    typeof (data as any).toNumber === "function" &&
-    ((data as any).constructor?.name?.toLowerCase().includes("decimal") ||
-      typeof (data as any).toDecimalPlaces === "function" ||
-      typeof (data as any).isFinite === "function")
+    typeof (data as any).toNumber === 'function' &&
+    ((data as any).constructor?.name?.toLowerCase().includes('decimal') ||
+      typeof (data as any).toDecimalPlaces === 'function' ||
+      typeof (data as any).isFinite === 'function')
   ) {
     return (data as any).toNumber() as unknown as T;
   }
@@ -86,7 +85,7 @@ export function serializePrisma<T>(data: T): T {
   }
 
   // Plain object
-  if (typeof data === "object") {
+  if (typeof data === 'object') {
     const serialized: any = {};
     for (const key in data) {
       if (Object.prototype.hasOwnProperty.call(data, key)) {

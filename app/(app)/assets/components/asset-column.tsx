@@ -9,7 +9,7 @@ import { Prisma } from "@/generated/prisma/client";
 import AssetRowAction from "./asset-row-action";
 import { format } from "date-fns";
 
-type AssetWithItem = Prisma.AssetGetPayload<{
+export type AssetWithItem = Prisma.AssetGetPayload<{
   include: {
     item: {
       select: {

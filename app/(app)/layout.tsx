@@ -14,6 +14,8 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import React from "react";
 import { BarcodeScannerDialog } from "@/components/assets/barcode-scanner-dialog";
+import { PermissionProvider } from "@/context/permission-provider";
+import { getPermissionMap } from "@/lib/get-permissions";
 
 export default async function AppLayout({
   children,
@@ -39,37 +41,40 @@ export default async function AppLayout({
       });
     }
   }
+  const permissionMap = await getPermissionMap();
 
   return (
     <ThemeProvider>
-      <SearchProvider>
-        <LayoutProvider>
-          <SidebarProvider defaultOpen={defaultOpen} className="print:block">
-            <div className="print:hidden">
-              <AppSidebar />
-            </div>
-            <SidebarInset
-              className={cn(
-                "@container/content",
-                "has-[[data-layout=fixed]]:h-svh",
-                "peer-data-[variant=inset]:has-[[data-layout=fixed]]:h-[calc(100svh-(var(--spacing)*4))]",
-                "print:p-0 print:border-none",
-              )}
-            >
+      <PermissionProvider permissionMap={permissionMap}>
+        <SearchProvider>
+          <LayoutProvider>
+            <SidebarProvider defaultOpen={defaultOpen} className="print:block">
               <div className="print:hidden">
-                <Header>
-                  <div className="ms-auto flex items-center space-x-4">
-                    <ThemeSwitch />
-                    <ProfileDropdown />
-                  </div>
-                </Header>
+                <AppSidebar />
               </div>
+              <SidebarInset
+                className={cn(
+                  "@container/content",
+                  "has-[[data-layout=fixed]]:h-svh",
+                  "peer-data-[variant=inset]:has-[[data-layout=fixed]]:h-[calc(100svh-(var(--spacing)*4))]",
+                  "print:p-0 print:border-none",
+                )}
+              >
+                <div className="print:hidden">
+                  <Header>
+                    <div className="ms-auto flex items-center space-x-4">
+                      <ThemeSwitch />
+                      <ProfileDropdown />
+                    </div>
+                  </Header>
+                </div>
 
-              <Main fluid>{children}</Main>
-            </SidebarInset>
-          </SidebarProvider>
-        </LayoutProvider>
-      </SearchProvider>
+                <Main fluid>{children}</Main>
+              </SidebarInset>
+            </SidebarProvider>
+          </LayoutProvider>
+        </SearchProvider>
+      </PermissionProvider>
     </ThemeProvider>
   );
 }

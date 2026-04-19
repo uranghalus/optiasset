@@ -19,192 +19,273 @@ import {
   Layers,
   Warehouse,
   ClipboardList,
-  Truck,
   ShieldUser,
   User,
-} from "lucide-react";
+} from 'lucide-react';
 
-import { SidebarData } from "@/types";
+import { SidebarData } from '@/types';
 
 export const sidebarData: SidebarData = {
-  // ======================
-  // INFO APLIKASI
-  // ======================
   teams: [
     {
-      name: "DutaAsset",
+      name: 'DutaAsset',
       logo: Package,
-      plan: "v1.0.0",
+      plan: 'v1.0.0',
     },
   ],
 
-  // ======================
-  // NAVIGASI
-  // ======================
   navGroups: [
     // ---------- UMUM ----------
     {
-      title: "Umum",
+      title: 'Umum',
       items: [
         {
-          title: "Dashboard",
-          url: "/dashboard",
+          title: 'Dashboard',
+          url: '/dashboard',
           icon: LayoutDashboard,
         },
         {
-          title: "Tambah Aset",
-          url: "/assets/create",
+          title: 'Tambah Aset',
+          url: '/assets/create',
           icon: Package,
+          permission: {
+            resource: 'asset',
+            actions: ['create'],
+          },
         },
       ],
     },
 
     // ---------- MANAJEMEN ASET ----------
     {
-      title: "Manajemen Aset",
+      title: 'Manajemen Aset',
       items: [
         {
-          title: "Daftar Aset",
-          url: "/assets",
+          title: 'Daftar Aset',
+          url: '/assets',
           icon: Boxes,
+          permission: {
+            resource: 'asset',
+            actions: ['view'],
+          },
         },
         {
-          title: "Master Item",
-          url: "/items",
+          title: 'Master Item',
+          url: '/items',
           icon: Package,
+          permission: {
+            resource: 'inventory',
+            actions: ['view'],
+          },
         },
         {
-          title: "Kategori",
-          url: "/categories",
+          title: 'Kategori',
+          url: '/categories',
           icon: Tags,
+          permission: {
+            resource: 'asset.category',
+            actions: ['view'],
+          },
         },
         {
-          title: "Lokasi",
-          url: "/locations",
+          title: 'Lokasi',
+          url: '/locations',
           icon: MapPin,
+          permission: {
+            resource: 'asset.location',
+            actions: ['view'],
+          },
         },
         {
-          title: "Department",
-          url: "/departments",
+          title: 'Department',
+          url: '/departments',
           icon: Network,
+          permission: {
+            resource: 'department',
+            actions: ['view'],
+          },
         },
         {
-          title: "Divisi",
-          url: "/divisions",
+          title: 'Divisi',
+          url: '/divisions',
           icon: Layers,
+          permission: {
+            resource: 'division',
+            actions: ['view'],
+          },
         },
         {
-          title: "Mutasi Aset",
-          url: "/asset-transfers",
+          title: 'Mutasi Aset',
+          url: '/asset-transfers',
           icon: Move,
+          permission: {
+            resource: 'asset.transfer',
+            actions: ['view'],
+          },
         },
         {
-          title: "Penghapusan Aset",
-          url: "/asset-disposals",
+          title: 'Penghapusan Aset',
+          url: '/asset-disposals',
           icon: ArchiveX,
+          permission: {
+            resource: 'asset',
+            actions: ['delete'],
+          },
         },
         {
-          title: "Audit Log",
-          url: "/audit-logs",
+          title: 'Audit Log',
+          url: '/audit-logs',
           icon: History,
+          permission: {
+            resource: 'audit.log',
+            actions: ['view'],
+          },
         },
       ],
     },
 
-    // ---------- INVENTORY / PERSEDIAAN ----------
+    // ---------- INVENTORY ----------
     {
-      title: "Persediaan",
+      title: 'Persediaan',
       items: [
         {
-          title: "Stok Barang",
-          url: "/stocks",
+          title: 'Stok Barang',
+          url: '/stocks',
           icon: Warehouse,
+          permission: {
+            resource: 'inventory',
+            actions: ['view'],
+          },
         },
         {
-          title: "Transaksi Stok",
-          url: "/stock-transactions",
+          title: 'Transaksi Stok',
+          url: '/stock-transactions',
           icon: ClipboardList,
+          permission: {
+            resource: 'inventory',
+            actions: ['view'],
+          },
         },
       ],
     },
 
     // ---------- OPERASIONAL ----------
     {
-      title: "Operasional",
+      title: 'Operasional',
       items: [
         {
-          title: "Peminjaman Aset",
-          url: "/asset-loans",
+          title: 'Peminjaman Aset',
+          url: '/asset-loans',
           icon: Handshake,
+          permission: {
+            resource: 'asset.loan',
+            actions: ['view'],
+          },
         },
         {
-          title: "Perawatan Aset",
-          url: "/maintenances",
+          title: 'Perawatan Aset',
+          url: '/maintenances',
           icon: Wrench,
+          permission: {
+            resource: 'asset.maintenance',
+            actions: ['view'],
+          },
         },
         {
-          title: "Jadwal Perawatan",
-          url: "/maintenance-schedules",
+          title: 'Jadwal Perawatan',
+          url: '/maintenance-schedules',
           icon: Clock,
+          permission: {
+            resource: 'asset.maintenance',
+            actions: ['view'],
+          },
         },
         {
-          title: "Persetujuan",
-          url: "/approvals",
+          title: 'Persetujuan',
+          url: '/approvals',
           icon: CheckSquare,
+          permission: {
+            resource: 'asset.transfer',
+            actions: ['approve'],
+          },
         },
       ],
     },
 
     // ---------- ORGANISASI ----------
     {
-      title: "Organisasi",
+      title: 'Organisasi',
       items: [
         {
-          title: "Organisasi",
-          url: "/organizations",
+          title: 'Organisasi',
+          url: '/organizations',
           icon: Building2,
+          permission: {
+            resource: 'ac',
+            actions: ['view'],
+          },
         },
         {
-          title: "Pengguna",
-          url: "/users",
+          title: 'Pengguna',
+          url: '/users',
           icon: User,
+          permission: {
+            resource: 'user',
+            actions: ['view'],
+          },
         },
         {
-          title: "Tim",
-          url: "/teams",
+          title: 'Tim',
+          url: '/teams',
           icon: Layers,
+          permission: {
+            resource: 'team',
+            actions: ['view'],
+          },
         },
         {
-          title: "Anggota",
-          url: "/members",
+          title: 'Anggota',
+          url: '/members',
           icon: UserCircle,
+          permission: {
+            resource: 'employee',
+            actions: ['view'],
+          },
         },
         {
-          title: "Role",
-          url: "/roles",
+          title: 'Role',
+          url: '/roles',
           icon: ShieldUser,
+          permission: {
+            resource: 'role',
+            actions: ['view'],
+          },
         },
       ],
     },
 
     // ---------- PENGATURAN ----------
     {
-      title: "Pengaturan",
+      title: 'Pengaturan',
       items: [
         {
-          title: "Profil",
-          url: "/settings/profile",
+          title: 'Profil',
+          url: '/settings/profile',
           icon: UserCircle,
         },
         {
-          title: "Preferensi",
-          url: "/settings/preferences",
+          title: 'Preferensi',
+          url: '/settings/preferences',
           icon: Sliders,
         },
         {
-          title: "Impor & Ekspor",
-          url: "/settings/import-export",
+          title: 'Impor & Ekspor',
+          url: '/settings/import-export',
           icon: Upload,
+          permission: {
+            resource: 'asset',
+            actions: ['import'],
+          },
         },
       ],
     },

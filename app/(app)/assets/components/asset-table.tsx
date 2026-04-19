@@ -1,7 +1,6 @@
 "use client";
 import { useAssets } from "@/hooks/crud/use-assets";
-import React, { useState } from "react";
-import { format } from "date-fns";
+import { useState } from "react";
 import { assetColumns } from "./asset-column";
 import { useDataTable } from "@/hooks/use-data-table";
 import { DataTableToolbar } from "@/components/datatable/datatable-toolbar";
@@ -9,9 +8,10 @@ import { DataTable } from "@/components/datatable/data-table";
 import { DataTablePagination } from "@/components/datatable/datatable-pagination";
 import { useDialog } from "@/context/dialog-provider";
 import { Button } from "@/components/ui/button";
-import { ArchiveIcon, FileDown, FileSpreadsheet, MailCheckIcon, MoreHorizontalIcon, Plus, Printer, ScanLine } from "lucide-react";
+import { FileDown, MoreHorizontalIcon, Plus, Printer, ScanLine } from "lucide-react";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { usePermission } from "@/hooks/use-permission";
 
 export default function AssetTable() {
   const { setOpen } = useDialog();
@@ -19,6 +19,9 @@ export default function AssetTable() {
     pageIndex: 0,
     pageSize: 10,
   });
+  const { can, permissionMap } = usePermission();
+  console.log("permission map", permissionMap);
+
   const { data, isLoading } = useAssets({
     page: pagination.pageIndex,
     pageSize: pagination.pageSize,
@@ -43,10 +46,12 @@ export default function AssetTable() {
       >
         <div className="flex gap-2">
 
-          <Button onClick={() => setOpen("add")} className="gap-2">
-            <Plus className="size-4" />
-            Tambah Aset
-          </Button>
+          {can('asset', ['create']) && (
+            <Button onClick={() => setOpen("add")} className="gap-2">
+              <Plus className="size-4" />
+              Tambah Aset
+            </Button>
+          )}
           <ButtonGroup>
             <Button onClick={() => setOpen("scan")} className="gap-2"
               variant={'outline'}>

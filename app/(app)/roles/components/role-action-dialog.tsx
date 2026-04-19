@@ -106,12 +106,12 @@ export function OrgRoleActionDialog({ open, onOpenChange, currentRow }: Props) {
 
       onOpenChange(false);
       form.reset();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
 
       form.setError("root", {
         type: "server",
-        message: "Terjadi kesalahan saat menyimpan role",
+        message: error?.message || "Terjadi kesalahan saat menyimpan role",
       });
     }
   };

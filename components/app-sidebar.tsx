@@ -6,65 +6,70 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
 
 import { NavGroup } from "./nav-group";
-
 import { sidebarData } from "@/config/sidebar-data";
-import { authClient } from "@/lib/auth-client";
-import type { NavItem } from "@/types";
 import { NavUser } from "./nav-user";
 import { OrganizationSwitcher } from "./organization-switcher";
-import { GalleryVerticalEnd } from "lucide-react";
 
-/**
- * Cek apakah satu item/group diperbolehkan tampil berdasarkan role user.
- */
-function isAllowed(
-  roles: string[] | undefined,
-  userRole: string | undefined,
-): boolean {
-  if (!roles || roles.length === 0) return true;
-  if (!userRole) return false;
-  return roles.includes(userRole);
+import { usePermission } from "@/hooks/use-permission";
+import type { NavItem } from "@/types";
+import type { Resource, Action } from "@/lib/permission-type";
+
+//
+// 🔥 TYPE untuk function can()
+//
+type CanFunction = <T extends Resource>(
+  resource: T,
+  actions: Action<T>[]
+) => boolean;
+
+//
+// 🔥 CHECK PERMISSION
+//
+function isAllowedByPermission(item: NavItem, can: CanFunction): boolean {
+  if (!item.permission) return true;
+
+  return can(item.permission.resource as Resource, item.permission.actions as Action<Resource>[]);
 }
 
-/**
- * Filter item-item dalam satu group berdasarkan role user.
- */
-function filterItems(
-  items: NavItem[],
-  userRole: string | undefined,
-): NavItem[] {
+//
+// 🔥 FILTER ITEM (recursive)
+//
+function filterItems(items: NavItem[], can: CanFunction): NavItem[] {
   return items
-    .filter((item) => isAllowed(item.roles, userRole))
+    .filter((item) => isAllowedByPermission(item, can))
     .map((item) => {
       if (item.items) {
-        return { ...item, items: filterItems(item.items, userRole) };
+        return {
+          ...item,
+          items: filterItems(item.items, can),
+        };
       }
       return item;
-    });
+    })
+    .filter((item) => !item.items || item.items.length > 0);
 }
 
+//
+// 🔥 MAIN COMPONENT
+//
 export function AppSidebar() {
   const { collapsible, variant } = useLayout();
+  const { can, loading } = usePermission();
 
-  // ✅ Ambil session saja (tanpa organization)
-  const { data: session } = authClient.useSession();
+  // ⛔ Hindari flicker
+  if (loading) return null;
 
-  // ✅ Role langsung dari user
-  const userRole = session?.user?.role;
-
-  // Filter navGroups
+  //
+  // 🔥 FILTER GROUP + ITEMS
+  //
   const visibleNavGroups = sidebarData.navGroups
-    .filter((group) => isAllowed(group.roles, userRole))
     .map((group) => ({
       ...group,
-      items: filterItems(group.items, userRole),
+      items: filterItems(group.items, can),
     }))
     .filter((group) => group.items.length > 0);
 

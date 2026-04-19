@@ -9,6 +9,7 @@ import { AssetTransferDialog } from "./asset-transfer-dialog";
 import { AssetPrintDialog } from "./asset-print-dialog";
 import { BarcodeScannerDialog } from "@/components/assets/barcode-scanner-dialog";
 import { AssetLoanDialog } from "./asset-loan-dialog";
+import { AssetWithItem } from "./asset-column";
 
 export default function AssetDialogs() {
   const { currentRow, open, setCurrentRow, setOpen } = useDialog();
@@ -35,7 +36,7 @@ export default function AssetDialogs() {
           <AssetDeleteDialog key={`asset-delete-${(currentRow as Asset).id}`} />
           <AssetQRDialog
             key={`asset-qr-${(currentRow as Asset).id}`}
-            asset={currentRow as Asset}
+            asset={currentRow as AssetWithItem}
             open={open === "view-qr"}
             onOpenChange={() => {
               setOpen("view-qr");
@@ -44,7 +45,7 @@ export default function AssetDialogs() {
           />
           <AssetTransferDialog
             key={`asset-transfer-${(currentRow as Asset).id}`}
-            asset={currentRow as Asset}
+            asset={currentRow as AssetWithItem}
             open={open === "transfer"}
             onOpenChange={() => {
               setOpen("transfer");
@@ -53,7 +54,7 @@ export default function AssetDialogs() {
           />
           <AssetLoanDialog
             key={`asset-loan-${(currentRow as Asset).id}`}
-            asset={currentRow as Asset}
+            asset={currentRow as AssetWithItem}
             open={open === "loan"}
             onOpenChange={() => {
               setOpen("loan");

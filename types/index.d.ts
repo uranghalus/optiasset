@@ -8,7 +8,7 @@ export type PaginationState = {
   pageSize: number;
   total?: number;
   totalPages?: number;
-}
+};
 
 /* ===================== */
 /* SIDEBAR TYPES */
@@ -24,10 +24,11 @@ export type BaseNavItem = {
   title: string;
   badge?: string;
   icon?: React.ElementType;
-  permission?: PermissionRequirement;
-  /** Jika diisi, hanya role yang ada di array ini yang bisa melihat item ini.
-   *  Jika tidak diisi (undefined), item visible untuk semua role. */
-  roles?: string[];
+  // ✅ baru
+  permission?: {
+    resource: string;
+    actions: string[];
+  };
 };
 
 export type NavLink = BaseNavItem & {

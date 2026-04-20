@@ -39,7 +39,17 @@ export const statement = {
   // ── Asset Management (Sidebar: Asset Management) ─────────────────────────
 
   /** Sidebar: Daftar Aset + Tambah Aset */
-  asset: ['view', 'list', 'create', 'edit', 'delete', 'export', 'import'],
+  asset: [
+    'view',
+    'list',
+    'create',
+    'edit',
+    'delete',
+    'export',
+    'import',
+    'generate-code',
+    'scan-code',
+  ],
 
   /** Sidebar: Kategori Aset — hanya global-scope roles */
   'asset.category': ['view', 'list', 'create', 'edit', 'delete'],
@@ -119,7 +129,17 @@ export const owner = ac.newRole({
   organization: ['update', 'delete'],
 
   // Asset Management — global scope
-  asset: ['view', 'list', 'edit', 'delete', 'export', 'import'],
+  asset: [
+    'view',
+    'list',
+    'edit',
+    'delete',
+    'export',
+    'import',
+    'create',
+    'generate-code',
+    'scan-code',
+  ],
   'asset.category': ['view', 'list', 'create', 'edit', 'delete'],
   'asset.location': ['view', 'list', 'create', 'edit', 'delete'],
   'asset.loan': ['view', 'create', 'return'],

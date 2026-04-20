@@ -97,3 +97,45 @@ export function serializePrisma<T>(data: T): T {
 
   return data;
 }
+
+/**
+ * Convert File to base64 string
+ */
+export async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      resolve(base64);
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Validate image file
+ */
+export function isValidImageFile(file: File): {
+  valid: boolean;
+  error?: string;
+} {
+  const maxFileSize = 5 * 1024 * 1024; // 5MB
+  const allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
+  if (!allowedMimes.includes(file.type)) {
+    return {
+      valid: false,
+      error: 'Format file harus berupa JPG, PNG, WebP, atau GIF',
+    };
+  }
+
+  if (file.size > maxFileSize) {
+    return {
+      valid: false,
+      error: 'Ukuran file tidak boleh melebihi 5MB',
+    };
+  }
+
+  return { valid: true };
+}

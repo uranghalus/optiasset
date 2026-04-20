@@ -1,9 +1,10 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import {
   Dialog,
@@ -24,14 +25,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { Camera, X } from "lucide-react";
 
 import { Field, FieldLabel, FieldError } from "@/components/ui/field";
 
@@ -43,7 +39,7 @@ import {
   useLocationsForSelect,
 } from "@/hooks/crud/use-assets";
 import { AssetForm, AssetFormSchema } from "@/schema/asset-schema";
-import { cn } from "@/lib/utils";
+import { isValidImageFile, fileToBase64 } from "@/lib/utils";
 
 type Props = {
   open: boolean;
@@ -53,6 +49,8 @@ type Props = {
 
 export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
   const isEdit = !!currentRow;
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
 
   const createMutation = useCreateAsset();
   const updateMutation = useUpdateAsset();
@@ -63,7 +61,6 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
     resolver: zodResolver(AssetFormSchema),
     defaultValues: {
       itemId: "",
-
       purchaseDate: "",
       purchasePrice: "",
       condition: "GOOD",
@@ -71,9 +68,10 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
       locationId: "",
       departmentId: "",
       notes: "",
-      barcode: "",
+      kode_asset: "",
       vendorName: "",
       garansi_exp: "",
+      photo: undefined,
     },
   });
 
@@ -95,13 +93,14 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
         locationId: currentRow.locationId ?? "",
         departmentId: currentRow.departmentId ?? "",
         notes: currentRow.notes ?? "",
-        barcode: currentRow.barcode ?? "",
+        kode_asset: currentRow.kode_asset ?? "",
         vendorName: currentRow.vendorName ?? "",
-
         garansi_exp: currentRow.garansi_exp
           ? format(new Date(currentRow.garansi_exp), "yyyy-MM-dd")
           : "",
+        photo: undefined,
       });
+      setImagePreview(currentRow.photoUrl ?? null);
     } else {
       form.reset({
         itemId: "",
@@ -115,20 +114,65 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
         model: "",
         partNumber: "",
         notes: "",
-        barcode: "",
+        kode_asset: "",
         vendorName: "",
         garansi_exp: "",
+        photo: undefined,
       });
+      setImagePreview(null);
     }
+    setImageError(null);
   }, [currentRow, form, open]);
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    setImageError(null);
+
+    if (!file) {
+      setImagePreview(null);
+      form.setValue("photo", undefined);
+      return;
+    }
+
+    const validation = isValidImageFile(file);
+    if (!validation.valid) {
+      setImageError(validation.error || "File tidak valid");
+      e.target.value = "";
+      form.setValue("photo", undefined);
+      return;
+    }
+
+    form.setValue("photo", file);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setImagePreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setImagePreview(null);
+    setImageError(null);
+    form.setValue("photo", undefined);
+    const fileInput = document.getElementById("photo-input") as HTMLInputElement;
+    if (fileInput) fileInput.value = "";
+  };
+
   const onSubmit = async (values: AssetForm) => {
     const formData = new FormData();
-    Object.entries(values).forEach(([key, value]) => {
-      if (value) formData.append(key, value);
-    });
+
+    for (const [key, value] of Object.entries(values)) {
+      if (value) {
+        if (key === "photo" && value instanceof File) {
+          const base64 = await fileToBase64(value);
+          formData.append(key, base64);
+        } else {
+          formData.append(key, value as string | Blob);
+        }
+      }
+    }
 
     try {
       if (isEdit && currentRow) {
@@ -138,6 +182,8 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
       }
       onOpenChange(false);
       form.reset();
+      setImagePreview(null);
+      setImageError(null);
     } catch (error: any) {
       console.error(error);
       form.setError("root", {
@@ -267,11 +313,11 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
 
               <div className="grid grid-cols-2 gap-2">
                 <Controller
-                  name="barcode"
+                  name="kode_asset"
                   control={form.control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel>Asset Tag / Barcode</FieldLabel>
+                      <FieldLabel>Asset Tag / kode_asset</FieldLabel>
                       <Input {...field} placeholder="AST-0001" />
                       {fieldState.invalid && (
                         <FieldError errors={[fieldState.error]} />
@@ -383,6 +429,66 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
                 )}
               />
             </div>
+          </div>
+
+          {/* PHOTO UPLOAD SECTION */}
+          <div className="space-y-4 border rounded-lg p-4 bg-slate-50">
+            <h3 className="font-semibold text-sm">Foto Aset</h3>
+
+            {/* Image Preview */}
+            {imagePreview && (
+              <div className="relative w-full flex justify-center">
+                <div className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imagePreview}
+                    alt="Asset preview"
+                    className="h-40 w-40 object-cover rounded-lg border"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -top-2 -right-2 h-6 w-6"
+                    onClick={handleRemoveImage}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Image Error */}
+            {imageError && (
+              <p className="text-sm text-red-500 bg-red-50 p-2 rounded">
+                {imageError}
+              </p>
+            )}
+
+            {/* File Input */}
+            <div className="flex items-center gap-2">
+              <label htmlFor="photo-input" className="flex-1">
+                <div className="flex items-center justify-center gap-2 p-3 border-2 border-dashed rounded-lg cursor-pointer hover:bg-slate-100 transition-colors">
+                  <Camera className="h-4 w-4" />
+                  <span className="text-sm text-slate-600">
+                    {imagePreview
+                      ? "Klik untuk ubah foto"
+                      : "Pilih atau drag foto aset"}
+                  </span>
+                </div>
+                <input
+                  id="photo-input"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageChange}
+                  disabled={isPending}
+                />
+              </label>
+            </div>
+            <p className="text-xs text-slate-500">
+              Format: JPG, PNG, WebP, GIF | Max: 5MB
+            </p>
           </div>
 
           <Controller

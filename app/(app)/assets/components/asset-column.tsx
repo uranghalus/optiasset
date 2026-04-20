@@ -44,11 +44,11 @@ export const assetColumns: ColumnDef<AssetWithItem>[] = [
     size: 40,
   },
 
-  // ✅ Barcode
+  // ✅ kode_asset
   {
-    accessorKey: "barcode",
+    accessorKey: "kode_asset",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Barcode/Tag" />
+      <DataTableColumnHeader column={column} title="Kode Aset/Tag" />
     ),
     cell: ({ cell }) => (
       <div className="ps-2 font-mono text-xs">
@@ -80,6 +80,37 @@ export const assetColumns: ColumnDef<AssetWithItem>[] = [
     size: 250,
   },
 
+  // ✅ Foto Aset
+  {
+    id: "photo",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Foto" />
+    ),
+    cell: ({ row }) => {
+      const asset = row.original as Prisma.AssetGetPayload<{
+        include: { item: true };
+      }> & { photoUrl?: string | null };
+      const photoUrl = asset.photoUrl;
+
+      if (!photoUrl) {
+        return (
+          <div className="ps-2 text-xs text-muted-foreground">-</div>
+        );
+      }
+
+      return (
+        <div className="ps-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={photoUrl}
+            alt="Asset"
+            className="h-10 w-10 rounded-md object-cover border"
+          />
+        </div>
+      );
+    },
+    size: 80,
+  },
 
   // ✅ Part Number (tambahan karena ada di schema kamu)
   {

@@ -192,7 +192,7 @@ export async function getAvailableAssetsForLoanSelect({
     where,
     select: {
       id: true,
-      barcode: true,
+      kode_asset: true,
       item: {
         select: { name: true },
       },
@@ -240,9 +240,10 @@ export async function createAsset(formData: FormData) {
         partNumber: formData.get('partNumber')?.toString() || null,
         departmentId: departmentId,
         notes: formData.get('notes')?.toString() || null,
-        barcode: formData.get('barcode')?.toString() || null,
+        kode_asset: formData.get('kode_asset')?.toString() || null,
         vendorName: formData.get('vendorName')?.toString() || null,
         garansi_exp: parseDateOrNull('garansi_exp'),
+        photoUrl: formData.get('photo')?.toString() || null,
       },
     });
 
@@ -275,7 +276,7 @@ export async function createAsset(formData: FormData) {
       action: 'CREATE',
       entityType: 'ASSET',
       entityId: newAsset.id,
-      entityInfo: `${newAsset.barcode || 'N/A'} - ${newAsset.itemId || 'N/A'}`,
+      entityInfo: `${newAsset.kode_asset || 'N/A'} - ${newAsset.itemId || 'N/A'}`,
       details: {
         newData: newAsset,
       },
@@ -333,9 +334,10 @@ export async function updateAsset(id: string, formData: FormData) {
         locationId: newLocationId || asset.locationId,
         departmentId: departmentId,
         notes: formData.get('notes')?.toString() || asset.notes,
-        barcode: formData.get('barcode')?.toString() || asset.barcode,
+        kode_asset: formData.get('kode_asset')?.toString() || asset.kode_asset,
         vendorName: formData.get('vendorName')?.toString() || asset.vendorName,
         garansi_exp: parseDateOrNull('garansi_exp') ?? asset.garansi_exp,
+        photoUrl: formData.get('photo')?.toString() ?? asset.photoUrl,
         updatedAt: new Date(),
       },
     });
@@ -507,7 +509,7 @@ export async function deleteAsset(id: string) {
       action: 'DELETE',
       entityType: 'ASSET',
       entityId: deleted.id,
-      entityInfo: `${deleted.barcode || 'N/A'} - ${deleted.itemId || 'N/A'}`,
+      entityInfo: `${deleted.kode_asset || 'N/A'} - ${deleted.itemId || 'N/A'}`,
       details: {
         deletedData: deleted,
       },

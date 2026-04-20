@@ -1,6 +1,7 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "../generated/prisma"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl"]
+  output        = "../generated/prisma"
 }
 
 datasource db {
@@ -230,9 +231,10 @@ model Asset {
   model          String?         @db.Char(100)
   partNumber     String?         @db.Char(100)
   notes          String?
+  photoUrl       String?         @db.Text
   createdAt      DateTime        @default(now())
   updatedAt      DateTime?
-  barcode        String?         @db.Char(100)
+  kode_asset     String?         @db.Char(100)
   garansi_exp    DateTime?
   status         String          @default("ACTIVE") @db.VarChar(50)
   vendorName     String?         @db.Char(100)
@@ -246,7 +248,7 @@ model Asset {
   organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([id, organizationId])
-  @@unique([barcode, organizationId])
+  @@unique([kode_asset, organizationId])
   @@unique([serialNumber, organizationId])
   @@index([itemId, organizationId])
   @@index([organizationId])

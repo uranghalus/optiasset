@@ -19,8 +19,7 @@ export default function AssetTable() {
     pageIndex: 0,
     pageSize: 10,
   });
-  const { can, permissionMap } = usePermission();
-  console.log("permission map", permissionMap);
+  const { can } = usePermission();
 
   const { data, isLoading } = useAssets({
     page: pagination.pageIndex,
@@ -41,8 +40,8 @@ export default function AssetTable() {
     <div className="p-3 rounded-md border space-y-4">
       <DataTableToolbar
         table={table}
-        searchKey="barcode"
-        searchPlaceholder="Cari by Barcode / Tag..."
+        searchKey="kode_asset"
+        searchPlaceholder="Cari by Kode Asset / Tag..."
       >
         <div className="flex gap-2">
 
@@ -53,31 +52,35 @@ export default function AssetTable() {
             </Button>
           )}
           <ButtonGroup>
-            <Button onClick={() => setOpen("scan")} className="gap-2"
-              variant={'outline'}>
-              Scan QR <ScanLine className="size-4" />
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" aria-label="More Options">
-                  <MoreHorizontalIcon />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel>Export Data</DropdownMenuLabel>
-                  <DropdownMenuItem onClick={() => setOpen('print-pdf')}>
-                    <Printer />
-                    Cetak PDF
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <FileDown />
-                    Export Excel
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {can('asset', ['scan-code']) && (
+              <Button onClick={() => setOpen("scan")} className="gap-2"
+                variant={'outline'}>
+                Scan QR <ScanLine className="size-4" />
+              </Button>
+            )}
+            {can('asset', ['export']) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" aria-label="More Options">
+                    <MoreHorizontalIcon />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel>Export Data</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => setOpen('print-pdf')}>
+                      <Printer />
+                      Cetak PDF
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <FileDown />
+                      Export Excel
+                    </DropdownMenuItem>
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </ButtonGroup>
         </div>
       </DataTableToolbar>

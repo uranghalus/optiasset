@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { prisma } from '@/lib/prisma';
 import { seedAdmin } from './admin-seeder';
+import { seedOrganization } from './organization-seeder';
 
 async function main() {
   console.log('🌱 Running Seeder...\n');
@@ -10,7 +11,8 @@ async function main() {
   }
 
   // Jalankan semua seeder di sini
-  await seedAdmin(prisma);
+  const adminUser = await seedAdmin(prisma);
+  await seedOrganization(prisma, adminUser?.id ?? adminUser?.user?.id);
 
   console.log('\n🎉 ALL SEEDERS COMPLETED SUCCESSFULLY');
 }

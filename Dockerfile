@@ -1,39 +1,22 @@
-# ========================
-# 1. Base
-# ========================
 FROM node:24-alpine
 
 WORKDIR /app
 
-# 🔥 WAJIB untuk native deps + prisma
 RUN apk add --no-cache libc6-compat openssl python3 make g++
 
-# ========================
-# 2. Install deps
-# ========================
-COPY package*.json ./
-
-# gunakan npm ci kalau ada lock file
-RUN npm ci || npm install
-
-# ========================
-# 3. Copy source
-# ========================
+# copy semua file langsung (hindari cache issue)
 COPY . .
 
-# ========================
-# 4. Prisma
-# ========================
+# install deps setelah semua file masuk
+RUN npm install
+
+# pastikan prisma schema terbaca
+RUN ls prisma
+
 RUN npx prisma generate
 
-# ========================
-# 5. Build Next.js
-# ========================
 RUN npm run build
 
-# ========================
-# 6. Run
-# ========================
 EXPOSE 3000
 
 CMD ["npm", "start"]

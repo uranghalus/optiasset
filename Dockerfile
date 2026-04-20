@@ -1,31 +1,40 @@
 # ========================
-# 1. Install dependencies
+# 1. Base image + deps
 # ========================
-FROM node:20-alpine AS deps
+FROM node:20-alpine AS base
+
 WORKDIR /app
+
+# 🔥 penting untuk prisma & native deps
+RUN apk add --no-cache libc6-compat openssl
+
+# ========================
+# 2. Install dependencies
+# ========================
+FROM base AS deps
 
 COPY package.json package-lock.json ./
-RUN npm install
+
+# 🔥 gunakan npm ci (lebih stabil dari npm install)
+RUN npm ci
 
 # ========================
-# 2. Build app
+# 3. Build
 # ========================
-FROM node:20-alpine AS builder
-WORKDIR /app
+FROM base AS builder
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Prisma generate
+# prisma generate
 RUN npx prisma generate
 
 RUN npm run build
 
 # ========================
-# 3. Production
+# 4. Production
 # ========================
-FROM node:20-alpine AS runner
-WORKDIR /app
+FROM base AS runner
 
 ENV NODE_ENV=production
 

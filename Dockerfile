@@ -1,45 +1,39 @@
 # ========================
-# 1. Base image + deps
+# 1. Base
 # ========================
-FROM node:20-alpine AS base
+FROM node:24-alpine
 
 WORKDIR /app
 
-# 🔥 penting untuk prisma & native deps
-RUN apk add --no-cache libc6-compat openssl
+# 🔥 WAJIB untuk native deps + prisma
+RUN apk add --no-cache libc6-compat openssl python3 make g++
 
 # ========================
-# 2. Install dependencies
+# 2. Install deps
 # ========================
-FROM base AS deps
+COPY package*.json ./
 
-COPY package.json ./
-
-# 🔥 gunakan npm ci (lebih stabil dari npm install)
-RUN npm install
+# gunakan npm ci kalau ada lock file
+RUN npm ci || npm install
 
 # ========================
-# 3. Build
+# 3. Copy source
 # ========================
-FROM base AS builder
-
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# prisma generate
+# ========================
+# 4. Prisma
+# ========================
 RUN npx prisma generate
 
+# ========================
+# 5. Build Next.js
+# ========================
 RUN npm run build
 
 # ========================
-# 4. Production
+# 6. Run
 # ========================
-FROM base AS runner
-
-ENV NODE_ENV=production
-
-COPY --from=builder /app ./
-
 EXPOSE 3000
 
 CMD ["npm", "start"]

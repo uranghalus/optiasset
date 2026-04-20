@@ -1,15 +1,16 @@
-"use server";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+'use server';
 
-import { getServerSession } from "@/lib/get-session";
-import { prisma } from "@/lib/prisma";
+import { getServerSession } from '@/lib/get-session';
+import { prisma } from '@/lib/prisma';
 
 export async function getDashboardData() {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const activeOrgId = session.session?.activeOrganizationId;
   if (!activeOrgId)
-    throw new Error("No active organizationId found in session");
+    throw new Error('No active organizationId found in session');
 
   // Fetch counts and stats
   const [
@@ -48,7 +49,7 @@ export async function getDashboardData() {
     prisma.auditLog.findMany({
       where: { organizationId: activeOrgId },
       take: 10,
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
       include: {
         user: {
           select: { name: true, image: true },
@@ -62,7 +63,7 @@ export async function getDashboardData() {
         organizationId: activeOrgId,
         quantity: { lt: 5 },
         item: {
-          assetType: "SUPPLY",
+          assetType: 'SUPPLY',
         },
       },
       include: {
@@ -91,7 +92,7 @@ export async function getDashboardData() {
       action: log.action,
       entityType: log.entityType,
       entityInfo: log.entityInfo,
-      userName: log.user?.name || "System",
+      userName: log.user?.name || 'System',
       createdAt: log.createdAt,
     })),
     lowStockItems: lowStockItems.map((s) => ({

@@ -106,7 +106,7 @@ export function AssetTransferDialog({ open, onOpenChange, asset }: Props) {
           <DialogDescription>
             Pindahkan aset{" "}
             <span className="font-bold text-foreground">
-              {asset.barcode || asset.item.serialNumber}
+              {asset.kode_asset || asset.item.serialNumber}
             </span>{" "}
             ke lokasi atau departemen baru.
           </DialogDescription>

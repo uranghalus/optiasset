@@ -1,9 +1,10 @@
-"use server";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+'use server';
 
-import { getServerSession } from "@/lib/get-session";
-import { prisma } from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
-import { createAuditLog } from "@/lib/logger";
+import { getServerSession } from '@/lib/get-session';
+import { prisma } from '@/lib/prisma';
+import { revalidatePath } from 'next/cache';
+import { createAuditLog } from '@/lib/logger';
 
 /* =======================
    TYPES
@@ -23,9 +24,9 @@ export async function getAllTransfers({
   assetId,
 }: TransferArgs) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
+  if (!activeOrgId) throw new Error('No active organizationId found');
 
   const safePage = Math.max(1, page);
   const safePageSize = Math.max(1, pageSize);
@@ -40,12 +41,12 @@ export async function getAllTransfers({
       where,
       skip,
       take,
-      orderBy: { transferDate: "desc" },
+      orderBy: { transferDate: 'desc' },
       include: {
         asset: {
           select: {
-            barcode: true,
-            item: { select: { name: true, code: true, serialNumber: true } },
+            kode_asset: true,
+            item: { select: { name: true, code: true } },
           },
         },
         fromLocation: { select: { name: true } },
@@ -69,23 +70,23 @@ export async function getAllTransfers({
    ======================= */
 export async function transferAssetAction(formData: FormData) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
+  if (!activeOrgId) throw new Error('No active organizationId found');
 
-  const assetId = formData.get("assetId")?.toString();
-  const toLocationId = formData.get("toLocationId")?.toString();
-  const toDeptId = formData.get("toDeptId")?.toString();
-  const toDivId = formData.get("toDivId")?.toString();
-  const reason = formData.get("reason")?.toString() || null;
+  const assetId = formData.get('assetId')?.toString();
+  const toLocationId = formData.get('toLocationId')?.toString();
+  const toDeptId = formData.get('toDeptId')?.toString();
+  const toDivId = formData.get('toDivId')?.toString();
+  const reason = formData.get('reason')?.toString() || null;
 
-  if (!assetId) throw new Error("Asset ID is required");
+  if (!assetId) throw new Error('Asset ID is required');
 
   const asset = await prisma.asset.findFirst({
     where: { id: assetId, organizationId: activeOrgId },
   });
 
-  if (!asset) throw new Error("Asset not found");
+  if (!asset) throw new Error('Asset not found');
 
   const oldLocationId = asset.locationId;
   const oldDeptId = asset.departmentId;
@@ -153,10 +154,10 @@ export async function transferAssetAction(formData: FormData) {
     await createAuditLog({
       userId: session.user.id,
       organizationId: activeOrgId,
-      action: "TRANSFER",
-      entityType: "ASSET",
+      action: 'TRANSFER',
+      entityType: 'ASSET',
       entityId: assetId,
-      entityInfo: `${updatedAsset.barcode || "N/A"} - ${updatedAsset.itemId || "N/A"}`,
+      entityInfo: `${updatedAsset.kode_asset || 'N/A'} - ${updatedAsset.itemId || 'N/A'}`,
       details: {
         fromLocationId: oldLocationId,
         toLocationId,
@@ -170,7 +171,7 @@ export async function transferAssetAction(formData: FormData) {
     return transfer;
   });
 
-  revalidatePath("/assets");
-  revalidatePath("/asset-transfers");
+  revalidatePath('/assets');
+  revalidatePath('/asset-transfers');
   return result;
 }

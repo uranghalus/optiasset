@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState } from "react";
@@ -24,7 +25,7 @@ export default function LoanTable() {
 
   const { table } = useDataTable({
     data: data?.data ?? [],
-    columns: loanColumns,
+    columns: loanColumns as any,
     columnResizeMode: "onEnd",
     pageCount: data?.pageCount ?? 0,
     pagination,

@@ -14,18 +14,17 @@ export type SearchResult = {
 export async function globalSearch(query: string) {
   if (!query || query.length < 2) return [];
 
-  const [assets, items, employees] = await Promise.all([
+  const [assets, items] = await Promise.all([
     prisma.asset.findMany({
       where: {
         OR: [
           { item: { name: { contains: query } } },
           { item: { code: { contains: query } } },
-          { serial_number: { contains: query } },
         ],
       },
       take: 5,
       select: {
-        id_barang: true,
+        id: true,
         item: {
           select: { name: true, code: true },
         },
@@ -39,20 +38,11 @@ export async function globalSearch(query: string) {
       take: 5,
       select: { id: true, name: true, code: true },
     }),
-
-    prisma.karyawan.findMany({
-      where: {
-        deleted_at: null,
-        OR: [{ nama: { contains: query } }, { nik: { contains: query } }],
-      },
-      take: 5,
-      select: { id_karyawan: true, nama: true, nik: true },
-    }),
   ]);
 
   const results: SearchResult[] = [
-    ...assets.map((a: { id_barang: any; item: { name: any; code: any } }) => ({
-      id: a.id_barang,
+    ...assets.map((a) => ({
+      id: a.id,
       type: 'ASSET' as const,
       title: a.item.name,
       subtitle: a.item.code,
@@ -65,14 +55,6 @@ export async function globalSearch(query: string) {
       title: i.name,
       subtitle: i.code,
       url: `/inventory/items`,
-    })),
-
-    ...employees.map((e: { id_karyawan: any; nama: any; nik: any }) => ({
-      id: e.id_karyawan,
-      type: 'EMPLOYEE' as const,
-      title: e.nama,
-      subtitle: e.nik,
-      url: `/employees`,
     })),
   ];
 

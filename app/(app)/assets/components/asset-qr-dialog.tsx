@@ -43,7 +43,7 @@ export function AssetQRDialog({
     printWindow.document.write(`
       <html>
         <head>
-          <title>Print Label - ${asset.barcode || asset.id}</title>
+          <title>Print Label - ${asset.kode_asset || asset.id}</title>
           <style>
             body { 
               font-family: sans-serif; 
@@ -67,7 +67,7 @@ export function AssetQRDialog({
         <body>
           <div class="label-container">
             <div class="asset-name">${asset.item.brand || ""} ${asset.item.model || ""}</div>
-            <div class="asset-code">${asset.barcode || asset.item.serialNumber || asset.id}</div>
+            <div class="asset-code">${asset.kode_asset || asset.item.serialNumber || asset.id}</div>
             <div id="qr-container"></div>
           </div>
           <script>
@@ -102,7 +102,7 @@ export function AssetQRDialog({
               {asset.item.brand} {asset.item.model}
             </p>
             <p className="text-sm text-muted-foreground">
-              {asset.barcode || asset.item.serialNumber}
+              {asset.kode_asset || asset.item.serialNumber}
             </p>
           </div>
         </div>

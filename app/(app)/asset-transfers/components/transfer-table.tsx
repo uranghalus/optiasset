@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState } from "react";
@@ -21,7 +22,7 @@ export default function TransferTable() {
 
   const { table } = useDataTable({
     data: data?.data ?? [],
-    columns: transferColumns,
+    columns: transferColumns as any,
     columnResizeMode: "onEnd",
     pageCount: data?.pageCount ?? 0,
     pagination,

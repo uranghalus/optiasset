@@ -60,11 +60,21 @@ export function useDeleteItem() {
 }
 
 // Get next item code
-export function useNextItemCode(assetType: "FIXED" | "SUPPLY", enabled = true) {
+export function useNextItemCode(
+  assetType: "FIXED" | "SUPPLY",
+  organizationId?: string,
+  enabled = true,
+) {
   return useQuery({
-    queryKey: ["next-item-code", assetType],
-    queryFn: () => getNextItemCode(assetType),
-    enabled: enabled && !!assetType,
+    queryKey: ["next-item-code", assetType, organizationId],
+    queryFn: () => {
+      if (!organizationId) {
+        throw new Error("Organization ID is required");
+      }
+
+      return getNextItemCode(assetType, organizationId);
+    },
+    enabled: enabled && !!assetType && !!organizationId,
     staleTime: 0, // Always get the latest
   });
 }

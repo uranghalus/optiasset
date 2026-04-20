@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState } from "react";
@@ -121,7 +122,7 @@ export function ItemStockDialog({
             )}
           </DialogTitle>
           <DialogDescription>
-            {item.brand} {item.model} - {item.code}
+            {item.name} - {item.code}
           </DialogDescription>
         </DialogHeader>
 
@@ -151,7 +152,7 @@ export function ItemStockDialog({
                           colSpan={3}
                           className="text-center text-muted-foreground h-24"
                         >
-                          Belum ada stok di lokasi manapun. Klik "Inisialisasi"
+                          Belum ada stok di lokasi manapun. Klik &#34;Inisialisasi&#34;
                           untuk menambah.
                         </TableCell>
                       </TableRow>

@@ -67,7 +67,11 @@ export function ItemActionDialog({ open, onOpenChange, currentRow }: Props) {
   });
 
   const assetType = form.watch("assetType");
-  const { data: nextCode } = useNextItemCode(assetType, !isEdit && open);
+  const { data: nextCode } = useNextItemCode(
+    assetType,
+    undefined,
+    !isEdit && open,
+  );
 
   useEffect(() => {
     if (currentRow) {

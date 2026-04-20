@@ -1,9 +1,11 @@
-"use server";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { getServerSession } from "@/lib/get-session";
-import { prisma } from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
-import { createAuditLog } from "@/lib/logger";
+'use server';
+
+import { getServerSession } from '@/lib/get-session';
+import { prisma } from '@/lib/prisma';
+import { revalidatePath } from 'next/cache';
+import { createAuditLog } from '@/lib/logger';
 
 export type StockArgs = {
   page: number;
@@ -15,7 +17,7 @@ export type StockArgs = {
    ======================= */
 export async function getAllStocks({ page, pageSize }: StockArgs) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const safePage = Math.max(1, page);
   const safePageSize = Math.max(1, pageSize);
@@ -26,7 +28,7 @@ export async function getAllStocks({ page, pageSize }: StockArgs) {
     prisma.stock.findMany({
       skip,
       take,
-      orderBy: { updatedAt: "desc" },
+      orderBy: { updatedAt: 'desc' },
       include: {
         item: {
           include: {
@@ -57,7 +59,7 @@ export async function getAllStocks({ page, pageSize }: StockArgs) {
    ======================= */
 export async function getStockByItem(itemId: string) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   // Get or Create initial stock if doesn't exist?
   // For now, let's just fetch.
@@ -74,11 +76,11 @@ export async function getStockByItem(itemId: string) {
    ======================= */
 export async function getStockTransactions(stockId: string) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   return prisma.stockTransaction.findMany({
     where: { stockId },
-    orderBy: { createdAt: "desc" },
+    orderBy: { createdAt: 'desc' },
     include: {
       stock: {
         include: {
@@ -98,15 +100,15 @@ export async function recordStockTransaction(data: {
   stockId?: string;
   itemId?: string;
   locationId?: string | null;
-  type: "IN" | "OUT" | "ADJUSTMENT";
+  type: 'IN' | 'OUT' | 'ADJUSTMENT';
   quantity: number;
   reference?: string;
   notes?: string;
 }) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
-  if (data.quantity <= 0) throw new Error("Quantity must be positive");
+  if (data.quantity <= 0) throw new Error('Quantity must be positive');
 
   return prisma.$transaction(async (tx) => {
     let stockId = data.stockId;
@@ -114,13 +116,13 @@ export async function recordStockTransaction(data: {
     // If stockId is not provided, find or create by itemId + locationId
     if (!stockId) {
       if (!data.itemId)
-        throw new Error("itemId is required if stockId is missing");
+        throw new Error('itemId is required if stockId is missing');
 
       const existingStock = await tx.stock.findFirst({
         where: {
           itemId: data.itemId,
           locationId:
-            data.locationId === "DEFAULT" || !data.locationId
+            data.locationId === 'DEFAULT' || !data.locationId
               ? null
               : data.locationId,
         },
@@ -129,11 +131,15 @@ export async function recordStockTransaction(data: {
       if (existingStock) {
         stockId = existingStock.id;
       } else {
+        if (!session.session.activeOrganizationId) {
+          throw new Error('Active organization is required');
+        }
         const newStock = await tx.stock.create({
           data: {
             itemId: data.itemId,
             locationId: data.locationId || null,
             quantity: 0,
+            organizationId: session.session.activeOrganizationId,
           },
         });
         stockId = newStock.id;
@@ -145,18 +151,18 @@ export async function recordStockTransaction(data: {
       where: { id: stockId as string },
     });
 
-    if (!stock) throw new Error("Stock record not found");
+    if (!stock) throw new Error('Stock record not found');
 
     // 2. Calculate new quantity
     let newQuantity = stock.quantity;
-    if (data.type === "IN") {
+    if (data.type === 'IN') {
       newQuantity += data.quantity;
-    } else if (data.type === "OUT") {
+    } else if (data.type === 'OUT') {
       if (stock.quantity < data.quantity) {
-        throw new Error("Insufficient stock");
+        throw new Error('Insufficient stock');
       }
       newQuantity -= data.quantity;
-    } else if (data.type === "ADJUSTMENT") {
+    } else if (data.type === 'ADJUSTMENT') {
       // For adjustments, we might pass the delta or the absolute new value.
       // Here we assume delta based on the type.
       newQuantity += data.quantity; // Adjustments can be positive or negative in a real system, but here we provide 'type'
@@ -177,10 +183,10 @@ export async function recordStockTransaction(data: {
 
     if (!stockTxModel) {
       console.error(
-        "Available tx keys:",
-        Object.keys(tx).filter((k) => !k.startsWith("_")),
+        'Available tx keys:',
+        Object.keys(tx).filter((k) => !k.startsWith('_')),
       );
-      throw new Error("StockTransaction model not found in Prisma client");
+      throw new Error('StockTransaction model not found in Prisma client');
     }
 
     const transaction = await stockTxModel.create({
@@ -196,8 +202,8 @@ export async function recordStockTransaction(data: {
     // Record Audit Log
     await createAuditLog({
       userId: session.user.id,
-      action: data.type === "ADJUSTMENT" ? "ADJUSTMENT" : "UPDATE",
-      entityType: "STOCK",
+      action: data.type === 'ADJUSTMENT' ? 'ADJUSTMENT' : 'UPDATE',
+      entityType: 'STOCK',
       entityId: stockId,
       details: {
         transactionId: transaction.id,
@@ -208,8 +214,8 @@ export async function recordStockTransaction(data: {
       tx,
     });
 
-    revalidatePath("/assets/items");
-    revalidatePath("/dashboard");
+    revalidatePath('/assets/items');
+    revalidatePath('/dashboard');
 
     return transaction;
   });
@@ -226,7 +232,7 @@ export async function getAllStockTransactions({
   pageSize: number;
 }) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const safePage = Math.max(1, page);
   const safePageSize = Math.max(1, pageSize);
@@ -237,7 +243,7 @@ export async function getAllStockTransactions({
     prisma.stockTransaction.findMany({
       skip,
       take,
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
       include: {
         stock: {
           include: {

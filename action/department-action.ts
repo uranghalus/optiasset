@@ -1,9 +1,10 @@
-"use server";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+'use server';
 
-import { getServerSession } from "@/lib/get-session";
-import { prisma } from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
-import { nanoid } from "nanoid";
+import { getServerSession } from '@/lib/get-session';
+import { prisma } from '@/lib/prisma';
+import { revalidatePath } from 'next/cache';
+import { nanoid } from 'nanoid';
 
 /* =======================
    TYPES
@@ -18,10 +19,10 @@ export type DepartmentArgs = {
  ======================= */
 export async function getAllDepartments({ page, pageSize }: DepartmentArgs) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organization");
+  if (!activeOrgId) throw new Error('No active organization');
 
   const safePage = Math.max(1, page);
   const safePageSize = Math.max(1, pageSize);
@@ -39,7 +40,7 @@ export async function getAllDepartments({ page, pageSize }: DepartmentArgs) {
       skip,
       take,
       orderBy: {
-        createdAt: "desc",
+        createdAt: 'desc',
       },
     }),
     prisma.department.count({ where }),
@@ -59,17 +60,17 @@ export async function getAllDepartments({ page, pageSize }: DepartmentArgs) {
  ======================= */
 export async function createDepartment(formData: FormData) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organization");
+  if (!activeOrgId) throw new Error('No active organization');
 
-  const kode_department = formData.get("kode_department")?.toString();
-  const nama_department = formData.get("nama_department")?.toString();
-  const id_hod = formData.get("id_hod")?.toString();
+  const kode_department = formData.get('kode_department')?.toString();
+  const nama_department = formData.get('nama_department')?.toString();
+  const id_hod = formData.get('id_hod')?.toString();
 
   if (!kode_department || !nama_department || !id_hod) {
-    throw new Error("Required fields are missing");
+    throw new Error('Required fields are missing');
   }
 
   try {
@@ -83,10 +84,10 @@ export async function createDepartment(formData: FormData) {
         updatedAt: new Date(),
       },
     });
-    revalidatePath("/assets/departments");
+    revalidatePath('/assets/departments');
     return department;
   } catch (error: any) {
-    if (error?.code === "P2002") {
+    if (error?.code === 'P2002') {
       throw new Error(
         `Kode department "${kode_department}" sudah digunakan di organisasi ini.`,
       );
@@ -100,10 +101,10 @@ export async function createDepartment(formData: FormData) {
  ======================= */
 export async function updateDepartment(id: string, formData: FormData) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organization");
+  if (!activeOrgId) throw new Error('No active organization');
 
   const department = await prisma.department.findFirst({
     where: {
@@ -112,13 +113,13 @@ export async function updateDepartment(id: string, formData: FormData) {
     },
   });
 
-  if (!department) throw new Error("Department not found");
+  if (!department) throw new Error('Department not found');
 
   const kode_department =
-    formData.get("kode_department")?.toString() ?? department.kode_department;
+    formData.get('kode_department')?.toString() ?? department.kode_department;
   const nama_department =
-    formData.get("nama_department")?.toString() ?? department.nama_department;
-  const id_hod = formData.get("id_hod")?.toString() ?? department.id_hod;
+    formData.get('nama_department')?.toString() ?? department.nama_department;
+  const id_hod = formData.get('id_hod')?.toString() ?? department.id_hod;
 
   const updated = await prisma.department.update({
     where: {
@@ -131,7 +132,7 @@ export async function updateDepartment(id: string, formData: FormData) {
       updatedAt: new Date(),
     },
   });
-  revalidatePath("/assets/departments");
+  revalidatePath('/assets/departments');
   return updated;
 }
 
@@ -140,10 +141,10 @@ export async function updateDepartment(id: string, formData: FormData) {
  ======================= */
 export async function deleteDepartment(id: string) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organization");
+  if (!activeOrgId) throw new Error('No active organization');
 
   const department = await prisma.department.delete({
     where: {
@@ -151,6 +152,6 @@ export async function deleteDepartment(id: string) {
       organization_id: activeOrgId,
     },
   });
-  revalidatePath("/assets/departments");
+  revalidatePath('/assets/departments');
   return department;
 }

@@ -121,8 +121,8 @@ export function useExportAssets() {
     }) => {
       return await exportAssetPDF({
         type,
-        dateFrom,
-        dateTo,
+        dateFrom: dateFrom?.toISOString(),
+        dateTo: dateTo?.toISOString(),
         organizationId,
       });
     },

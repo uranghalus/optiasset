@@ -1,9 +1,10 @@
-"use server";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+'use server';
 
-import { getServerSession } from "@/lib/get-session";
-import { prisma } from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
-import { nanoid } from "nanoid";
+import { getServerSession } from '@/lib/get-session';
+import { prisma } from '@/lib/prisma';
+import { revalidatePath } from 'next/cache';
+import { nanoid } from 'nanoid';
 
 /* =======================
    TYPES
@@ -18,10 +19,10 @@ export type DivisiArgs = {
  ======================= */
 export async function getAllDivisi({ page, pageSize }: DivisiArgs) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organization");
+  if (!activeOrgId) throw new Error('No active organization');
 
   const safePage = Math.max(1, page);
   const safePageSize = Math.max(1, pageSize);
@@ -39,7 +40,7 @@ export async function getAllDivisi({ page, pageSize }: DivisiArgs) {
       skip,
       take,
       orderBy: {
-        createdAt: "desc",
+        createdAt: 'desc',
       },
       include: {
         department: {
@@ -67,10 +68,10 @@ export async function getAllDivisi({ page, pageSize }: DivisiArgs) {
  ======================= */
 export async function getDepartmentsForSelect() {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organization");
+  if (!activeOrgId) throw new Error('No active organization');
 
   return prisma.department.findMany({
     where: {
@@ -82,7 +83,7 @@ export async function getDepartmentsForSelect() {
       nama_department: true,
       kode_department: true,
     },
-    orderBy: { nama_department: "asc" },
+    orderBy: { nama_department: 'asc' },
   });
 }
 
@@ -91,11 +92,11 @@ export async function getDepartmentsForSelect() {
    ======================= */
 export async function getDivisiForSelect(departmentId?: string) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const activeOrgId = session.session?.activeOrganizationId;
   if (!activeOrgId)
-    throw new Error("No active organizationId found in session");
+    throw new Error('No active organizationId found in session');
 
   const where: any = {
     organization_id: activeOrgId,
@@ -113,7 +114,7 @@ export async function getDivisiForSelect(departmentId?: string) {
       nama_divisi: true,
       department_id: true,
     },
-    orderBy: { nama_divisi: "asc" },
+    orderBy: { nama_divisi: 'asc' },
   });
 }
 
@@ -122,17 +123,17 @@ export async function getDivisiForSelect(departmentId?: string) {
  ======================= */
 export async function createDivisi(formData: FormData) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organization");
+  if (!activeOrgId) throw new Error('No active organization');
 
-  const department_id = formData.get("department_id")?.toString();
-  const nama_divisi = formData.get("nama_divisi")?.toString();
-  const ext_tlp = formData.get("ext_tlp")?.toString();
+  const department_id = formData.get('department_id')?.toString();
+  const nama_divisi = formData.get('nama_divisi')?.toString();
+  const ext_tlp = formData.get('ext_tlp')?.toString();
 
   if (!department_id || !nama_divisi || !ext_tlp) {
-    throw new Error("Required fields are missing");
+    throw new Error('Required fields are missing');
   }
 
   const divisi = await prisma.divisi.create({
@@ -145,7 +146,7 @@ export async function createDivisi(formData: FormData) {
       updatedAt: new Date(),
     },
   });
-  revalidatePath("/assets/divisi");
+  revalidatePath('/assets/divisi');
   return divisi;
 }
 
@@ -154,10 +155,10 @@ export async function createDivisi(formData: FormData) {
  ======================= */
 export async function updateDivisi(id: string, formData: FormData) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organization");
+  if (!activeOrgId) throw new Error('No active organization');
 
   const divisi = await prisma.divisi.findFirst({
     where: {
@@ -166,13 +167,13 @@ export async function updateDivisi(id: string, formData: FormData) {
     },
   });
 
-  if (!divisi) throw new Error("Divisi not found");
+  if (!divisi) throw new Error('Divisi not found');
 
   const department_id =
-    formData.get("department_id")?.toString() ?? divisi.department_id;
+    formData.get('department_id')?.toString() ?? divisi.department_id;
   const nama_divisi =
-    formData.get("nama_divisi")?.toString() ?? divisi.nama_divisi;
-  const ext_tlp = formData.get("ext_tlp")?.toString() ?? divisi.ext_tlp;
+    formData.get('nama_divisi')?.toString() ?? divisi.nama_divisi;
+  const ext_tlp = formData.get('ext_tlp')?.toString() ?? divisi.ext_tlp;
 
   const updated = await prisma.divisi.update({
     where: { id_divisi: id },
@@ -183,7 +184,7 @@ export async function updateDivisi(id: string, formData: FormData) {
       updatedAt: new Date(),
     },
   });
-  revalidatePath("/assets/divisi");
+  revalidatePath('/assets/divisi');
   return updated;
 }
 
@@ -192,10 +193,10 @@ export async function updateDivisi(id: string, formData: FormData) {
  ======================= */
 export async function deleteDivisi(id: string) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organization");
+  if (!activeOrgId) throw new Error('No active organization');
 
   const divisi = await prisma.divisi.delete({
     where: {
@@ -203,6 +204,6 @@ export async function deleteDivisi(id: string) {
       organization_id: activeOrgId,
     },
   });
-  revalidatePath("/assets/divisi");
+  revalidatePath('/assets/divisi');
   return divisi;
 }

@@ -1,7 +1,8 @@
-"use server";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+'use server';
 
-import { getServerSession } from "@/lib/get-session";
-import { prisma } from "@/lib/prisma";
+import { getServerSession } from '@/lib/get-session';
+import { prisma } from '@/lib/prisma';
 
 export type AuditLogArgs = {
   page: number;
@@ -22,7 +23,7 @@ export async function getAllAuditLogs({
   userId,
 }: AuditLogArgs) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const safePage = Math.max(1, page);
   const safePageSize = Math.max(1, pageSize);
@@ -39,7 +40,7 @@ export async function getAllAuditLogs({
       where,
       skip,
       take,
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
       include: {
         user: {
           select: { name: true, email: true, image: true },

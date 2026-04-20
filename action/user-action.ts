@@ -1,9 +1,10 @@
-"use server";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+'use server';
 
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { revalidatePath } from 'next/cache';
+import { headers } from 'next/headers';
 
 type GetUsersParams = {
   page?: number;
@@ -20,7 +21,7 @@ export async function getAllUsers({
     headers: await headers(),
   });
 
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const offset = (page - 1) * limit;
 
@@ -31,12 +32,12 @@ export async function getAllUsers({
 
       ...(search && {
         searchValue: search,
-        searchField: "name",
-        searchOperator: "contains",
+        searchField: 'name',
+        searchOperator: 'contains',
       }),
 
-      sortBy: "name",
-      sortDirection: "asc",
+      sortBy: 'name',
+      sortDirection: 'asc',
     },
     headers: await headers(),
   });
@@ -50,8 +51,8 @@ export async function getAllUsers({
 
   // ✅ pastikan total aman
   const total =
-    typeof users?.total === "number" ? users.total : userList.length;
-  console.log("RAW USERS RESPONSE:", users);
+    typeof users?.total === 'number' ? users.total : userList.length;
+  console.log('RAW USERS RESPONSE:', users);
   return {
     data: userList,
     pagination: {
@@ -71,11 +72,11 @@ export async function getUsersForSelect() {
     headers: await headers(),
   });
 
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const users = await prisma.user.findMany({
     select: { id: true, name: true, email: true },
-    orderBy: { name: "asc" },
+    orderBy: { name: 'asc' },
   });
 
   return users;
@@ -86,21 +87,21 @@ export async function createUserAction(formData: FormData) {
     headers: await headers(),
   });
 
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  const name = formData.get("name") as string;
-  const role = formData.get("role") as any;
-  const departmentId = formData.get("departmentId") as string;
-  const divisiId = formData.get("divisiId") as string;
+  const email = formData.get('email') as string;
+  const password = formData.get('password') as string;
+  const name = formData.get('name') as string;
+  const role = formData.get('role') as any;
+  const departmentId = formData.get('departmentId') as string;
+  const divisiId = formData.get('divisiId') as string;
 
   const data = await auth.api.createUser({
     body: {
       email,
       password,
       name,
-      role: "user",
+      role: 'user',
       data: {
         departmentId,
         divisiId,
@@ -114,7 +115,7 @@ export async function createUserAction(formData: FormData) {
       organizationId: session.session.activeOrganizationId ?? undefined,
     },
   });
-  revalidatePath("/users");
+  revalidatePath('/users');
   return {
     data,
     addMember,
@@ -126,12 +127,12 @@ export async function updateUserAction(id: string, formData: FormData) {
     headers: await headers(),
   });
 
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
-  const name = formData.get("name") as string;
-  const role = formData.get("role") as any;
-  const departmentId = formData.get("departmentId") as string;
-  const divisiId = formData.get("divisiId") as string;
+  const name = formData.get('name') as string;
+  const role = formData.get('role') as any;
+  const departmentId = formData.get('departmentId') as string;
+  const divisiId = formData.get('divisiId') as string;
   const data = await auth.api.adminUpdateUser({
     body: {
       userId: id,
@@ -145,7 +146,7 @@ export async function updateUserAction(id: string, formData: FormData) {
     headers: await headers(),
   });
 
-  revalidatePath("/users");
+  revalidatePath('/users');
   return data;
 }
 // LINK remove user
@@ -154,7 +155,7 @@ export async function deleteUserAction(id: string) {
     headers: await headers(),
   });
 
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const data = await auth.api.removeUser({
     body: {
@@ -163,6 +164,6 @@ export async function deleteUserAction(id: string) {
     headers: await headers(),
   });
 
-  revalidatePath("/users");
+  revalidatePath('/users');
   return data;
 }

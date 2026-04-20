@@ -1,9 +1,10 @@
-"use server";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+'use server';
 
-import { getServerSession } from "@/lib/get-session";
-import { prisma } from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
-import { createAuditLog } from "@/lib/logger";
+import { getServerSession } from '@/lib/get-session';
+import { prisma } from '@/lib/prisma';
+import { revalidatePath } from 'next/cache';
+import { createAuditLog } from '@/lib/logger';
 
 /* =======================
    TYPES
@@ -25,9 +26,9 @@ export async function getAllLoans({
   status,
 }: LoanArgs) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
+  if (!activeOrgId) throw new Error('No active organizationId found');
 
   const safePage = Math.max(1, page);
   const safePageSize = Math.max(1, pageSize);
@@ -43,12 +44,12 @@ export async function getAllLoans({
       where,
       skip,
       take,
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
       include: {
         asset: {
           select: {
-            barcode: true,
-            item: { select: { name: true, code: true, serialNumber: true } },
+            kode_asset: true,
+            item: { select: { name: true, code: true } },
           },
         },
         borrower: {
@@ -73,26 +74,26 @@ export async function getAllLoans({
    ======================= */
 export async function requestLoanAction(formData: FormData) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
+  if (!activeOrgId) throw new Error('No active organizationId found');
 
-  const assetId = formData.get("assetId")?.toString();
-  const borrowerId = formData.get("borrowerId")?.toString();
-  const dueDateStr = formData.get("dueDate")?.toString();
-  const conditionOnLoan = formData.get("conditionOnLoan")?.toString() || null;
-  const notes = formData.get("notes")?.toString() || null;
+  const assetId = formData.get('assetId')?.toString();
+  const borrowerId = formData.get('borrowerId')?.toString();
+  const dueDateStr = formData.get('dueDate')?.toString();
+  const conditionOnLoan = formData.get('conditionOnLoan')?.toString() || null;
+  const notes = formData.get('notes')?.toString() || null;
 
   if (!assetId || !borrowerId)
-    throw new Error("Asset and Borrower are required");
+    throw new Error('Asset and Borrower are required');
 
   // Verify asset exists in this organization
   const asset = await prisma.asset.findFirst({
     where: { id: assetId, organizationId: activeOrgId },
   });
 
-  if (!asset) throw new Error("Asset not found");
-  if (asset.status === "LOANED") throw new Error("Asset is already loaned");
+  if (!asset) throw new Error('Asset not found');
+  if (asset.status === 'LOANED') throw new Error('Asset is already loaned');
 
   const result = await prisma.$transaction(async (tx) => {
     // 1. Create Loan Record in PENDING state
@@ -105,7 +106,7 @@ export async function requestLoanAction(formData: FormData) {
         dueDate: dueDateStr ? new Date(dueDateStr) : null,
         conditionOnLoan,
         notes,
-        status: "PENDING",
+        status: 'PENDING',
       },
     });
 
@@ -113,12 +114,12 @@ export async function requestLoanAction(formData: FormData) {
     await createAuditLog({
       userId: session.user.id,
       organizationId: activeOrgId,
-      action: "CREATE",
-      entityType: "ASSET",
+      action: 'CREATE',
+      entityType: 'ASSET',
       entityId: assetId,
-      entityInfo: `${asset.barcode || "N/A"} - ${asset.itemId || "N/A"}`,
+      entityInfo: `${asset.kode_asset || 'N/A'} - ${asset.itemId || 'N/A'}`,
       details: {
-        action: "LOAN_REQUEST",
+        action: 'LOAN_REQUEST',
         borrowerId,
         dueDate: dueDateStr,
       },
@@ -128,8 +129,8 @@ export async function requestLoanAction(formData: FormData) {
     return loan;
   });
 
-  revalidatePath("/assets");
-  revalidatePath("/asset-loans");
+  revalidatePath('/assets');
+  revalidatePath('/asset-loans');
   return result;
 }
 
@@ -138,31 +139,31 @@ export async function requestLoanAction(formData: FormData) {
    ======================= */
 export async function approveLoanAction(loanId: string) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
+  if (!activeOrgId) throw new Error('No active organizationId found');
 
   const loan = await prisma.assetLoan.findFirst({
     where: { id: loanId, organizationId: activeOrgId },
     include: { asset: true },
   });
 
-  if (!loan) throw new Error("Loan record not found");
-  if (loan.status !== "PENDING")
-    throw new Error("Loan is not in pending state");
+  if (!loan) throw new Error('Loan record not found');
+  if (loan.status !== 'PENDING')
+    throw new Error('Loan is not in pending state');
 
   const result = await prisma.$transaction(async (tx) => {
     // 1. Update Asset Status to LOANED
     await tx.asset.update({
       where: { id: loan.assetId },
-      data: { status: "LOANED" },
+      data: { status: 'LOANED' },
     });
 
     // 2. Update Loan Record to BORROWED
     const updatedLoan = await tx.assetLoan.update({
       where: { id: loanId },
       data: {
-        status: "BORROWED",
+        status: 'BORROWED',
         approvedById: session.user.id,
         loanDate: new Date(),
       },
@@ -172,12 +173,12 @@ export async function approveLoanAction(loanId: string) {
     await createAuditLog({
       userId: session.user.id,
       organizationId: activeOrgId,
-      action: "UPDATE",
-      entityType: "ASSET",
+      action: 'UPDATE',
+      entityType: 'ASSET',
       entityId: loan.assetId,
-      entityInfo: `${loan.asset.barcode || "N/A"} - ${loan.asset.itemId || "N/A"}`,
+      entityInfo: `${loan.asset.kode_asset || 'N/A'} - ${loan.asset.itemId || 'N/A'}`,
       details: {
-        action: "LOAN_APPROVED",
+        action: 'LOAN_APPROVED',
         loanId,
         approvedBy: session.user.name,
       },
@@ -187,8 +188,8 @@ export async function approveLoanAction(loanId: string) {
     return updatedLoan;
   });
 
-  revalidatePath("/assets");
-  revalidatePath("/asset-loans");
+  revalidatePath('/assets');
+  revalidatePath('/asset-loans');
   return result;
 }
 
@@ -197,25 +198,25 @@ export async function approveLoanAction(loanId: string) {
    ======================= */
 export async function rejectLoanAction(loanId: string, reason: string) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
+  if (!activeOrgId) throw new Error('No active organizationId found');
 
   const loan = await prisma.assetLoan.findFirst({
     where: { id: loanId, organizationId: activeOrgId },
     include: { asset: true },
   });
 
-  if (!loan) throw new Error("Loan record not found");
-  if (loan.status !== "PENDING")
-    throw new Error("Loan is not in pending state");
+  if (!loan) throw new Error('Loan record not found');
+  if (loan.status !== 'PENDING')
+    throw new Error('Loan is not in pending state');
 
   const result = await prisma.$transaction(async (tx) => {
     // Update Loan Record to REJECTED
     const updatedLoan = await tx.assetLoan.update({
       where: { id: loanId },
       data: {
-        status: "REJECTED",
+        status: 'REJECTED',
         approvedById: session.user.id,
         rejectionReason: reason,
       },
@@ -225,12 +226,12 @@ export async function rejectLoanAction(loanId: string, reason: string) {
     await createAuditLog({
       userId: session.user.id,
       organizationId: activeOrgId,
-      action: "UPDATE",
-      entityType: "ASSET",
+      action: 'UPDATE',
+      entityType: 'ASSET',
       entityId: loan.assetId,
-      entityInfo: `${loan.asset.barcode || "N/A"} - ${loan.asset.itemId || "N/A"}`,
+      entityInfo: `${loan.asset.kode_asset || 'N/A'} - ${loan.asset.itemId || 'N/A'}`,
       details: {
-        action: "LOAN_REJECTED",
+        action: 'LOAN_REJECTED',
         loanId,
         reason,
       },
@@ -240,7 +241,7 @@ export async function rejectLoanAction(loanId: string, reason: string) {
     return updatedLoan;
   });
 
-  revalidatePath("/asset-loans");
+  revalidatePath('/asset-loans');
   return result;
 }
 
@@ -249,27 +250,27 @@ export async function rejectLoanAction(loanId: string, reason: string) {
    ======================= */
 export async function returnAssetAction(loanId: string, formData: FormData) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
+  if (!activeOrgId) throw new Error('No active organizationId found');
 
   const conditionOnReturn =
-    formData.get("conditionOnReturn")?.toString() || null;
-  const notes = formData.get("notes")?.toString() || null;
+    formData.get('conditionOnReturn')?.toString() || null;
+  const notes = formData.get('notes')?.toString() || null;
 
   const loan = await prisma.assetLoan.findFirst({
     where: { id: loanId, organizationId: activeOrgId },
     include: { asset: true },
   });
 
-  if (!loan) throw new Error("Loan record not found");
-  if (loan.status === "RETURNED") throw new Error("Asset is already returned");
+  if (!loan) throw new Error('Loan record not found');
+  if (loan.status === 'RETURNED') throw new Error('Asset is already returned');
 
   const result = await prisma.$transaction(async (tx) => {
     // 1. Update Asset Status
     await tx.asset.update({
       where: { id: loan.assetId },
-      data: { status: "ACTIVE" },
+      data: { status: 'ACTIVE' },
     });
 
     // 2. Update Loan Record
@@ -279,7 +280,7 @@ export async function returnAssetAction(loanId: string, formData: FormData) {
         returnDate: new Date(),
         conditionOnReturn,
         notes: notes || loan.notes,
-        status: "RETURNED",
+        status: 'RETURNED',
       },
     });
 
@@ -287,12 +288,12 @@ export async function returnAssetAction(loanId: string, formData: FormData) {
     await createAuditLog({
       userId: session.user.id,
       organizationId: activeOrgId,
-      action: "UPDATE",
-      entityType: "ASSET",
+      action: 'UPDATE',
+      entityType: 'ASSET',
       entityId: loan.assetId,
-      entityInfo: `${loan.asset.barcode || "N/A"} - ${loan.asset.itemId || "N/A"}`,
+      entityInfo: `${loan.asset.kode_asset || 'N/A'} - ${loan.asset.itemId || 'N/A'}`,
       details: {
-        action: "RETURN",
+        action: 'RETURN',
         loanId,
         conditionOnReturn,
       },
@@ -302,7 +303,7 @@ export async function returnAssetAction(loanId: string, formData: FormData) {
     return updatedLoan;
   });
 
-  revalidatePath("/assets");
-  revalidatePath("/asset-loans");
+  revalidatePath('/assets');
+  revalidatePath('/asset-loans');
   return result;
 }

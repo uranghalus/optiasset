@@ -44,7 +44,7 @@ export function AssetDeleteDialog() {
           <AlertDialogTitle>Hapus unit aset ini?</AlertDialogTitle>
           <AlertDialogDescription>
             Tindakan ini tidak dapat dibatalkan. Menghapus unit aset{" "}
-            <span className="font-bold">{item?.barcode || "ini"}</span> akan
+            <span className="font-bold">{item?.kode_asset || "ini"}</span> akan
             menghilangkan data dari record inventaris.
           </AlertDialogDescription>
         </AlertDialogHeader>

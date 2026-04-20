@@ -13,10 +13,10 @@ RUN apk add --no-cache libc6-compat openssl
 # ========================
 FROM base AS deps
 
-COPY package.json package-lock.json ./
+COPY package.json ./
 
 # 🔥 gunakan npm ci (lebih stabil dari npm install)
-RUN npm ci
+RUN npm install
 
 # ========================
 # 3. Build

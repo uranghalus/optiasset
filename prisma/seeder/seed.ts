@@ -12,8 +12,14 @@ async function main() {
 
   // Jalankan semua seeder di sini
   const adminUser = await seedAdmin(prisma);
-  await seedOrganization(prisma, adminUser?.id ?? adminUser?.user?.id);
+  const organization = await seedOrganization(
+    prisma,
+    adminUser?.id ?? adminUser?.id,
+  );
 
+  console.log('\n✅ Seeders selesai dijalankan:');
+  console.log(`- Admin User: ${adminUser?.email || 'Tidak ada'}`);
+  console.log(`- Organization: ${organization?.name || 'Tidak ada'}`);
   console.log('\n🎉 ALL SEEDERS COMPLETED SUCCESSFULLY');
 }
 

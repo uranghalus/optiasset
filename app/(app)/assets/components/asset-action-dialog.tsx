@@ -39,7 +39,8 @@ import {
   useLocationsForSelect,
 } from "@/hooks/crud/use-assets";
 import { AssetForm, AssetFormSchema } from "@/schema/asset-schema";
-import { isValidImageFile, fileToBase64 } from "@/lib/utils";
+import { getAssetFormAccess, isValidImageFile } from "@/lib/utils";
+import { useActiveMemberRole } from "@/hooks/use-active-member";
 
 type Props = {
   open: boolean;
@@ -54,7 +55,8 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
 
   const createMutation = useCreateAsset();
   const updateMutation = useUpdateAsset();
-
+  const { data: role } = useActiveMemberRole()
+  const { canView, isReadonly } = getAssetFormAccess(role)
   const { data: items } = useItemsForSelect();
   const { data: locations } = useLocationsForSelect();
   const form = useForm<AssetForm>({
@@ -100,7 +102,7 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
           : "",
         photo: undefined,
       });
-      setImagePreview(currentRow.photoUrl ?? null);
+      setImagePreview(currentRow.photoUrl ? `/uploads/${currentRow.photoUrl}` : null);
     } else {
       form.reset({
         itemId: "",
@@ -166,8 +168,8 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
     for (const [key, value] of Object.entries(values)) {
       if (value) {
         if (key === "photo" && value instanceof File) {
-          const base64 = await fileToBase64(value);
-          formData.append(key, base64);
+          // Kirim file asli, bukan base64
+          formData.append(key, value);
         } else {
           formData.append(key, value as string | Blob);
         }
@@ -235,7 +237,7 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
                     <FieldLabel>Master Item</FieldLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select value={field.value} onValueChange={field.onChange} disabled={isReadonly}>
                       <SelectTrigger aria-invalid={fieldState.invalid}>
                         <SelectValue placeholder="Pilih item katalog..." />
                       </SelectTrigger>
@@ -264,6 +266,7 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
                       {...field}
                       placeholder="Lenovo"
                       aria-invalid={fieldState.invalid}
+                      readOnly={isReadonly}
                     />
                     {fieldState.invalid && (
                       <FieldError errors={[fieldState.error]} />
@@ -283,6 +286,7 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
                         {...field}
                         placeholder="ThinkPad X1 Carbon"
                         aria-invalid={fieldState.invalid}
+                        readOnly={isReadonly}
                       />
                       {fieldState.invalid && (
                         <FieldError errors={[fieldState.error]} />
@@ -302,6 +306,7 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
                         {...field}
                         placeholder="TP-X1C-2024"
                         aria-invalid={fieldState.invalid}
+                        readOnly={isReadonly}
                       />
                       {fieldState.invalid && (
                         <FieldError errors={[fieldState.error]} />
@@ -312,19 +317,21 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <Controller
-                  name="kode_asset"
-                  control={form.control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel>Asset Tag / kode_asset</FieldLabel>
-                      <Input {...field} placeholder="AST-0001" />
-                      {fieldState.invalid && (
-                        <FieldError errors={[fieldState.error]} />
-                      )}
-                    </Field>
-                  )}
-                />
+                {canView && (
+                  <Controller
+                    name="kode_asset"
+                    control={form.control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel>Asset Tag / kode_asset</FieldLabel>
+                        <Input {...field} placeholder="AST-0001" readOnly={isReadonly} />
+                        {fieldState.invalid && (
+                          <FieldError errors={[fieldState.error]} />
+                        )}
+                      </Field>
+                    )}
+                  />
+                )}
                 <Controller
                   name="condition"
                   control={form.control}
@@ -334,6 +341,7 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
                       <Select
                         value={field.value}
                         onValueChange={field.onChange}
+                        disabled={isReadonly}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -368,7 +376,7 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
                     <FieldLabel>Lokasi</FieldLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select value={field.value} onValueChange={field.onChange} disabled={isReadonly}>
                       <SelectTrigger>
                         <SelectValue placeholder="Pilih lokasi..." />
                       </SelectTrigger>
@@ -391,7 +399,7 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
                       <FieldLabel>Tgl. Beli</FieldLabel>
-                      <Input type="date" {...field} />
+                      <Input type="date" {...field} readOnly={isReadonly} />
                     </Field>
                   )}
                 />
@@ -401,7 +409,7 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
                       <FieldLabel>Harga Beli</FieldLabel>
-                      <Input type="number" {...field} placeholder="0" />
+                      <Input type="number" {...field} placeholder="0" readOnly={isReadonly} />
                     </Field>
                   )}
                 />
@@ -413,7 +421,7 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
                     <FieldLabel>Garansi Selesai</FieldLabel>
-                    <Input type="date" {...field} />
+                    <Input type="date" {...field} readOnly={isReadonly} />
                   </Field>
                 )}
               />
@@ -424,7 +432,7 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
                     <FieldLabel>Vendor / Toko</FieldLabel>
-                    <Input {...field} placeholder="e.g. PT Maju Bersama" />
+                    <Input {...field} placeholder="e.g. PT Maju Bersama" readOnly={isReadonly} />
                   </Field>
                 )}
               />
@@ -483,6 +491,7 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
                   className="hidden"
                   onChange={handleImageChange}
                   disabled={isPending}
+                  readOnly={isReadonly}
                 />
               </label>
             </div>
@@ -501,6 +510,7 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
                   {...field}
                   placeholder="Tambahkan keterangan tambahan jika perlu..."
                   rows={2}
+                  readOnly={isReadonly}
                 />
               </Field>
             )}

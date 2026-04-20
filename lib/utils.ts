@@ -139,3 +139,12 @@ export function isValidImageFile(file: File): {
 
   return { valid: true };
 }
+
+type Role = 'owner' | 'staff_asset' | string;
+
+export function getAssetFormAccess(role?: Role) {
+  return {
+    canView: role === 'owner' || role === 'staff_asset',
+    isReadonly: role === 'staff_asset',
+  };
+}

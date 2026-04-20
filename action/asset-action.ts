@@ -8,8 +8,33 @@ import { revalidatePath } from 'next/cache';
 import { createAuditLog } from '@/lib/logger';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
+import fs from 'fs';
 import path from 'path';
 import ExcelJS from 'exceljs';
+
+// Helper function to save uploaded file
+async function saveUploadedFile(file: File): Promise<string | null> {
+  if (!file) return null;
+
+  // Generate unique filename
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 8);
+  const extension = path.extname(file.name);
+  const filename = `${timestamp}-${random}${extension}`;
+
+  // Ensure uploads directory exists
+  const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+
+  // Save file to public/uploads
+  const filePath = path.join(uploadsDir, filename);
+  const buffer = Buffer.from(await file.arrayBuffer());
+  fs.writeFileSync(filePath, buffer);
+
+  return filename;
+}
 
 /* =======================
    TYPES
@@ -20,7 +45,7 @@ export type AssetArgs = {
 };
 
 function isGlobalAccess(role?: string | null) {
-  return role === 'OWNER' || role === 'ADMIN' || role === 'ASSET_STAFF';
+  return role === 'owner' || role === 'admin' || role === 'asset_staff';
 }
 
 function buildAssetFilter({
@@ -34,14 +59,17 @@ function buildAssetFilter({
 }) {
   const baseFilter = { organizationId };
 
+  // ✅ owner & staff_asset → lihat semua
   if (isGlobalAccess(role)) {
     return baseFilter;
   }
 
+  // ❌ selain itu wajib punya department
   if (!departmentId) {
     throw new Error('User has no department');
   }
 
+  // 🔒 filter by department
   return {
     ...baseFilter,
     departmentId,
@@ -53,9 +81,12 @@ function buildAssetFilter({
 export async function getAllAssets({ page, pageSize }: AssetArgs) {
   const session = await getServerSession();
   if (!session) throw new Error('Unauthorized');
-  const { role } = await auth.api.getActiveMemberRole({
+
+  const roleRes = await auth.api.getActiveMemberRole({
     headers: await headers(),
   });
+
+  const role = roleRes?.role;
 
   const activeOrgId = session.session?.activeOrganizationId;
   if (!activeOrgId) throw new Error('No active organizationId found');
@@ -65,18 +96,30 @@ export async function getAllAssets({ page, pageSize }: AssetArgs) {
     departmentId: session.user.departmentId,
     organizationId: activeOrgId,
   });
+
   const safePage = Math.max(1, page);
   const safePageSize = Math.max(1, pageSize);
-  const skip = (safePage - 1) * safePageSize;
-  const take = safePageSize;
 
   const [data, total] = await prisma.$transaction([
     prisma.asset.findMany({
       where,
-      skip,
-      take,
+      skip: (safePage - 1) * safePageSize,
+      take: safePageSize,
       orderBy: { createdAt: 'desc' },
-      include: {
+
+      select: {
+        id: true,
+        kode_asset: true,
+        partNumber: true,
+        condition: true,
+        purchaseDate: true,
+        brand: true,
+        model: true,
+        photoUrl: true,
+
+        // 🔥 INI PENTING
+        departmentId: true,
+
         item: {
           select: {
             name: true,
@@ -97,9 +140,7 @@ export async function getAllAssets({ page, pageSize }: AssetArgs) {
         },
       },
     }),
-    prisma.asset.count({
-      where,
-    }),
+    prisma.asset.count({ where }),
   ]);
 
   return {
@@ -134,6 +175,7 @@ export async function getLocationsForSelect() {
   const session = await getServerSession();
   if (!session) throw new Error('Unauthorized');
   const activeOrgId = session.session?.activeOrganizationId;
+
   if (!activeOrgId) return [];
 
   return prisma.location.findMany({
@@ -225,6 +267,10 @@ export async function createAsset(formData: FormData) {
   const activeOrgId = session.session?.activeOrganizationId;
   if (!activeOrgId) throw new Error('No active organizationId found');
 
+  // Handle file upload
+  const photoFile = formData.get('photo') as File | null;
+  const photoUrl = photoFile ? await saveUploadedFile(photoFile) : null;
+
   const asset = await prisma.$transaction(async (tx) => {
     const newAsset = await tx.asset.create({
       data: {
@@ -243,7 +289,7 @@ export async function createAsset(formData: FormData) {
         kode_asset: formData.get('kode_asset')?.toString() || null,
         vendorName: formData.get('vendorName')?.toString() || null,
         garansi_exp: parseDateOrNull('garansi_exp'),
-        photoUrl: formData.get('photo')?.toString() || null,
+        photoUrl,
       },
     });
 
@@ -315,6 +361,12 @@ export async function updateAsset(id: string, formData: FormData) {
     return val ? parseFloat(val) : null;
   };
 
+  // Handle file upload
+  const photoFile = formData.get('photo') as File | null;
+  const photoUrl = photoFile
+    ? await saveUploadedFile(photoFile)
+    : asset.photoUrl;
+
   const updated = await prisma.$transaction(async (tx) => {
     const newLocationId = formData.get('locationId')?.toString();
     const oldLocationId = asset.locationId;
@@ -337,7 +389,7 @@ export async function updateAsset(id: string, formData: FormData) {
         kode_asset: formData.get('kode_asset')?.toString() || asset.kode_asset,
         vendorName: formData.get('vendorName')?.toString() || asset.vendorName,
         garansi_exp: parseDateOrNull('garansi_exp') ?? asset.garansi_exp,
-        photoUrl: formData.get('photo')?.toString() ?? asset.photoUrl,
+        photoUrl,
         updatedAt: new Date(),
       },
     });
@@ -482,6 +534,17 @@ export async function deleteAsset(id: string) {
       where: { id, organizationId: activeOrgId },
     });
     if (!existing) throw new Error('Asset not found');
+
+    // Delete photo file from server
+    const photoPath = path.join(
+      process.cwd(),
+      'public',
+      'uploads',
+      existing.photoUrl,
+    );
+    if (existing.photoUrl && fs.existsSync(photoPath)) {
+      fs.unlinkSync(photoPath);
+    }
 
     const deleted = await tx.asset.delete({ where: { id } });
 

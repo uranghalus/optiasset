@@ -154,7 +154,7 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
                                 <div className="relative w-full max-w-md mx-auto">
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img
-                                        src={asset.photoUrl}
+                                        src={`/uploads/${asset.photoUrl}`}
                                         alt={`Foto ${asset.item.name}`}
                                         className="w-full h-64 object-cover rounded-lg border"
                                         onError={() => setImageError(true)}

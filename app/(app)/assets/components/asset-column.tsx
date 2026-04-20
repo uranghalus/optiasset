@@ -18,10 +18,18 @@ export type AssetWithItem = Prisma.AssetGetPayload<{
         assetType: true;
       };
     };
+    department: {
+      select: {
+        nama_department: true;
+      };
+    };
   };
 }>;
 
-export const assetColumns: ColumnDef<AssetWithItem>[] = [
+/* =======================
+   BASE COLUMNS (TANPA DEPARTMENT)
+======================= */
+export const baseAssetColumns: ColumnDef<AssetWithItem>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -44,7 +52,6 @@ export const assetColumns: ColumnDef<AssetWithItem>[] = [
     size: 40,
   },
 
-  // ✅ kode_asset
   {
     accessorKey: "kode_asset",
     header: ({ column }) => (
@@ -58,7 +65,6 @@ export const assetColumns: ColumnDef<AssetWithItem>[] = [
     size: 140,
   },
 
-  // ✅ Item + Brand Model
   {
     id: "item_name",
     header: ({ column }) => (
@@ -66,11 +72,9 @@ export const assetColumns: ColumnDef<AssetWithItem>[] = [
     ),
     cell: ({ row }) => {
       const asset = row.original;
-      console.log(row.original);
       return (
         <div className="ps-2 flex flex-col">
           <span className="font-medium">{asset.item.name}</span>
-
           <span className="text-xs text-muted-foreground italic">
             {[asset.brand, asset.model].filter(Boolean).join(" ") || "-"}
           </span>
@@ -80,29 +84,23 @@ export const assetColumns: ColumnDef<AssetWithItem>[] = [
     size: 250,
   },
 
-  // ✅ Foto Aset
   {
     id: "photo",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Foto" />
     ),
     cell: ({ row }) => {
-      const asset = row.original as Prisma.AssetGetPayload<{
-        include: { item: true };
-      }> & { photoUrl?: string | null };
+      const asset = row.original;
       const photoUrl = asset.photoUrl;
 
       if (!photoUrl) {
-        return (
-          <div className="ps-2 text-xs text-muted-foreground">-</div>
-        );
+        return <div className="ps-2 text-xs text-muted-foreground">-</div>;
       }
 
       return (
         <div className="ps-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={photoUrl}
+            src={`/uploads/${photoUrl}`}
             alt="Asset"
             className="h-10 w-10 rounded-md object-cover border"
           />
@@ -112,21 +110,17 @@ export const assetColumns: ColumnDef<AssetWithItem>[] = [
     size: 80,
   },
 
-  // ✅ Part Number (tambahan karena ada di schema kamu)
   {
     accessorKey: "partNumber",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Part Number" />
     ),
     cell: ({ row }) => (
-      <div className="ps-2">
-        {row.original.partNumber || "-"}
-      </div>
+      <div className="ps-2">{row.original.partNumber || "-"}</div>
     ),
     size: 150,
   },
 
-  // ✅ Condition
   {
     accessorKey: "condition",
     header: ({ column }) => (
@@ -142,7 +136,7 @@ export const assetColumns: ColumnDef<AssetWithItem>[] = [
             className={cn(
               condition === "GOOD" && "border-green-500 text-green-500",
               condition === "BROKEN" && "border-red-500 text-red-500",
-              condition === "REPAIR" && "border-yellow-500 text-yellow-500",
+              condition === "REPAIR" && "border-yellow-500 text-yellow-500"
             )}
           >
             {condition || "N/A"}
@@ -152,8 +146,12 @@ export const assetColumns: ColumnDef<AssetWithItem>[] = [
     },
     size: 100,
   },
-
-  // ✅ Purchase Date
+  {
+    accessorKey: "departmentId",
+    header: () => null,
+    cell: () => null,
+    enableHiding: true,
+  },
   {
     accessorKey: "purchaseDate",
     header: ({ column }) => (
@@ -171,7 +169,6 @@ export const assetColumns: ColumnDef<AssetWithItem>[] = [
     size: 120,
   },
 
-  // ✅ Actions
   {
     id: "actions",
     header: ({ column }) => (
@@ -188,3 +185,22 @@ export const assetColumns: ColumnDef<AssetWithItem>[] = [
     },
   },
 ];
+
+/* =======================
+   DEPARTMENT COLUMN
+======================= */
+export const departmentColumn: ColumnDef<AssetWithItem> = {
+  id: "department",
+  header: ({ column }) => (
+    <DataTableColumnHeader column={column} title="Department" />
+  ),
+  cell: ({ row }) => {
+    const dept = row.original.department;
+
+    return (
+      <div className="ps-2 text-sm">
+        {dept?.nama_department ?? "No Department"}
+      </div>
+    );
+  },
+};

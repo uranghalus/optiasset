@@ -29,7 +29,7 @@ export type AssetWithItem = Prisma.AssetGetPayload<{
 /* =======================
    BASE COLUMNS (TANPA DEPARTMENT)
 ======================= */
-export const baseAssetColumns: ColumnDef<AssetWithItem>[] = [
+export const assetColumn: ColumnDef<AssetWithItem>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -85,32 +85,6 @@ export const baseAssetColumns: ColumnDef<AssetWithItem>[] = [
   },
 
   {
-    id: "photo",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Foto" />
-    ),
-    cell: ({ row }) => {
-      const asset = row.original;
-      const photoUrl = asset.photoUrl;
-
-      if (!photoUrl) {
-        return <div className="ps-2 text-xs text-muted-foreground">-</div>;
-      }
-
-      return (
-        <div className="ps-2">
-          <img
-            src={`/uploads/${photoUrl}`}
-            alt="Asset"
-            className="h-10 w-10 rounded-md object-cover border"
-          />
-        </div>
-      );
-    },
-    size: 80,
-  },
-
-  {
     accessorKey: "partNumber",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Part Number" />
@@ -120,9 +94,25 @@ export const baseAssetColumns: ColumnDef<AssetWithItem>[] = [
     ),
     size: 150,
   },
+  {
+    id: "departmentId",
+    filterFn: "arrIncludesSome",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Department" />
+    ),
+    cell: ({ row }) => {
+      const dept = row.original.department;
 
+      return (
+        <div className="ps-2 text-sm">
+          {dept?.nama_department ?? "No Department"}
+        </div>
+      );
+    },
+  },
   {
     accessorKey: "condition",
+    filterFn: "arrIncludesSome",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Kondisi" />
     ),
@@ -146,28 +136,6 @@ export const baseAssetColumns: ColumnDef<AssetWithItem>[] = [
     },
     size: 100,
   },
-  {
-    accessorKey: "departmentId",
-    header: () => null,
-    cell: () => null,
-    enableHiding: true,
-  },
-  {
-    accessorKey: "purchaseDate",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Tgl. Beli" />
-    ),
-    cell: ({ cell }) => {
-      const date = cell.getValue() as Date;
-
-      return (
-        <div className="ps-2 text-sm text-muted-foreground">
-          {date ? format(new Date(date), "dd MMM yyyy") : "-"}
-        </div>
-      );
-    },
-    size: 120,
-  },
 
   {
     id: "actions",
@@ -186,21 +154,3 @@ export const baseAssetColumns: ColumnDef<AssetWithItem>[] = [
   },
 ];
 
-/* =======================
-   DEPARTMENT COLUMN
-======================= */
-export const departmentColumn: ColumnDef<AssetWithItem> = {
-  id: "department",
-  header: ({ column }) => (
-    <DataTableColumnHeader column={column} title="Department" />
-  ),
-  cell: ({ row }) => {
-    const dept = row.original.department;
-
-    return (
-      <div className="ps-2 text-sm">
-        {dept?.nama_department ?? "No Department"}
-      </div>
-    );
-  },
-};

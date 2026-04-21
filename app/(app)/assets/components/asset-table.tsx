@@ -7,8 +7,7 @@ import { useActiveMemberRole } from "@/hooks/use-active-member";
 
 import { useState, useMemo } from "react";
 import {
-  baseAssetColumns,
-  departmentColumn,
+  assetColumn,
 } from "./asset-column";
 
 import { useDataTable } from "@/hooks/use-data-table";
@@ -50,40 +49,23 @@ export default function AssetTable() {
     pageIndex: 0,
     pageSize: 10,
   });
-
   const [columnFilters, setColumnFilters] = useState<any[]>([]);
 
-  /* =======================
-     AMBIL FILTER VALUE
-  ======================= */
   const selectedDept = columnFilters.find(
     (f) => f.id === "departmentId"
-  )?.value;
+  )?.value as string[] | undefined;
+
+  const selectedCondition = columnFilters.find(
+    (f) => f.id === "condition"
+  )?.value as string[] | undefined;
 
   const { data, isLoading } = useAssets({
     page: pagination.pageIndex,
     pageSize: pagination.pageSize,
-
+    departmentId: selectedDept,
+    condition: selectedCondition,
   });
 
-  /* =======================
-     COLUMN (ROLE BASED)
-  ======================= */
-  const columns = useMemo(() => {
-    const cols = [...baseAssetColumns];
-
-    if (role === "owner" || role === "staff_asset" as any) {
-      const actionIndex = cols.findIndex((c) => c.id === "actions");
-
-      if (actionIndex !== -1) {
-        cols.splice(actionIndex, 0, departmentColumn);
-      } else {
-        cols.push(departmentColumn);
-      }
-    }
-
-    return cols;
-  }, [role]);
 
   /* =======================
      FILTER CONFIG
@@ -100,16 +82,28 @@ export default function AssetTable() {
           value: dept.id_department,
         })),
       },
+      {
+        columnId: 'condition',
+        title: 'Kondisi Aset',
+        options: [
+          { label: 'Bagus', value: 'GOOD' },
+          { label: 'Dalam Perbaikan', value: 'REPAIR' },
+          { label: 'Rusak', value: 'BROKEN' },
+          { label: 'Hilang', value: 'LOST' },
+        ],
+      },
     ];
   }, [role, departments]);
 
   const { table } = useDataTable({
     data: data?.data ?? [],
-    columns: columns as any,
+    columns: assetColumn as any,
     columnResizeMode: "onEnd",
     pageCount: data?.pageCount ?? 0,
     pagination,
     onPaginationChange: setPagination,
+    columnFilters,
+    onColumnFiltersChange: setColumnFilters, // 🔥 WAJIB
   });
 
   return (

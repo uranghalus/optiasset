@@ -13,10 +13,15 @@ import { PaginationState } from '@/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 // Get all assets
-export function useAssets({ page, pageSize }: PaginationState) {
+export function useAssets({
+  page,
+  pageSize,
+  condition,
+  departmentId,
+}: PaginationState) {
   return useQuery({
-    queryKey: ['assets', page, pageSize],
-    queryFn: () => getAllAssets({ page, pageSize }),
+    queryKey: ['assets', page, pageSize, condition, departmentId], // 🔥 TAMBAHKAN INI
+    queryFn: () => getAllAssets({ page, pageSize, condition, departmentId }),
   });
 }
 interface UseAssetByIdProps {

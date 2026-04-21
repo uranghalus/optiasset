@@ -43,6 +43,7 @@ import { getAssetFormAccess, isValidImageFile } from "@/lib/utils";
 import { useActiveMemberRole } from "@/hooks/use-active-member";
 import { Combobox } from "@/components/ui/combobox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useDepartmentsForSelect } from "@/hooks/crud/use-divisi";
 
 type AssetWithRelations = Asset & {
   item: { id: string; name: string } | null;
@@ -66,6 +67,7 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
   const { canView, isReadonly } = getAssetFormAccess(role)
   const { data: items } = useItemsForSelect();
   const { data: locations } = useLocationsForSelect();
+  const { data: dept } = useDepartmentsForSelect()
   const form = useForm<AssetForm>({
     resolver: zodResolver(AssetFormSchema),
     defaultValues: {
@@ -228,83 +230,104 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[70vh]">
-          <form
-            id="asset-form"
-            onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-6"
-          >
-            {form.formState.errors.root?.message && (
-              <p className="text-sm text-red-500 bg-red-50 p-2 rounded">
-                {form.formState.errors.root.message}
-              </p>
-            )}
+        <form
+          id="asset-form"
+          onSubmit={form.handleSubmit(onSubmit, (err) => {
+            console.log("VALIDATION ERROR:", err);
+          })}
+          className="space-y-6"
+        >
+          {form.formState.errors.root?.message && (
+            <p className="text-sm text-red-500 bg-red-50 p-2 rounded">
+              {form.formState.errors.root.message}
+            </p>
+          )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* KIRI: Informasi Utama */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-sm border-b pb-1">
-                  Informasi Item
-                </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* KIRI: Informasi Utama */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-sm border-b pb-1">
+                Informasi Item
+              </h3>
 
+              <Controller
+                name="itemId"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel>Master Item</FieldLabel>
+                    <Combobox<{
+                      name: string;
+                      id: string;
+                      code: string;
+                      assetType: AssetType;
+                    }>
+                      title="Cari Item"
+                      valueKey="id"
+                      value={items?.find((item) => item.id === field.value)}
+                      searchFn={(search: string, offset: number, size: number) =>
+                        Promise.resolve(
+                          items
+                            ?.filter((item) =>
+                              item.name.toLowerCase().includes(search.toLowerCase())
+                            )
+                            .slice(offset, offset + size) || []
+                        )
+                      }
+                      renderText={(item) => item.name}
+                      onChange={(item) => field.onChange(item.id)}
+                    />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
+              {canView && (
                 <Controller
-                  name="itemId"
+                  name="kode_asset"
                   control={form.control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel>Master Item</FieldLabel>
-                      <Combobox<{
-                        name: string;
-                        id: string;
-                        code: string;
-                        assetType: AssetType;
-                      }>
-                        title="Cari Item"
-                        valueKey="id"
-                        value={items?.find((item) => item.id === field.value)}
-                        searchFn={(search: string, offset: number, size: number) =>
-                          Promise.resolve(
-                            items
-                              ?.filter((item) =>
-                                item.name.toLowerCase().includes(search.toLowerCase())
-                              )
-                              .slice(offset, offset + size) || []
-                          )
-                        }
-                        renderText={(item) => item.name}
-                        onChange={(item) => field.onChange(item.id)}
-                      />
+                      <FieldLabel>Asset Tag / kode_asset</FieldLabel>
+                      <Input {...field} placeholder="AST-0001" readOnly={isReadonly} />
                       {fieldState.invalid && (
                         <FieldError errors={[fieldState.error]} />
                       )}
                     </Field>
                   )}
                 />
-                {canView && (
-                  <Controller
-                    name="kode_asset"
-                    control={form.control}
-                    render={({ field, fieldState }) => (
-                      <Field data-invalid={fieldState.invalid}>
-                        <FieldLabel>Asset Tag / kode_asset</FieldLabel>
-                        <Input {...field} placeholder="AST-0001" readOnly={isReadonly} />
-                        {fieldState.invalid && (
-                          <FieldError errors={[fieldState.error]} />
-                        )}
-                      </Field>
+              )}
+              {/* BRAND */}
+              <Controller
+                name="brand"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel>Brand</FieldLabel>
+                    <Input
+                      {...field}
+                      placeholder="Lenovo"
+                      aria-invalid={fieldState.invalid}
+                      readOnly={isReadonly}
+                    />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
                     )}
-                  />
+                  </Field>
                 )}
-                {/* BRAND */}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                {/*LINK MODEL */}
                 <Controller
-                  name="brand"
+                  name="model"
                   control={form.control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel>Brand</FieldLabel>
+                      <FieldLabel>Model</FieldLabel>
                       <Input
                         {...field}
-                        placeholder="Lenovo"
+                        placeholder="ThinkPad X1 Carbon"
                         aria-invalid={fieldState.invalid}
                         readOnly={isReadonly}
                       />
@@ -314,270 +337,292 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
                     </Field>
                   )}
                 />
-                <div className="grid grid-cols-2 gap-4">
-                  {/*LINK MODEL */}
-                  <Controller
-                    name="model"
-                    control={form.control}
-                    render={({ field, fieldState }) => (
-                      <Field data-invalid={fieldState.invalid}>
-                        <FieldLabel>Model</FieldLabel>
-                        <Input
-                          {...field}
-                          placeholder="ThinkPad X1 Carbon"
-                          aria-invalid={fieldState.invalid}
-                          readOnly={isReadonly}
-                        />
-                        {fieldState.invalid && (
-                          <FieldError errors={[fieldState.error]} />
-                        )}
-                      </Field>
-                    )}
-                  />
 
-                  {/*LINK PART NUMBER */}
-                  <Controller
-                    name="partNumber"
-                    control={form.control}
-                    render={({ field, fieldState }) => (
-                      <Field data-invalid={fieldState.invalid}>
-                        <FieldLabel>Part Number</FieldLabel>
-                        <Input
-                          {...field}
-                          placeholder="TP-X1C-2024"
-                          aria-invalid={fieldState.invalid}
-                          readOnly={isReadonly}
-                        />
-                        {fieldState.invalid && (
-                          <FieldError errors={[fieldState.error]} />
-                        )}
-                      </Field>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <Controller
-                    name="serialNumber"
-                    control={form.control}
-                    render={({ field, fieldState }) => (
-                      <Field data-invalid={fieldState.invalid}>
-                        <FieldLabel>Serial Number</FieldLabel>
-                        <Input
-                          {...field}
-                          placeholder="SN123456789"
-                          aria-invalid={fieldState.invalid}
-                          readOnly={isReadonly}
-                        />
-                        {fieldState.invalid && (
-                          <FieldError errors={[fieldState.error]} />
-                        )}
-                      </Field>
-                    )}
-                  />
-                  <Controller
-                    name="condition"
-                    control={form.control}
-                    render={({ field, fieldState }) => (
-                      <Field data-invalid={fieldState.invalid}>
-                        <FieldLabel>Kondisi</FieldLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={isReadonly}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="GOOD">Bagus (Good)</SelectItem>
-                            <SelectItem value="REPAIR">
-                              Dalam Perbaikan
-                            </SelectItem>
-                            <SelectItem value="BROKEN">Rusak (Broken)</SelectItem>
-                            <SelectItem value="LOST">Hilang</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        {fieldState.invalid && (
-                          <FieldError errors={[fieldState.error]} />
-                        )}
-                      </Field>
-                    )}
-                  />
-                </div>
-              </div>
-
-              {/* KANAN: Penempatan & Pembelian */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-sm border-b pb-1">
-                  Penempatan & Pembelian
-                </h3>
-
+                {/*LINK PART NUMBER */}
                 <Controller
-                  name="locationId"
+                  name="partNumber"
                   control={form.control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel>Lokasi</FieldLabel>
+                      <FieldLabel>Part Number</FieldLabel>
+                      <Input
+                        {...field}
+                        placeholder="TP-X1C-2024"
+                        aria-invalid={fieldState.invalid}
+                        readOnly={isReadonly}
+                      />
+                      {fieldState.invalid && (
+                        <FieldError errors={[fieldState.error]} />
+                      )}
+                    </Field>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <Controller
+                  name="serialNumber"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel>Serial Number</FieldLabel>
+                      <Input
+                        {...field}
+                        placeholder="SN123456789"
+                        aria-invalid={fieldState.invalid}
+                        readOnly={isReadonly}
+                      />
+                      {fieldState.invalid && (
+                        <FieldError errors={[fieldState.error]} />
+                      )}
+                    </Field>
+                  )}
+                />
+                <Controller
+                  name="condition"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel>Kondisi</FieldLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={isReadonly}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="GOOD">Bagus (Good)</SelectItem>
+                          <SelectItem value="REPAIR">
+                            Dalam Perbaikan
+                          </SelectItem>
+                          <SelectItem value="BROKEN">Rusak (Broken)</SelectItem>
+                          <SelectItem value="LOST">Hilang</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {fieldState.invalid && (
+                        <FieldError errors={[fieldState.error]} />
+                      )}
+                    </Field>
+                  )}
+                />
+              </div>
+            </div>
+
+            {/* KANAN: Penempatan & Pembelian */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-sm border-b pb-1">
+                Penempatan & Pembelian
+              </h3>
+
+              <Controller
+                name="locationId"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel>Lokasi</FieldLabel>
+                    <Combobox<{
+                      id: string;
+                      name: string;
+                    }>
+                      title="Cari Lokasi"
+                      valueKey="id"
+                      value={locations?.find((loc) => loc.id === field.value)}
+                      searchFn={(search: string, offset: number, size: number) =>
+                        Promise.resolve(
+                          locations
+                            ?.filter((loc) =>
+                              loc.name.toLowerCase().includes(search.toLowerCase())
+                            )
+                            .slice(offset, offset + size) || []
+                        )
+                      }
+                      renderText={(loc) => loc.name}
+                      onChange={(loc) => field.onChange(loc.id)}
+                      disabled={isReadonly}
+                    />
+                  </Field>
+                )}
+              />
+
+              {canView && (
+                <Controller
+                  name="departmentId"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel>Departemen</FieldLabel>
                       <Combobox<{
-                        id: string;
-                        name: string;
+                        id_department: string;
+                        nama_department: string;
                       }>
-                        title="Cari Lokasi"
-                        valueKey="id"
-                        value={locations?.find((loc) => loc.id === field.value)}
+                        title="Cari Departemen"
+                        valueKey="id_department"
+                        value={dept?.find((loc) => loc.id_department === field.value)}
                         searchFn={(search: string, offset: number, size: number) =>
                           Promise.resolve(
-                            locations
+                            dept
                               ?.filter((loc) =>
-                                loc.name.toLowerCase().includes(search.toLowerCase())
+                                loc.nama_department.toLowerCase().includes(search.toLowerCase())
                               )
                               .slice(offset, offset + size) || []
                           )
                         }
-                        renderText={(loc) => loc.name}
-                        onChange={(loc) => field.onChange(loc.id)}
+                        renderText={(loc) => loc.nama_department}
+                        onChange={(loc) => field.onChange(loc.id_department)}
                         disabled={isReadonly}
                       />
                     </Field>
                   )}
                 />
-
-                <div className="grid grid-cols-2 gap-2">
-                  <Controller
-                    name="purchaseDate"
-                    control={form.control}
-                    render={({ field, fieldState }) => (
-                      <Field data-invalid={fieldState.invalid}>
-                        <FieldLabel>Tgl. Beli</FieldLabel>
-                        <Input type="date" {...field} readOnly={isReadonly} />
-                      </Field>
-                    )}
-                  />
-                  <Controller
-                    name="purchasePrice"
-                    control={form.control}
-                    render={({ field, fieldState }) => (
-                      <Field data-invalid={fieldState.invalid}>
-                        <FieldLabel>Harga Beli</FieldLabel>
-                        <Input type="number" {...field} placeholder="0" readOnly={isReadonly} />
-                      </Field>
-                    )}
-                  />
-                </div>
-
+              )}
+              <Controller
+                name="PIC"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel>Penanggung Jawab</FieldLabel>
+                    <Input type="text" {...field} readOnly={isReadonly} />
+                  </Field>
+                )}
+              />
+              <div className="grid grid-cols-2 gap-2">
                 <Controller
-                  name="garansi_exp"
+                  name="purchaseDate"
                   control={form.control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel>Garansi Selesai</FieldLabel>
+                      <FieldLabel>Tgl. Beli</FieldLabel>
                       <Input type="date" {...field} readOnly={isReadonly} />
                     </Field>
                   )}
                 />
-
                 <Controller
-                  name="vendorName"
+                  name="purchasePrice"
                   control={form.control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel>Vendor / Toko</FieldLabel>
-                      <Input {...field} placeholder="e.g. PT Maju Bersama" readOnly={isReadonly} />
+                      <FieldLabel>Harga Beli</FieldLabel>
+                      <Input type="number" {...field} placeholder="0" readOnly={isReadonly} />
                     </Field>
                   )}
                 />
               </div>
+
+              <Controller
+                name="garansi_exp"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel>Garansi Selesai</FieldLabel>
+                    <Input type="date" {...field} readOnly={isReadonly} />
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="vendorName"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel>Vendor / Toko</FieldLabel>
+                    <Input {...field} placeholder="e.g. PT Maju Bersama" readOnly={isReadonly} />
+                  </Field>
+                )}
+              />
             </div>
+          </div>
 
-            {/* PHOTO UPLOAD SECTION */}
-            <div className="space-y-4 border rounded-lg p-4 bg-slate-50">
-              <h3 className="font-semibold text-sm">Foto Aset</h3>
+          {/* PHOTO UPLOAD SECTION */}
+          <div className="space-y-4 border rounded-lg p-4 bg-slate-50">
+            <h3 className="font-semibold text-sm">Foto Aset</h3>
 
-              {/* Image Preview */}
-              {imagePreview && (
-                <div className="relative w-full flex justify-center">
-                  <div className="relative">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={imagePreview}
-                      alt="Asset preview"
-                      className="h-40 w-40 object-cover rounded-lg border"
-                    />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="icon"
-                      className="absolute -top-2 -right-2 h-6 w-6"
-                      onClick={handleRemoveImage}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
+            {/* Image Preview */}
+            {imagePreview && (
+              <div className="relative w-full flex justify-center">
+                <div className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imagePreview}
+                    alt="Asset preview"
+                    className="h-40 w-40 object-cover rounded-lg border"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -top-2 -right-2 h-6 w-6"
+                    onClick={handleRemoveImage}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
                 </div>
-              )}
-
-              {/* Image Error */}
-              {imageError && (
-                <p className="text-sm text-red-500 bg-red-50 p-2 rounded">
-                  {imageError}
-                </p>
-              )}
-
-              {/* File Input */}
-              <div className="flex items-center gap-2">
-                <label htmlFor="photo-input" className="flex-1">
-                  <div className="flex items-center justify-center gap-2 p-3 border-2 border-dashed rounded-lg cursor-pointer hover:bg-slate-100 transition-colors">
-                    <Camera className="h-4 w-4" />
-                    <span className="text-sm text-slate-600">
-                      {imagePreview
-                        ? "Klik untuk ubah foto"
-                        : "Pilih atau drag foto aset"}
-                    </span>
-                  </div>
-                  <input
-                    id="photo-input"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleImageChange}
-                    disabled={isPending}
-                    readOnly={isReadonly}
-                  />
-                </label>
               </div>
-              <p className="text-xs text-slate-500">
-                Format: JPG, PNG, WebP, GIF | Max: 5MB
+            )}
+
+            {/* Image Error */}
+            {imageError && (
+              <p className="text-sm text-red-500 bg-red-50 p-2 rounded">
+                {imageError}
               </p>
+            )}
+
+            {/* File Input */}
+            <div className="flex items-center gap-2">
+              <label htmlFor="photo-input" className="flex-1">
+                <div className="flex items-center justify-center gap-2 p-3 border-2 border-dashed rounded-lg cursor-pointer hover:bg-slate-100 transition-colors">
+                  <Camera className="h-4 w-4" />
+                  <span className="text-sm text-slate-600">
+                    {imagePreview
+                      ? "Klik untuk ubah foto"
+                      : "Pilih atau drag foto aset"}
+                  </span>
+                </div>
+                <input
+                  id="photo-input"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageChange}
+                  disabled={isPending}
+                  readOnly={isReadonly}
+                />
+              </label>
             </div>
+            <p className="text-xs text-slate-500">
+              Format: JPG, PNG, WebP, GIF | Max: 5MB
+            </p>
+          </div>
 
-            <Controller
-              name="notes"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Catatan</FieldLabel>
-                  <Textarea
-                    {...field}
-                    placeholder="Tambahkan keterangan tambahan jika perlu..."
-                    rows={2}
-                    readOnly={isReadonly}
-                  />
-                </Field>
-              )}
-            />
+          <Controller
+            name="notes"
+            control={form.control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <FieldLabel>Catatan</FieldLabel>
+                <Textarea
+                  {...field}
+                  placeholder="Tambahkan keterangan tambahan jika perlu..."
+                  rows={2}
+                  readOnly={isReadonly}
+                />
+              </Field>
+            )}
+          />
 
-          </form>
-        </ScrollArea>
-        <DialogFooter className="pt-2">
-          <Button
-            type="submit"
-            disabled={isPending}
-            className="w-full md:w-auto"
-          >
-            {isPending ? "Menyimpan..." : "Simpan Data Aset"}
-          </Button>
-        </DialogFooter>
+          <DialogFooter className="pt-2">
+            <Button
+              form="asset-form"
+              type="submit"
+              disabled={isPending}
+              className="w-full md:w-auto"
+            >
+              {isPending ? "Menyimpan..." : "Simpan Data Aset"}
+            </Button>
+          </DialogFooter>
+        </form>
+
       </DialogContent>
     </Dialog>
   );

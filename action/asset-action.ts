@@ -42,6 +42,10 @@ async function saveUploadedFile(file: File): Promise<string | null> {
 export type AssetArgs = {
   page: number;
   pageSize: number;
+
+  // 🔥 tambahkan ini
+  departmentId?: string;
+  condition?: string;
 };
 
 function isGlobalAccess(role?: string | null) {
@@ -50,35 +54,55 @@ function isGlobalAccess(role?: string | null) {
 
 function buildAssetFilter({
   role,
-  departmentId,
+  userDepartmentId,
+  filterDepartmentId,
+  condition,
   organizationId,
 }: {
   role?: string | null;
-  departmentId?: string | null;
+  userDepartmentId?: string | null;
+  filterDepartmentId?: string;
+  condition?: string;
   organizationId: string;
 }) {
-  const baseFilter = { organizationId };
-
-  // ✅ owner & staff_asset → lihat semua
-  if (isGlobalAccess(role)) {
-    return baseFilter;
-  }
-
-  // ❌ selain itu wajib punya department
-  if (!departmentId) {
-    throw new Error('User has no department');
-  }
-
-  // 🔒 filter by department
-  return {
-    ...baseFilter,
-    departmentId,
+  const where: any = {
+    organizationId,
   };
+
+  // ✅ GLOBAL ACCESS (owner, admin, asset_staff)
+  if (isGlobalAccess(role)) {
+    if (filterDepartmentId?.length) {
+      where.departmentId = {
+        in: filterDepartmentId, // 🔥 FIX
+      };
+    }
+  } else {
+    // 🔒 NON GLOBAL → wajib pakai dept user
+    if (!userDepartmentId) {
+      throw new Error('User has no department');
+    }
+
+    where.departmentId = userDepartmentId;
+  }
+
+  // ✅ FILTER TAMBAHAN
+  if (condition?.length) {
+    where.condition = {
+      in: condition, // 🔥 FIX
+    };
+  }
+
+  return where;
 }
 /* =======================
    GET ALL ASSETS
  ======================= */
-export async function getAllAssets({ page, pageSize }: AssetArgs) {
+export async function getAllAssets({
+  page,
+  pageSize,
+  departmentId,
+  condition,
+}: AssetArgs) {
   const session = await getServerSession();
   if (!session) throw new Error('Unauthorized');
 
@@ -93,7 +117,9 @@ export async function getAllAssets({ page, pageSize }: AssetArgs) {
 
   const where = buildAssetFilter({
     role,
-    departmentId: session.user.departmentId,
+    userDepartmentId: session.user.departmentId,
+    filterDepartmentId: departmentId,
+    condition,
     organizationId: activeOrgId,
   });
 
@@ -536,14 +562,16 @@ export async function deleteAsset(id: string) {
     if (!existing) throw new Error('Asset not found');
 
     // Delete photo file from server
-    const photoPath = path.join(
-      process.cwd(),
-      'public',
-      'uploads',
-      existing.photoUrl,
-    );
-    if (existing.photoUrl && fs.existsSync(photoPath)) {
-      fs.unlinkSync(photoPath);
+    if (existing.photoUrl) {
+      const photoPath = path.join(
+        process.cwd(),
+        'public',
+        'uploads',
+        existing.photoUrl,
+      );
+      if (fs.existsSync(photoPath)) {
+        fs.unlinkSync(photoPath);
+      }
     }
 
     const deleted = await tx.asset.delete({ where: { id } });

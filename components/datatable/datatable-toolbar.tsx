@@ -7,8 +7,11 @@ import { type Table } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DataTableFacetedFilter } from "./datatable-faceted-filter";
-import { X } from "lucide-react";
+import { SlidersHorizontal, X } from "lucide-react";
 import { DataTableViewOptions } from "./datatable-view-options";
+
+import { PopoverTrigger, PopoverContent, Popover } from "../ui/popover";
+import { DataTableFacetedFilterContent } from "./datatable-faceted-content";
 
 type DataTableToolbarProps<TData> = {
   table: Table<TData>;
@@ -53,19 +56,7 @@ export function DataTableToolbar<TData>({
       <div className="ml-auto flex items-center gap-6 shrink-0">
         {/* FILTER + RESET */}
         <div className="flex items-center gap-2 flex-wrap">
-          {filters.map((filter) => {
-            const column = table.getColumn(filter.columnId);
-            if (!column) return null;
 
-            return (
-              <DataTableFacetedFilter
-                key={filter.columnId}
-                column={column}
-                title={filter.title}
-                options={filter.options}
-              />
-            );
-          })}
 
           {isFiltered && (
             <Button
@@ -115,8 +106,55 @@ export function DataTableToolbar<TData>({
             }}
             className="h-8 w-[150px] lg:w-[250px]"
           />
+          {filters.length > 0 && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8">
+                  <SlidersHorizontal className="mr-2 h-4 w-4" />
+                  Filter
+                </Button>
+              </PopoverTrigger>
 
+              <PopoverContent className="w-[250px] p-2 space-y-2" align="end">
+                {filters.map((filter) => {
+                  const column = table.getColumn(filter.columnId);
+                  if (!column) return null;
+
+                  return (
+                    <div key={filter.columnId} className="space-y-2">
+                      <p className="text-xs font-medium">{filter.title}</p>
+
+                      <DataTableFacetedFilterContent
+                        column={column}
+                        options={filter.options}
+                      />
+                    </div>
+                  );
+                })}
+
+                {isFiltered && (
+                  <>
+                    <div className="border-t pt-2 mt-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => {
+                          table.resetColumnFilters();
+                          table.setGlobalFilter("");
+                          onSearchChange?.("");
+                        }}
+                      >
+                        Reset Filters
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </PopoverContent>
+            </Popover>
+          )}
           <DataTableViewOptions table={table} />
+
         </div>
       </div>
     </div>

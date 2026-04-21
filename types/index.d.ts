@@ -8,6 +8,8 @@ export type PaginationState = {
   pageSize: number;
   total?: number;
   totalPages?: number;
+  departmentId?: string[]; // 🔥 array
+  condition?: string[]; // 🔥 array
 };
 
 /* ===================== */

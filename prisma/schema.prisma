@@ -217,35 +217,41 @@ model Item {
 }
 
 model Asset {
-  id             String          @id @default(uuid())
-  itemId         String
-  purchaseDate   DateTime?
-  purchasePrice  Float?
-  condition      String?
-  warrantyExpire DateTime?
-  locationId     String?
-  departmentId   String?
-  assignedUserId String?
-  serialNumber   String?
-  brand          String?         @db.Char(100)
-  model          String?         @db.Char(100)
-  partNumber     String?         @db.Char(100)
-  notes          String?
-  photoUrl       String?         @db.Text
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime?
-  kode_asset     String?         @db.Char(100)
-  garansi_exp    DateTime?
-  status         String          @default("ACTIVE") @db.VarChar(50)
-  vendorName     String?         @db.Char(100)
-  history        AssetHistory[]
-  loans          AssetLoan[]
-  item           Item            @relation(fields: [itemId, organizationId], references: [id, organizationId])
-  location       Location?       @relation(fields: [locationId, organizationId], references: [id, organizationId])
-  department     department?     @relation(fields: [departmentId], references: [id_department])
-  transfers      AssetTransfer[] @relation("AssetTransfers")
-  organizationId String
-  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id            String    @id @default(uuid())
+  itemId        String
+  condition     String?
+  purchaseDate  DateTime?
+  purchasePrice Float?
+  inComeDate    DateTime?
+  brokenDate    DateTime?
+
+  warrantyExpire  DateTime?
+  locationId      String?
+  departmentId    String?
+  assignedUserId  String?
+  brand           String?         @db.Char(100)
+  model           String?         @db.Char(100)
+  partNumber      String?         @db.Char(100)
+  serialNumber    String?         @db.Char(100)
+  no_spb          String?         @db.Char(100)
+  document_number String?         @db.Char(100)
+  PIC             String?         @db.Char(100)
+  notes           String?
+  photoUrl        String?         @db.Text
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime?
+  kode_asset      String?         @db.Char(100)
+  garansi_exp     DateTime?
+  status          String          @default("ACTIVE") @db.VarChar(50)
+  vendorName      String?         @db.Char(100)
+  history         AssetHistory[]
+  loans           AssetLoan[]
+  item            Item            @relation(fields: [itemId, organizationId], references: [id, organizationId])
+  location        Location?       @relation(fields: [locationId, organizationId], references: [id, organizationId])
+  department      department?     @relation(fields: [departmentId], references: [id_department])
+  transfers       AssetTransfer[] @relation("AssetTransfers")
+  organizationId  String
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([id, organizationId])
   @@unique([kode_asset, organizationId])

@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { randomUUID } from 'crypto';
 
 export async function seedOrganization(prisma: any, adminUserId?: string) {
-  const slug = 'optiasset';
-  const name = 'Optiasset';
+  const slug = 'dmb';
+  const name = 'Dutamall Banjarmasin';
   const existing = await prisma.organization.findUnique({
     where: { slug },
   });

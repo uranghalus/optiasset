@@ -837,3 +837,151 @@ export async function exportAssetExcel({
 
   return buffer;
 }
+
+type AssignAssetInput = {
+  assetId: string;
+  userId: string;
+  departmentId: string;
+};
+
+export async function assignAssetAction(payload: AssignAssetInput) {
+  const session = await getServerSession();
+
+  if (!session) {
+    throw new Error('Unauthorized');
+  }
+
+  const orgId = session.session?.activeOrganizationId;
+
+  if (!orgId) {
+    throw new Error('No organization');
+  }
+
+  const asset = await prisma.asset.findFirst({
+    where: {
+      id: payload.assetId,
+      organizationId: orgId,
+    },
+    include: {
+      item: true,
+      department: true,
+    },
+  });
+
+  if (!asset) {
+    throw new Error('Asset not found');
+  }
+
+  if (asset.assignedStatus === 'ASSIGNED') {
+    throw new Error('Asset already assigned');
+  }
+
+  const oldAssignedUser = asset.assignedUserId;
+
+  const oldDepartment = asset.department?.nama_department ?? null;
+
+  // transaction biar aman
+  const result = await prisma.$transaction(async (tx) => {
+    const updated = await tx.asset.update({
+      where: {
+        id: asset.id,
+      },
+
+      data: {
+        assignedUserId: payload.userId,
+
+        department: {
+          connect: {
+            id_department: payload.departmentId,
+          },
+        },
+
+        assignedStatus: 'ASSIGNED',
+
+        updatedAt: new Date(),
+      },
+    });
+
+    // history 1:
+    // assigned user berubah
+    await tx.assetHistory.create({
+      data: {
+        assetId: asset.id,
+        organizationId: orgId,
+
+        userId: session.user.id,
+
+        action: 'ASSIGN',
+
+        field: 'assignedUserId',
+
+        oldValue: oldAssignedUser,
+
+        newValue: payload.userId,
+
+        asset_info: `${asset.id} - ${asset.item.name}`,
+      },
+    });
+
+    // history 2:
+    // status berubah
+    await tx.assetHistory.create({
+      data: {
+        assetId: asset.id,
+        organizationId: orgId,
+
+        userId: session.user.id,
+
+        action: 'STATUS_CHANGE',
+
+        field: 'assignedStatus',
+
+        oldValue: 'AVAILABLE',
+
+        newValue: 'ASSIGNED',
+
+        asset_info: `${asset.id} - ${asset.item.name}`,
+      },
+    });
+
+    // history 3:
+    // department berubah
+    await tx.assetHistory.create({
+      data: {
+        assetId: asset.id,
+        organizationId: orgId,
+
+        userId: session.user.id,
+
+        action: 'TRANSFER',
+
+        field: 'department',
+
+        oldValue: oldDepartment,
+
+        newValue: payload.departmentId,
+
+        asset_info: `${asset.id} - ${asset.item.name}`,
+      },
+    });
+
+    return updated;
+  });
+
+  await createAuditLog({
+    userId: session.user.id,
+    organizationId: orgId,
+    action: 'ASSIGN',
+    entityType: 'ASSET',
+    entityId: asset.id,
+    entityInfo: `${asset.id}`,
+    details: {
+      newData: result,
+    },
+  });
+
+  revalidatePath('/assets');
+  revalidatePath('/assets/items');
+
+  return result;
+}

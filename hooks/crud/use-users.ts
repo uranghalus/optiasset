@@ -1,19 +1,41 @@
-"use client";
+'use client';
 
 import {
   createUserAction,
   deleteUserAction,
   getAllUsers,
+  getUsersByDepartmentForSelect,
   updateUserAction,
-} from "@/action/user-action";
+} from '@/action/user-action';
+
 import {
   keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
-} from "@tanstack/react-query";
+} from '@tanstack/react-query';
 
-export const USER_QUERY_KEY = "users";
+/* =========================
+   QUERY KEYS
+========================= */
+
+export const userKeys = {
+  all: ['users'] as const,
+
+  lists: () => [...userKeys.all, 'list'] as const,
+
+  list: (params: { page: number; limit: number; search?: string }) =>
+    [...userKeys.lists(), params] as const,
+
+  departments: () => ['users-by-department'] as const,
+
+  department: (departmentId: string) =>
+    [...userKeys.departments(), departmentId] as const,
+};
+
+/* =========================
+   USERS TABLE QUERY
+========================= */
 
 export function useUsers({
   page,
@@ -25,17 +47,29 @@ export function useUsers({
   search?: string;
 }) {
   return useQuery({
-    queryKey: [USER_QUERY_KEY, { page, limit, search }],
-    queryFn: async () => {
-      const res = await getAllUsers({ page, limit, search });
+    queryKey: userKeys.list({
+      page,
+      limit,
+      search,
+    }),
 
-      // ✅ HARDEN RESPONSE
+    queryFn: async () => {
+      const res = await getAllUsers({
+        page,
+        limit,
+        search,
+      });
+
       return {
         data: Array.isArray(res?.data) ? res.data : [],
+
         pagination: {
           page: res?.pagination?.page ?? page,
+
           limit: res?.pagination?.limit ?? limit,
+
           total: res?.pagination?.total ?? 0,
+
           totalPages:
             res?.pagination?.totalPages && !isNaN(res.pagination.totalPages)
               ? res.pagination.totalPages
@@ -45,25 +79,70 @@ export function useUsers({
     },
 
     placeholderData: keepPreviousData,
-    staleTime: 0,
+
+    staleTime: 1000 * 60 * 5,
   });
 }
-//LINK Use Create User
+
+/* =========================
+ USERS FOR SELECT BY DEPT
+========================= */
+
+export function useUsersByDepartment(departmentId?: string) {
+  return useQuery({
+    queryKey: departmentId
+      ? userKeys.department(departmentId)
+      : ['users-by-department-empty'],
+
+    queryFn: () => getUsersByDepartmentForSelect(departmentId!),
+
+    enabled: !!departmentId,
+
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+/* =========================
+   CREATE USER
+========================= */
+
 export function useCreateUser() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (formData: FormData) => createUserAction(formData),
 
-    onSuccess: () => {
+    onSuccess: (result) => {
+      // refresh users table
       queryClient.invalidateQueries({
-        queryKey: [USER_QUERY_KEY],
-        exact: false,
+        queryKey: userKeys.all,
       });
+
+      // refresh all department selects
+      queryClient.invalidateQueries({
+        queryKey: userKeys.departments(),
+      });
+
+      /*
+      Optional:
+      kalau createUserAction return
+      departmentId, bisa spesifik:
+
+      queryClient.invalidateQueries({
+        queryKey:
+         userKeys.department(
+          result.departmentId
+         )
+      })
+      */
     },
   });
 }
-// LINK use update user
+
+/* =========================
+   UPDATE USER
+========================= */
+
 export function useUpdateUser() {
   const queryClient = useQueryClient();
 
@@ -73,11 +152,20 @@ export function useUpdateUser() {
 
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: [USER_QUERY_KEY],
+        queryKey: userKeys.all,
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: userKeys.departments(),
       });
     },
   });
 }
+
+/* =========================
+   DELETE USER
+========================= */
+
 export function useDeleteUser() {
   const queryClient = useQueryClient();
 
@@ -86,7 +174,11 @@ export function useDeleteUser() {
 
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: [USER_QUERY_KEY],
+        queryKey: userKeys.all,
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: userKeys.departments(),
       });
     },
   });

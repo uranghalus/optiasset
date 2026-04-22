@@ -65,7 +65,7 @@ export default function AssetRowAction<TData>({
             {can('asset', ['assign']) && (
               <DropdownMenuItem onClick={() => {
                 setCurrentRow(asset);
-                setOpen("assign_user");
+                setOpen("assign");
               }}>
                 <Send className="h-4 w-4 me-2" />
                 Serah Terima Asset

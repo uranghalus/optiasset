@@ -129,7 +129,7 @@ export const Combobox = <T extends object>({
                         onValueChange={setSearch}
                     />
 
-                    <CommandList>
+                    <CommandList className="w-full">
                         <CommandEmpty>No item found.</CommandEmpty>
 
                         <CommandGroup className="max-h-60 overflow-y-auto">

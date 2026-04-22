@@ -167,3 +167,43 @@ export async function deleteUserAction(id: string) {
   revalidatePath('/users');
   return data;
 }
+/* =======================
+   GET USERS BY DEPARTMENT FOR SELECT
+======================= */
+export async function getUsersByDepartmentForSelect(departmentId: string) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session) {
+    throw new Error('Unauthorized');
+  }
+
+  if (!departmentId) return [];
+
+  const users = await prisma.user.findMany({
+    where: {
+      departmentId,
+      // optional jika multi tenant
+      members: {
+        some: {
+          organizationId: session.session.activeOrganizationId as string,
+        },
+      },
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+    },
+    orderBy: {
+      name: 'asc',
+    },
+  });
+
+  return users.map((user) => ({
+    label: user.name,
+    value: user.id,
+    email: user.email,
+  }));
+}

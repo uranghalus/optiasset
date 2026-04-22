@@ -1,18 +1,20 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   getAllLoans,
   requestLoanAction,
   approveLoanAction,
   rejectLoanAction,
   returnAssetAction,
-} from "@/action/asset-loan-action";
-import { getUsersForSelect } from "@/action/user-action";
+} from '@/action/asset-loan-action';
+import { getUsersForSelect } from '@/action/user-action';
 import {
   getDepartmentsForAssetSelect,
   getAvailableAssetsForLoanSelect,
-} from "@/action/asset-action";
-import { getDivisiForSelect } from "@/action/divisi-action";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+  assignAssetAction,
+} from '@/action/asset-action';
+import { getDivisiForSelect } from '@/action/divisi-action';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 export type LoanArgs = {
   page?: number;
@@ -24,7 +26,7 @@ export type LoanArgs = {
 // Get all loans
 export function useAssetLoans({ page, pageSize, assetId, status }: LoanArgs) {
   return useQuery({
-    queryKey: ["asset-loans", page, pageSize, assetId, status],
+    queryKey: ['asset-loans', page, pageSize, assetId, status],
     queryFn: () => getAllLoans({ page, pageSize, assetId, status }),
   });
 }
@@ -36,12 +38,12 @@ export function useRequestLoan() {
   return useMutation({
     mutationFn: (formData: FormData) => requestLoanAction(formData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["assets"] });
-      queryClient.invalidateQueries({ queryKey: ["asset-loans"] });
-      toast.success("Permintaan peminjaman telah dikirim");
+      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.invalidateQueries({ queryKey: ['asset-loans'] });
+      toast.success('Permintaan peminjaman telah dikirim');
     },
     onError: (error: any) => {
-      toast.error(error.message || "Gagal mengirim permintaan");
+      toast.error(error.message || 'Gagal mengirim permintaan');
     },
   });
 }
@@ -53,12 +55,12 @@ export function useApproveLoan() {
   return useMutation({
     mutationFn: (loanId: string) => approveLoanAction(loanId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["assets"] });
-      queryClient.invalidateQueries({ queryKey: ["asset-loans"] });
-      toast.success("Peminjaman disetujui");
+      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.invalidateQueries({ queryKey: ['asset-loans'] });
+      toast.success('Peminjaman disetujui');
     },
     onError: (error: any) => {
-      toast.error(error.message || "Gagal menyetujui peminjaman");
+      toast.error(error.message || 'Gagal menyetujui peminjaman');
     },
   });
 }
@@ -71,11 +73,11 @@ export function useRejectLoan() {
     mutationFn: ({ loanId, reason }: { loanId: string; reason: string }) =>
       rejectLoanAction(loanId, reason),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["asset-loans"] });
-      toast.success("Peminjaman ditolak");
+      queryClient.invalidateQueries({ queryKey: ['asset-loans'] });
+      toast.success('Peminjaman ditolak');
     },
     onError: (error: any) => {
-      toast.error(error.message || "Gagal menolak peminjaman");
+      toast.error(error.message || 'Gagal menolak peminjaman');
     },
   });
 }
@@ -93,12 +95,12 @@ export function useReturnAsset() {
       formData: FormData;
     }) => returnAssetAction(loanId, formData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["assets"] });
-      queryClient.invalidateQueries({ queryKey: ["asset-loans"] });
-      toast.success("Aset berhasil dikembalikan");
+      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.invalidateQueries({ queryKey: ['asset-loans'] });
+      toast.success('Aset berhasil dikembalikan');
     },
     onError: (error: any) => {
-      toast.error(error.message || "Gagal memproses pengembalian");
+      toast.error(error.message || 'Gagal memproses pengembalian');
     },
   });
 }
@@ -106,7 +108,7 @@ export function useReturnAsset() {
 // Get users for select
 export function useUsersForSelect() {
   return useQuery({
-    queryKey: ["users-for-select"],
+    queryKey: ['users-for-select'],
     queryFn: () => getUsersForSelect(),
   });
 }
@@ -114,7 +116,7 @@ export function useUsersForSelect() {
 // Get departments for loan
 export function useLoanDepartments() {
   return useQuery({
-    queryKey: ["loan-departments"],
+    queryKey: ['loan-departments'],
     queryFn: () => getDepartmentsForAssetSelect(),
   });
 }
@@ -122,7 +124,7 @@ export function useLoanDepartments() {
 // Get divisis by department
 export function useLoanDivisis(departmentId?: string) {
   return useQuery({
-    queryKey: ["loan-divisis", departmentId],
+    queryKey: ['loan-divisis', departmentId],
     queryFn: () => getDivisiForSelect(departmentId),
     enabled: !!departmentId,
   });
@@ -134,12 +136,33 @@ export function useAvailableLoanAssets(
   divisiId?: string,
 ) {
   return useQuery({
-    queryKey: ["available-loan-assets", departmentId, divisiId],
+    queryKey: ['available-loan-assets', departmentId, divisiId],
     queryFn: () =>
       getAvailableAssetsForLoanSelect({
         departmentId: departmentId!,
         divisiId,
       }),
     enabled: !!departmentId,
+  });
+}
+type AssignPayload = {
+  assetId: string;
+  departmentId: string;
+  userId: string;
+};
+
+export function useAssignAsset(onSuccess?: () => void) {
+  return useMutation({
+    mutationFn: (payload: AssignPayload) => assignAssetAction(payload),
+
+    onSuccess: () => {
+      toast.success('Asset berhasil diserahkan');
+
+      onSuccess?.();
+    },
+
+    onError: (err: any) => {
+      toast.error(err.message ?? 'Gagal assign asset');
+    },
   });
 }

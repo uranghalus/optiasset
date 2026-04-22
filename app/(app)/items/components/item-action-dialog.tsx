@@ -40,6 +40,7 @@ import {
   useNextItemCode,
 } from "@/hooks/crud/use-items";
 import { ItemForm, ItemFormSchema } from "@/schema/item-schema";
+import { authClient } from "@/lib/auth-client";
 
 type Props = {
   open: boolean;
@@ -53,7 +54,7 @@ export function ItemActionDialog({ open, onOpenChange, currentRow }: Props) {
   const createMutation = useCreateItem();
   const updateMutation = useUpdateItem();
   const { data: categories } = useCategoriesForSelect();
-
+  const { data: session } = authClient.useSession()
   const form = useForm<ItemForm>({
     resolver: zodResolver(ItemFormSchema),
     defaultValues: {
@@ -69,11 +70,13 @@ export function ItemActionDialog({ open, onOpenChange, currentRow }: Props) {
   const assetType = form.watch("assetType");
   const { data: nextCode } = useNextItemCode(
     assetType,
-    undefined,
+    session?.session.activeOrganizationId as any,
     !isEdit && open,
   );
 
   useEffect(() => {
+    if (!open) return;
+
     if (currentRow) {
       form.reset({
         code: currentRow.code,
@@ -84,15 +87,22 @@ export function ItemActionDialog({ open, onOpenChange, currentRow }: Props) {
       });
     } else {
       form.reset({
-        code: nextCode ?? "",
+        code: "",
         name: "",
         categoryId: "",
         description: "",
         assetType: "FIXED",
       });
     }
-  }, [currentRow, form, open]); // Only reset on open or row change
-
+  }, [currentRow, open]);
+  useEffect(() => {
+    if (!isEdit && nextCode) {
+      form.setValue("code", nextCode, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+    }
+  }, [nextCode, isEdit]);
   // Update code when nextCode changes (for new items)
   useEffect(() => {
     if (!isEdit && nextCode) {

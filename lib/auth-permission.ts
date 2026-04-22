@@ -49,6 +49,7 @@ export const statement = {
     'import',
     'generate-code',
     'scan-code',
+    'assign',
   ],
 
   /** Sidebar: Kategori Aset — hanya global-scope roles */
@@ -139,6 +140,7 @@ export const owner = ac.newRole({
     'create',
     'generate-code',
     'scan-code',
+    'assign',
   ],
   'asset.category': ['view', 'list', 'create', 'edit', 'delete'],
   'asset.location': ['view', 'list', 'create', 'edit', 'delete'],

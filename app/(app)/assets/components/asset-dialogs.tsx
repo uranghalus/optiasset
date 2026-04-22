@@ -10,6 +10,7 @@ import { AssetPrintDialog } from "./asset-print-dialog";
 import { BarcodeScannerDialog } from "@/components/assets/barcode-scanner-dialog";
 import { AssetLoanDialog } from "./asset-loan-dialog";
 import { AssetWithItem } from "./asset-column";
+import AssetAssignDialog from "./asset-assign-dialog";
 
 export default function AssetDialogs() {
   const { currentRow, open, setCurrentRow, setOpen } = useDialog();
@@ -30,6 +31,15 @@ export default function AssetDialogs() {
             currentRow={currentRow as Asset}
             onOpenChange={() => {
               setOpen("edit");
+              setCurrentRow(undefined);
+            }}
+          />
+          <AssetAssignDialog
+            key={`asset-assign-${(currentRow as Asset).id}`}
+            open={open === "assign"}
+            currentRow={currentRow as Asset}
+            onOpenChange={() => {
+              setOpen("assign");
               setCurrentRow(undefined);
             }}
           />

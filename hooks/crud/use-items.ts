@@ -5,14 +5,14 @@ import {
   getCategoriesForSelect,
   updateItem,
   getNextItemCode,
-} from "@/action/item-action";
-import { PaginationState } from "@/types";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+} from '@/action/item-action';
+import { PaginationState } from '@/types';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 // Get all items
 export function useItems({ page, pageSize }: PaginationState) {
   return useQuery({
-    queryKey: ["items", page, pageSize],
+    queryKey: ['items', page, pageSize],
     queryFn: () => getAllItems({ page, pageSize }),
   });
 }
@@ -20,7 +20,7 @@ export function useItems({ page, pageSize }: PaginationState) {
 // Get categories for select dropdown
 export function useCategoriesForSelect() {
   return useQuery({
-    queryKey: ["categories-for-select"],
+    queryKey: ['categories-for-select'],
     queryFn: () => getCategoriesForSelect(),
   });
 }
@@ -31,7 +31,7 @@ export function useCreateItem() {
   return useMutation({
     mutationFn: (formData: FormData) => createItem(formData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["items"] });
+      queryClient.invalidateQueries({ queryKey: ['items'] });
     },
   });
 }
@@ -43,7 +43,7 @@ export function useUpdateItem() {
     mutationFn: ({ id, formData }: { id: string; formData: FormData }) =>
       updateItem(id, formData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["items"] });
+      queryClient.invalidateQueries({ queryKey: ['items'] });
     },
   });
 }
@@ -54,22 +54,22 @@ export function useDeleteItem() {
   return useMutation({
     mutationFn: (id: string) => deleteItem(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["items"] });
+      queryClient.invalidateQueries({ queryKey: ['items'] });
     },
   });
 }
 
 // Get next item code
 export function useNextItemCode(
-  assetType: "FIXED" | "SUPPLY",
+  assetType: 'FIXED' | 'SUPPLY',
   organizationId?: string,
   enabled = true,
 ) {
   return useQuery({
-    queryKey: ["next-item-code", assetType, organizationId],
+    queryKey: ['next-item-code', assetType, organizationId],
     queryFn: () => {
       if (!organizationId) {
-        throw new Error("Organization ID is required");
+        throw new Error('Organization ID is required');
       }
 
       return getNextItemCode(assetType, organizationId);

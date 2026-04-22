@@ -11,6 +11,7 @@ import { headers } from 'next/headers';
 import fs from 'fs';
 import path from 'path';
 import ExcelJS from 'exceljs';
+import { buildAssetFilter } from '@/lib/filter';
 
 // Helper function to save uploaded file
 async function saveUploadedFile(file: File): Promise<string | null> {
@@ -43,57 +44,12 @@ export type AssetArgs = {
   page: number;
   pageSize: number;
 
-  // 🔥 tambahkan ini
-  departmentId?: string;
-  condition?: string;
+  departmentId?: string[]; // ✅ SAMAKAN DENGAN FRONTEND
+  condition?: string[];
+
+  organizationId?: string; // optional karena diambil dari session
 };
 
-function isGlobalAccess(role?: string | null) {
-  return role === 'owner' || role === 'admin' || role === 'asset_staff';
-}
-
-function buildAssetFilter({
-  role,
-  userDepartmentId,
-  filterDepartmentId,
-  condition,
-  organizationId,
-}: {
-  role?: string | null;
-  userDepartmentId?: string | null;
-  filterDepartmentId?: string;
-  condition?: string;
-  organizationId: string;
-}) {
-  const where: any = {
-    organizationId,
-  };
-
-  // ✅ GLOBAL ACCESS (owner, admin, asset_staff)
-  if (isGlobalAccess(role)) {
-    if (filterDepartmentId?.length) {
-      where.departmentId = {
-        in: filterDepartmentId, // 🔥 FIX
-      };
-    }
-  } else {
-    // 🔒 NON GLOBAL → wajib pakai dept user
-    if (!userDepartmentId) {
-      throw new Error('User has no department');
-    }
-
-    where.departmentId = userDepartmentId;
-  }
-
-  // ✅ FILTER TAMBAHAN
-  if (condition?.length) {
-    where.condition = {
-      in: condition, // 🔥 FIX
-    };
-  }
-
-  return where;
-}
 /* =======================
    GET ALL ASSETS
  ======================= */
@@ -118,7 +74,7 @@ export async function getAllAssets({
   const where = buildAssetFilter({
     role,
     userDepartmentId: session.user.departmentId,
-    filterDepartmentId: departmentId,
+    filterDepartmentId: departmentId, // ✅ sekarang sudah array
     condition,
     organizationId: activeOrgId,
   });
@@ -143,7 +99,6 @@ export async function getAllAssets({
         model: true,
         photoUrl: true,
 
-        // 🔥 INI PENTING
         departmentId: true,
 
         item: {
@@ -577,11 +532,11 @@ export async function deleteAsset(id: string) {
     const deleted = await tx.asset.delete({ where: { id } });
 
     // Sync to Stock
-    if (deleted.locationId) {
+    if (existing.locationId && existing.assignedStatus === 'AVAILABLE') {
       await tx.stock.updateMany({
         where: {
-          itemId: deleted.itemId,
-          locationId: deleted.locationId,
+          itemId: existing.itemId,
+          locationId: existing.locationId,
           organizationId: activeOrgId,
         },
         data: { quantity: { decrement: 1 } },

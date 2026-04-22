@@ -105,7 +105,9 @@ export default function AssetTable() {
     columnFilters,
     onColumnFiltersChange: setColumnFilters, // 🔥 WAJIB
   });
-
+  console.log("FILTERS:", columnFilters);
+  console.log("DEPT:", selectedDept);
+  console.log("COND:", selectedCondition);
   return (
     <div className="p-3 rounded-md border space-y-4">
       <DataTableToolbar

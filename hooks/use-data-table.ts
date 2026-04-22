@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/incompatible-library */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
@@ -17,14 +18,14 @@ type UseDataTableProps<TData> = {
   data: TData[];
   columns: ColumnDef<TData, any>[];
   pageCount: number;
-
+  manualFilter?: boolean;
   pagination: {
     pageIndex: number;
     pageSize: number;
   };
 
   columnFilters?: ColumnFiltersState; // ✅ typed
-  onColumnFiltersChange: (updater: any) => void; // ✅ WAJIB
+  onColumnFiltersChange?: (updater: any) => void; // ✅ WAJIB
 
   onPaginationChange: (updater: any) => void;
 
@@ -44,6 +45,7 @@ export function useDataTable<TData>({
   columnResizeMode = 'onChange',
   columnResizeDirection = 'ltr',
   enableRowSelection = true,
+  manualFilter = true,
 }: UseDataTableProps<TData>) {
   const [rowSelection, setRowSelection] = useState({});
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -54,7 +56,7 @@ export function useDataTable<TData>({
     columns,
     pageCount,
     manualPagination: true,
-    manualFiltering: false, // 🔥 penting untuk server-side filter
+    manualFiltering: manualFilter, // 🔥 penting untuk server-side filter
 
     state: {
       pagination,

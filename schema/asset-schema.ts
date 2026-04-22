@@ -13,7 +13,6 @@ export const AssetFormSchema = z.object({
   partNumber: z.string().min(1, 'Part Number is required'),
   condition: z.string().min(1, 'Condition is required'),
   serialNumber: z.string().min(1, 'Serial Number is required'),
-  PIC: z.string().min(1, 'PIC is required'),
   no_spb: z.string().optional(),
   document_number: z.string().optional(),
   kode_asset: z.string().optional(),

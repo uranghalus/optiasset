@@ -61,6 +61,7 @@ export const itemColumns: ColumnDef<ItemWithRelations>[] = [
   },
   {
     accessorKey: "assetType",
+    filterFn: "arrIncludesSome",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Tipe" />
     ),

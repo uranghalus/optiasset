@@ -6,7 +6,7 @@ import { useDialog } from "@/context/dialog-provider";
 import { Asset } from "@/generated/prisma/client";
 import { usePermission } from "@/hooks/use-permission";
 import { Row } from "@tanstack/react-table";
-import { Pencil, Trash2, QrCode, Move, Handshake, MoreHorizontalIcon, FileDown, Printer } from "lucide-react";
+import { Pencil, Trash2, QrCode, Move, Handshake, MoreHorizontalIcon, FileDown, Printer, Send } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 
@@ -51,7 +51,7 @@ export default function AssetRowAction<TData>({
             <MoreHorizontalIcon />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-40">
+        <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuGroup>
             <DropdownMenuLabel>Aksi Lainnya</DropdownMenuLabel>
             {can('asset', ['view']) && (
@@ -60,6 +60,15 @@ export default function AssetRowAction<TData>({
                   <Handshake className="h-4 w-4 me-2" />
                   Lihat Detail
                 </Link>
+              </DropdownMenuItem>
+            )}
+            {can('asset', ['assign']) && (
+              <DropdownMenuItem onClick={() => {
+                setCurrentRow(asset);
+                setOpen("assign_user");
+              }}>
+                <Send className="h-4 w-4 me-2" />
+                Serah Terima Asset
               </DropdownMenuItem>
             )}
           </DropdownMenuGroup>
@@ -74,6 +83,7 @@ export default function AssetRowAction<TData>({
                 Lihat QR Code
               </DropdownMenuItem>
             )}
+
             {can('asset.transfer', ['create']) && (
               <DropdownMenuItem onClick={() => {
                 setCurrentRow(asset);

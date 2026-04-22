@@ -107,7 +107,6 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
         kode_asset: currentRow.kode_asset ?? "",
         document_number: currentRow.document_number ?? "",
         no_spb: currentRow.no_spb ?? "",
-        PIC: currentRow.PIC ?? "",
         serialNumber: currentRow.serialNumber ?? "",
         vendorName: currentRow.vendorName ?? "",
         garansi_exp: currentRow.garansi_exp
@@ -134,7 +133,6 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
         garansi_exp: "",
         document_number: "",
         no_spb: "",
-        PIC: "",
         serialNumber: "",
         photo: undefined,
       });
@@ -477,16 +475,6 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
                   )}
                 />
               )}
-              <Controller
-                name="PIC"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel>Penanggung Jawab</FieldLabel>
-                    <Input type="text" {...field} readOnly={isReadonly} />
-                  </Field>
-                )}
-              />
               <div className="grid grid-cols-2 gap-2">
                 <Controller
                   name="purchaseDate"

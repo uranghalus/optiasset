@@ -29,6 +29,7 @@ model User {
   loansApproved   AssetLoan[]    @relation("approvedBy")
   loansBorrowed   AssetLoan[]    @relation("borrower")
   loansRequested  AssetLoan[]    @relation("requestedBy")
+  transfersApproved AssetTransfer[] @relation("transferApprovedBy")
   auditLogs       AuditLog[]
   invitations     Invitation[]
   members         Member[]
@@ -450,6 +451,9 @@ model AssetTransfer {
   toDivId        String?
   reason         String?      @db.Text
   transferBy     String?
+  status         String       @default("PENDING") @db.VarChar(50)
+  approvedById   String?
+  approvedBy     User?        @relation("transferApprovedBy", fields: [approvedById], references: [id])
   transferDate   DateTime     @default(now())
   fromLocation   Location?    @relation("FromLocation", fields: [fromLocationId, organizationId], references: [id, organizationId])
   toLocation     Location?    @relation("ToLocation", fields: [toLocationId, organizationId], references: [id, organizationId])

@@ -4,6 +4,7 @@ import { DataTableColumnHeader } from "@/components/datatable/datatable-column-h
 import { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { MoveRight } from "lucide-react";
+import { TransferRowActions } from "./transfer-row-action";
 
 type TransferWithRelations = {
   id: string;
@@ -21,6 +22,8 @@ type TransferWithRelations = {
   };
   fromLocation: { name: string } | null;
   toLocation: { name: string } | null;
+  status: string;
+  approvedBy: { name: string } | null;
 };
 
 export const transferColumns: ColumnDef<TransferWithRelations>[] = [
@@ -95,4 +98,40 @@ export const transferColumns: ColumnDef<TransferWithRelations>[] = [
     ),
     size: 150,
   },
+  {
+    accessorKey: "status",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Status" />
+    ),
+    cell: ({ row }) => {
+      const status = row.original.status;
+      return (
+        <div className="ps-2">
+          <span
+            className={`px-2 py-1 text-xs rounded-full font-medium ${status === "APPROVED"
+                ? "bg-green-100 text-green-700"
+                : status === "REJECTED"
+                  ? "bg-red-100 text-red-700"
+                  : "bg-yellow-100 text-yellow-700"
+              }`}
+          >
+            {status}
+          </span>
+          {row.original.approvedBy && (
+            <div className="text-xs text-muted-foreground mt-1">
+              by {row.original.approvedBy.name}
+            </div>
+          )}
+        </div>
+      );
+    },
+    size: 150,
+  },
+  {
+    id: "actions",
+    cell: ({ row }) => <TransferRowActions row={row} />,
+    size: 80,
+  },
 ];
+
+

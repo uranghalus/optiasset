@@ -492,7 +492,23 @@ export async function getAssetById(id: string) {
       },
     });
 
-    return asset;
+    if (!asset) return null;
+
+    let assignedUser = null;
+    if (asset.assignedUserId) {
+      assignedUser = await prisma.user.findUnique({
+        where: { id: asset.assignedUserId },
+        select: { 
+          name: true, 
+          email: true,
+          department: {
+            select: { nama_department: true }
+          }
+        },
+      });
+    }
+
+    return { ...asset, assignedUser };
   } catch (error) {
     console.error(error);
     throw new Error('Failed to fetch asset');

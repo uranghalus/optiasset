@@ -13,6 +13,7 @@ export type TransferArgs = {
   page: number;
   pageSize: number;
   assetId?: string;
+  status?: string[];
 };
 
 /* =======================
@@ -22,6 +23,7 @@ export async function getAllTransfers({
   page,
   pageSize,
   assetId,
+  status,
 }: TransferArgs) {
   const session = await getServerSession();
   if (!session) throw new Error('Unauthorized');
@@ -35,6 +37,9 @@ export async function getAllTransfers({
 
   const where: any = { organizationId: activeOrgId };
   if (assetId) where.assetId = assetId;
+  if (status && status.length > 0) {
+    where.status = { in: status };
+  }
 
   const [data, total] = await Promise.all([
     prisma.assetTransfer.findMany({
@@ -46,11 +51,12 @@ export async function getAllTransfers({
         asset: {
           select: {
             kode_asset: true,
-            item: { select: { name: true, code: true } },
+            item: { select: { name: true, code: true, id: true } },
           },
         },
         fromLocation: { select: { name: true } },
         toLocation: { select: { name: true } },
+        approvedBy: { select: { name: true } },
       },
     }),
     prisma.assetTransfer.count({ where }),
@@ -91,84 +97,116 @@ export async function transferAssetAction(formData: FormData) {
   const oldLocationId = asset.locationId;
   const oldDeptId = asset.departmentId;
 
+  const result = await prisma.assetTransfer.create({
+    data: {
+      assetId,
+      fromLocationId: oldLocationId,
+      toLocationId: toLocationId || oldLocationId,
+      fromDeptId: oldDeptId,
+      toDeptId: toDeptId || oldDeptId,
+      fromDivId: null,
+      toDivId: toDivId,
+      reason,
+      transferBy: session.user.name,
+      status: 'PENDING',
+      organizationId: activeOrgId,
+    },
+  });
+
+  revalidatePath('/assets');
+  revalidatePath('/asset-transfers');
+  return result;
+}
+
+/* =======================
+   APPROVE/REJECT TRANSFER
+   ======================= */
+export async function approveAssetTransferAction(id: string, status: 'APPROVED' | 'REJECTED') {
+  const session = await getServerSession();
+  if (!session) throw new Error('Unauthorized');
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error('No active organizationId found');
+
+  const transfer = await prisma.assetTransfer.findUnique({
+    where: { id },
+    include: { asset: true },
+  });
+
+  if (!transfer || transfer.organizationId !== activeOrgId) {
+    throw new Error('Transfer not found');
+  }
+
+  if (transfer.status !== 'PENDING') {
+    throw new Error('Transfer already processed');
+  }
+
   const result = await prisma.$transaction(async (tx) => {
-    // 1. Update Asset
-    const updatedAsset = await tx.asset.update({
-      where: { id: assetId },
+    const updatedTransfer = await tx.assetTransfer.update({
+      where: { id },
       data: {
-        locationId: toLocationId || asset.locationId,
-        departmentId: toDeptId || asset.departmentId,
-        updatedAt: new Date(),
+        status,
+        approvedById: session.user.id,
       },
     });
 
-    // 2. Create Transfer Record
-    const transfer = await tx.assetTransfer.create({
-      data: {
-        assetId,
-        fromLocationId: oldLocationId,
-        toLocationId: toLocationId || oldLocationId,
-        fromDeptId: oldDeptId,
-        toDeptId: toDeptId || oldDeptId,
-        fromDivId: null,
-        toDivId: toDivId,
-        reason,
-        transferBy: session.user.name,
-        organizationId: activeOrgId,
-      },
-    });
+    if (status === 'APPROVED') {
+      const updatedAsset = await tx.asset.update({
+        where: { id: transfer.assetId },
+        data: {
+          locationId: transfer.toLocationId,
+          departmentId: transfer.toDeptId,
+          updatedAt: new Date(),
+        },
+      });
 
-    // 3. Sync Stock if location changed
-    if (toLocationId && toLocationId !== oldLocationId) {
-      if (oldLocationId) {
-        await tx.stock.updateMany({
+      if (transfer.toLocationId && transfer.toLocationId !== transfer.fromLocationId) {
+        if (transfer.fromLocationId) {
+          await tx.stock.updateMany({
+            where: {
+              itemId: transfer.asset.itemId,
+              locationId: transfer.fromLocationId,
+              organizationId: activeOrgId,
+            },
+            data: { quantity: { decrement: 1 } },
+          });
+        }
+
+        await tx.stock.upsert({
           where: {
-            itemId: asset.itemId,
-            locationId: oldLocationId,
-            organizationId: activeOrgId,
+            itemId_locationId: {
+              itemId: transfer.asset.itemId,
+              locationId: transfer.toLocationId,
+            },
           },
-          data: { quantity: { decrement: 1 } },
+          create: {
+            itemId: transfer.asset.itemId,
+            locationId: transfer.toLocationId,
+            organizationId: activeOrgId,
+            quantity: 1,
+          },
+          update: {
+            quantity: { increment: 1 },
+          },
         });
       }
 
-      await tx.stock.upsert({
-        where: {
-          itemId_locationId: {
-            itemId: asset.itemId,
-            locationId: toLocationId,
-          },
+      await createAuditLog({
+        userId: session.user.id,
+        organizationId: activeOrgId,
+        action: 'TRANSFER_APPROVED',
+        entityType: 'ASSET',
+        entityId: transfer.assetId,
+        entityInfo: `${updatedAsset.kode_asset || 'N/A'} - ${updatedAsset.itemId || 'N/A'}`,
+        details: {
+          transferId: id,
+          fromLocationId: transfer.fromLocationId,
+          toLocationId: transfer.toLocationId,
         },
-        create: {
-          itemId: asset.itemId,
-          locationId: toLocationId,
-          organizationId: activeOrgId,
-          quantity: 1,
-        },
-        update: {
-          quantity: { increment: 1 },
-        },
+        tx,
       });
     }
 
-    // 4. Record Audit Log
-    await createAuditLog({
-      userId: session.user.id,
-      organizationId: activeOrgId,
-      action: 'TRANSFER',
-      entityType: 'ASSET',
-      entityId: assetId,
-      entityInfo: `${updatedAsset.kode_asset || 'N/A'} - ${updatedAsset.itemId || 'N/A'}`,
-      details: {
-        fromLocationId: oldLocationId,
-        toLocationId,
-        fromDeptId: oldDeptId,
-        toDeptId,
-        reason,
-      },
-      tx,
-    });
-
-    return transfer;
+    return updatedTransfer;
   });
 
   revalidatePath('/assets');

@@ -38,6 +38,11 @@ interface AssetWithRelations extends Asset {
     item: Item;
     location: Location | null;
     department: department | null;
+    assignedUser?: { 
+        name: string; 
+        email: string;
+        department?: { nama_department: string } | null;
+    } | null;
 }
 
 interface AssetDetailViewProps {
@@ -242,10 +247,15 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
                                 <div className="space-y-2">
                                     <div className="flex items-center gap-2 text-sm font-medium">
                                         <User className="h-4 w-4" />
-                                        Assigned User
+                                        PIC (Penanggung Jawab)
                                     </div>
                                     <p className="text-sm text-muted-foreground pl-6">
-                                        {asset.assignedUserId ? "Assigned" : "Not Assigned"}
+                                        {asset.assignedUser ? (
+                                            <>
+                                                {asset.assignedUser.name}
+                                                {asset.assignedUser.department?.nama_department && ` - ${asset.assignedUser.department.nama_department}`}
+                                            </>
+                                        ) : (asset.assignedUserId ? "Assigned" : "Not Assigned")}
                                     </p>
                                 </div>
                             </div>
@@ -292,6 +302,26 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
                                         {asset.serialNumber || "-"}
                                     </p>
                                 </div>
+
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2 text-sm font-medium">
+                                        <FileText className="h-4 w-4" />
+                                        No. SPB
+                                    </div>
+                                    <p className="text-sm text-muted-foreground pl-6">
+                                        {asset.no_spb || "-"}
+                                    </p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2 text-sm font-medium">
+                                        <FileText className="h-4 w-4" />
+                                        No. Dokumen
+                                    </div>
+                                    <p className="text-sm text-muted-foreground pl-6">
+                                        {asset.document_number || "-"}
+                                    </p>
+                                </div>
                             </div>
 
                             {/* Notes */}
@@ -324,6 +354,16 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2 text-sm font-medium">
+                                    <Calendar className="h-4 w-4" />
+                                    Tanggal Masuk
+                                </div>
+                                <p className="text-sm text-muted-foreground pl-6">
+                                    {formatDate(asset.inComeDate)}
+                                </p>
+                            </div>
+
                             <div className="space-y-2">
                                 <div className="flex items-center gap-2 text-sm font-medium">
                                     <Calendar className="h-4 w-4" />
@@ -446,6 +486,11 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
                                 {asset.updatedAt && asset.updatedAt.getTime() !== asset.createdAt.getTime() && (
                                     <div>
                                         Diupdate: {formatDate(asset.updatedAt)}
+                                    </div>
+                                )}
+                                {asset.brokenDate && (
+                                    <div>
+                                        Tanggal Rusak: {formatDate(asset.brokenDate)}
                                     </div>
                                 )}
                             </div>

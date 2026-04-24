@@ -1,17 +1,12 @@
-import { useApproveAssetTransfer } from "@/hooks/crud/use-asset-transfers";
 import { usePermission } from "@/hooks/use-permission";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Check, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { useDialog } from "@/context/dialog-provider";
+import { Row } from "@tanstack/react-table";
+import { TransferWithRelations } from "./transfer-column";
 
-export function TransferRowActions({ row }: { row: any }) {
+export function TransferRowActions({ row }: { row: Row<TransferWithRelations> }) {
     const { can } = usePermission();
     const { setOpen, setCurrentRow } = useDialog();
     const transfer = row.original;
@@ -25,13 +20,13 @@ export function TransferRowActions({ row }: { row: any }) {
         <ButtonGroup>
             <Button variant="default" size="icon" onClick={() => {
                 setCurrentRow(transfer);
-                setOpen("confirm-approve");
+                setOpen("approve-transfer");
             }}>
                 <Check className="h-4 w-4" />
             </Button>
             <Button variant="destructive" size="icon" onClick={() => {
                 setCurrentRow(transfer);
-                setOpen("confirm-reject");
+                setOpen("reject-transfer");
             }}>
                 <X className="h-4 w-4" />
             </Button>

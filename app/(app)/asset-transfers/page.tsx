@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import React from "react";
 import TransferTable from "./components/transfer-table";
 import { DialogProvider } from "@/context/dialog-provider";
+import TransferDialog from "./components/transfer-dialog";
 
 export const metadata: Metadata = {
   title: "Mutasi Aset",
@@ -23,6 +24,7 @@ export default function AssetTransfersPage() {
         </div>
         <TransferTable />
       </div>
+      <TransferDialog />
     </DialogProvider>
   );
 }

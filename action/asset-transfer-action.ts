@@ -51,6 +51,8 @@ export async function getAllTransfers({
         asset: {
           select: {
             kode_asset: true,
+            brand: true,
+            model: true,
             item: { select: { name: true, code: true, id: true } },
           },
         },

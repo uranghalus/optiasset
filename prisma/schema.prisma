@@ -30,6 +30,9 @@ model User {
   loansBorrowed   AssetLoan[]    @relation("borrower")
   loansRequested  AssetLoan[]    @relation("requestedBy")
   transfersApproved AssetTransfer[] @relation("transferApprovedBy")
+  disposalsRequested  AssetDisposal[] @relation("DisposalRequestedBy")
+  disposalsSpvApproved AssetDisposal[] @relation("DisposalSpvApprovedBy")
+  disposalsStaffApproved AssetDisposal[] @relation("DisposalStaffApprovedBy")
   auditLogs       AuditLog[]
   invitations     Invitation[]
   members         Member[]
@@ -115,6 +118,7 @@ model Organization {
   assetTransfers   AssetTransfer[]
   auditLogs        AuditLog[]
   assetHistory     AssetHistory[]
+  assetDisposals   AssetDisposal[]
 
   @@map("organization")
 }
@@ -257,6 +261,7 @@ model Asset {
   location        Location?             @relation(fields: [locationId, organizationId], references: [id, organizationId])
   department      department?           @relation(fields: [departmentId], references: [id_department])
   transfers       AssetTransfer[]       @relation("AssetTransfers")
+  disposals       AssetDisposal[]       @relation("AssetDisposals")
   organizationId  String
   organization    Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
@@ -490,4 +495,29 @@ enum TransactionType {
 enum AssetType {
   FIXED
   SUPPLY
+}
+
+model AssetDisposal {
+  id                String       @id @default(uuid())
+  assetId           String
+  reason            String?      @db.Text
+  status            String       @default("PENDING_SPV") @db.VarChar(50) // PENDING_SPV, PENDING_STAFF, APPROVED, REJECTED
+  requestedById     String
+  spvApprovedById   String?
+  staffApprovedById String?
+  disposalDate      DateTime     @default(now())
+  
+  requestedBy       User         @relation("DisposalRequestedBy", fields: [requestedById], references: [id])
+  spvApprovedBy     User?        @relation("DisposalSpvApprovedBy", fields: [spvApprovedById], references: [id])
+  staffApprovedBy   User?        @relation("DisposalStaffApprovedBy", fields: [staffApprovedById], references: [id])
+  asset             Asset        @relation("AssetDisposals", fields: [assetId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organizationId    String
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, organizationId])
+  @@index([requestedById])
+  @@index([spvApprovedById])
+  @@index([staffApprovedById])
+  @@index([organizationId])
+  @@map("asset_disposals")
 }

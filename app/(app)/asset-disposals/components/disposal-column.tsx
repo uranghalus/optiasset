@@ -3,11 +3,10 @@
 import { DataTableColumnHeader } from "@/components/datatable/datatable-column-header";
 import { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
-import { MoveRight } from "lucide-react";
-import { TransferRowActions } from "./transfer-row-action";
 import { Prisma } from "@/generated/prisma";
+import { DisposalRowActions } from "./disposal-row-action";
 
-export type TransferWithRelations = Prisma.AssetTransferGetPayload<{
+export type DisposalWithRelations = Prisma.AssetDisposalGetPayload<{
   include: {
     asset: {
       select: {
@@ -15,18 +14,19 @@ export type TransferWithRelations = Prisma.AssetTransferGetPayload<{
         brand: true,
         model: true,
         kode_asset: true,
-        item: { select: { name: true, code: true, id: true, serialNumber: true } },
+        location: { select: { name: true } },
+        item: { select: { name: true, code: true, id: true } },
       },
     },
-    fromLocation: { select: { name: true } },
-    toLocation: { select: { name: true } },
-    approvedBy: { select: { name: true } },
+    requestedBy: { select: { name: true } },
+    spvApprovedBy: { select: { name: true } },
+    staffApprovedBy: { select: { name: true } },
   }
 }>
 
-export const transferColumns: ColumnDef<TransferWithRelations>[] = [
+export const disposalColumns: ColumnDef<DisposalWithRelations>[] = [
   {
-    accessorKey: "transferDate",
+    accessorKey: "disposalDate",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Tanggal" />
     ),
@@ -46,31 +46,11 @@ export const transferColumns: ColumnDef<TransferWithRelations>[] = [
       <div className="ps-2 flex flex-col">
         <span className="font-medium">{row.original.asset.item.name}</span>
         <span className="text-xs text-muted-foreground font-mono">
-          {row.original.asset.barcode ||
-            row.original.asset.item.serialNumber ||
-            "-"}
+          {row.original.asset.kode_asset || "-"}
         </span>
       </div>
     ),
     size: 200,
-  },
-  {
-    id: "movement",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Perpindahan Lokasi" />
-    ),
-    cell: ({ row }) => (
-      <div className="ps-2 flex items-center gap-3 text-sm">
-        <span className="text-muted-foreground">
-          {row.original.fromLocation?.name || "N/A"}
-        </span>
-        <MoveRight className="h-4 w-4 text-primary shrink-0" />
-        <span className="font-medium">
-          {row.original.toLocation?.name || "N/A"}
-        </span>
-      </div>
-    ),
-    size: 300,
   },
   {
     accessorKey: "reason",
@@ -85,13 +65,13 @@ export const transferColumns: ColumnDef<TransferWithRelations>[] = [
     size: 200,
   },
   {
-    accessorKey: "transferBy",
+    id: "requestedBy",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Petugas" />
+      <DataTableColumnHeader column={column} title="Diajukan Oleh" />
     ),
-    cell: ({ cell }) => (
+    cell: ({ row }) => (
       <div className="ps-2 text-sm italic">
-        {(cell.getValue() as string) || "-"}
+        {row.original.requestedBy?.name || "-"}
       </div>
     ),
     size: 150,
@@ -106,18 +86,24 @@ export const transferColumns: ColumnDef<TransferWithRelations>[] = [
       return (
         <div className="ps-2">
           <span
-            className={`px-2 py-1 text-xs rounded-full font-medium ${status === "APPROVED"
-              ? "bg-green-100 text-green-700"
-              : status === "REJECTED"
-                ? "bg-red-100 text-red-700"
-                : "bg-yellow-100 text-yellow-700"
+            className={`px-2 py-1 text-xs rounded-full font-medium ${
+                status === "APPROVED"
+                ? "bg-green-100 text-green-700"
+                : status === "REJECTED"
+                  ? "bg-red-100 text-red-700"
+                  : "bg-yellow-100 text-yellow-700"
               }`}
           >
             {status}
           </span>
-          {row.original.approvedBy && (
+          {row.original.spvApprovedBy && (
             <div className="text-xs text-muted-foreground mt-1">
-              by {row.original.approvedBy.name}
+              SPV: {row.original.spvApprovedBy.name}
+            </div>
+          )}
+          {row.original.staffApprovedBy && (
+            <div className="text-xs text-muted-foreground mt-1">
+              Staff: {row.original.staffApprovedBy.name}
             </div>
           )}
         </div>
@@ -127,9 +113,7 @@ export const transferColumns: ColumnDef<TransferWithRelations>[] = [
   },
   {
     id: "actions",
-    cell: ({ row }) => <TransferRowActions row={row} />,
+    cell: ({ row }) => <DisposalRowActions row={row} />,
     size: 80,
   },
 ];
-
-

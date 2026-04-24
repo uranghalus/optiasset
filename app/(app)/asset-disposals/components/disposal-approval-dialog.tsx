@@ -10,11 +10,11 @@ import {
 } from "@/components/ui/dialog";
 
 import { Button } from "@/components/ui/button";
-import { Asset, AssetTransfer } from "@/generated/prisma/client";
-import { useApproveAssetTransfer } from "@/hooks/crud/use-asset-transfers";
-import { TransferWithRelations } from "./transfer-column";
-import { Blocks, MapPin, MoveRight, Pencil, User } from "lucide-react";
+import { useApproveDisposal } from "@/hooks/crud/use-asset-disposals";
+import { DisposalWithRelations } from "./disposal-column";
+import { Blocks, Trash2, User } from "lucide-react";
 import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
+import { useActiveMemberRole } from "@/hooks/use-active-member";
 import { Badge } from "@/components/ui/badge";
 
 type ApprovalAction = "approve" | "reject";
@@ -22,30 +22,36 @@ type ApprovalAction = "approve" | "reject";
 type Props = {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    currentRow?: TransferWithRelations
+    currentRow?: DisposalWithRelations;
     action: ApprovalAction;
 };
 
-export function TransferApprovalDialog({
+const statusConfig: Record<string, { label: string; className: string }> = {
+    PENDING_SPV: { label: 'Pending SPV', className: 'bg-yellow-100 text-yellow-700' },
+    PENDING_STAFF: { label: 'Pending Staff Aset', className: 'bg-blue-100 text-blue-700' },
+    APPROVED: { label: 'Disetujui', className: 'bg-green-100 text-green-700' },
+    REJECTED: { label: 'Ditolak', className: 'bg-red-100 text-red-700' },
+};
+
+export function DisposalApprovalDialog({
     open,
     onOpenChange,
     currentRow,
     action,
 }: Props) {
-    const { mutate: approveTransfer, isPending } =
-        useApproveAssetTransfer();
+    const { mutate: approveDisposal, isPending } = useApproveDisposal();
+    const { data: role } = useActiveMemberRole();
 
     const isApprove = action === "approve";
 
     const handleConfirm = () => {
-        if (!currentRow?.id) return;
+        if (!currentRow?.id || !role) return;
 
-        approveTransfer(
+        approveDisposal(
             {
                 id: currentRow.id,
-                status: isApprove
-                    ? "APPROVED"
-                    : "REJECTED",
+                action: isApprove ? 'APPROVE' : 'REJECT',
+                role,
             },
             {
                 onSuccess: () => {
@@ -54,6 +60,9 @@ export function TransferApprovalDialog({
             }
         );
     };
+
+    const status = currentRow?.status ?? '';
+    const statusInfo = statusConfig[status];
 
     return (
         <Dialog
@@ -64,18 +73,16 @@ export function TransferApprovalDialog({
                 <DialogHeader>
                     <DialogTitle>
                         {isApprove
-                            ? "Konfirmasi Persetujuan"
-                            : "Konfirmasi Penolakan"}
+                            ? "Konfirmasi Persetujuan Penghapusan"
+                            : "Konfirmasi Penolakan Penghapusan"}
                     </DialogTitle>
-
                     <DialogDescription>
                         Apakah Anda yakin ingin{" "}
-                        {isApprove
-                            ? "menyetujui"
-                            : "menolak"}{" "}
-                        mutasi aset ini?
+                        {isApprove ? "menyetujui" : "menolak"}{" "}
+                        pengajuan penghapusan aset ini?
                     </DialogDescription>
                 </DialogHeader>
+
                 <div className="space-y-2">
                     <Item variant={'outline'}>
                         <ItemMedia variant={'icon'}>
@@ -85,14 +92,14 @@ export function TransferApprovalDialog({
                             <ItemTitle>
                                 Nama Asset
                             </ItemTitle>
-                            <ItemDescription >
+                            <ItemDescription>
                                 <span className="flex flex-col items-start gap-0.5 p-1 border border-gray-200">
                                     <span className="block text-sm font-medium text-primary">
                                         {currentRow?.asset.item.name}
                                     </span>
-                                    <div className="block text-xs text-muted-foreground">
+                                    <span className="block text-xs text-muted-foreground">
                                         Kode Aset : {currentRow?.asset.kode_asset || "-"}
-                                    </div>
+                                    </span>
                                     <span className="block text-xs text-muted-foreground">
                                         {currentRow?.asset.brand || "-"} - {currentRow?.asset.model || "-"}
                                     </span>
@@ -100,54 +107,45 @@ export function TransferApprovalDialog({
                             </ItemDescription>
                         </ItemContent>
                     </Item>
+
                     <Item variant={'outline'}>
                         <ItemMedia variant={'icon'}>
-                            <MapPin className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4" />
                         </ItemMedia>
                         <ItemContent>
                             <ItemTitle>
-                                Lokasi Pemindahan
+                                Alasan Penghapusan
                             </ItemTitle>
-                            <ItemDescription >
-                                <span className="flex items-center gap-2 p-1 border border-gray-200">
-                                    <div className="text-sm font-medium">
-                                        {currentRow?.fromLocation?.name || "N/A"}
-                                    </div>
-                                    <MoveRight className="h-4 w-4 text-primary shrink-0" />
-                                    <div className="text-xs text-muted-foreground">
-                                        {currentRow?.toLocation?.name || "N/A"}
-                                    </div>
-                                </span>
+                            <ItemDescription>
+                                {currentRow?.reason || "-"}
                             </ItemDescription>
                         </ItemContent>
                     </Item>
-                    <Item variant={'outline'}>
-                        <ItemMedia variant={'icon'}>
-                            <Pencil className="h-4 w-4" />
-                        </ItemMedia>
-                        <ItemContent>
-                            <ItemTitle>
-                                Alasan Pemindahan
-                            </ItemTitle>
-                            <ItemDescription >
-                                {currentRow?.reason}
-                            </ItemDescription>
-                        </ItemContent>
-                    </Item>
+
                     <Item variant={'outline'}>
                         <ItemMedia variant={'icon'}>
                             <User className="h-4 w-4" />
                         </ItemMedia>
                         <ItemContent>
                             <ItemTitle>
-                                Yang Memindahkan
+                                Diajukan Oleh
                             </ItemTitle>
-                            <ItemDescription >
-                                {currentRow?.transferBy}
+                            <ItemDescription>
+                                {currentRow?.requestedBy?.name || "-"}
                             </ItemDescription>
                         </ItemContent>
                     </Item>
+
+                    {statusInfo && (
+                        <div className="flex items-center gap-2 pt-1">
+                            <span className="text-xs text-muted-foreground">Status saat ini:</span>
+                            <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${statusInfo.className}`}>
+                                {statusInfo.label}
+                            </span>
+                        </div>
+                    )}
                 </div>
+
                 <DialogFooter>
                     <Button
                         variant="outline"
@@ -159,11 +157,7 @@ export function TransferApprovalDialog({
                     <Button
                         onClick={handleConfirm}
                         disabled={isPending}
-                        variant={
-                            isApprove
-                                ? "default"
-                                : "destructive"
-                        }
+                        variant={isApprove ? "default" : "destructive"}
                     >
                         {isPending
                             ? "Memproses..."

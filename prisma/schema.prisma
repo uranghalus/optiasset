@@ -9,37 +9,37 @@ datasource db {
 }
 
 model User {
-  id              String         @id
-  name            String         @db.Text
-  email           String         @unique
-  emailVerified   Boolean        @default(false)
-  image           String?        @db.Text
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  username        String?        @db.Text
-  displayUsername String?        @db.Text
-  role            String?        @db.Text
-  banned          Boolean?       @default(false)
-  banReason       String?        @db.Text
-  banExpires      DateTime?
-  departmentId    String?
-  divisiId        String?
-  accounts        Account[]
-  assetHistory    AssetHistory[]
-  loansApproved   AssetLoan[]    @relation("approvedBy")
-  loansBorrowed   AssetLoan[]    @relation("borrower")
-  loansRequested  AssetLoan[]    @relation("requestedBy")
-  transfersApproved AssetTransfer[] @relation("transferApprovedBy")
-  disposalsRequested  AssetDisposal[] @relation("DisposalRequestedBy")
-  disposalsSpvApproved AssetDisposal[] @relation("DisposalSpvApprovedBy")
+  id                     String          @id
+  name                   String          @db.Text
+  email                  String          @unique
+  emailVerified          Boolean         @default(false)
+  image                  String?         @db.Text
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+  username               String?         @db.Text
+  displayUsername        String?         @db.Text
+  role                   String?         @db.Text
+  banned                 Boolean?        @default(false)
+  banReason              String?         @db.Text
+  banExpires             DateTime?
+  departmentId           String?
+  divisiId               String?
+  accounts               Account[]
+  assetHistory           AssetHistory[]
+  loansApproved          AssetLoan[]     @relation("approvedBy")
+  loansBorrowed          AssetLoan[]     @relation("borrower")
+  loansRequested         AssetLoan[]     @relation("requestedBy")
+  transfersApproved      AssetTransfer[] @relation("transferApprovedBy")
+  disposalsRequested     AssetDisposal[] @relation("DisposalRequestedBy")
+  disposalsSpvApproved   AssetDisposal[] @relation("DisposalSpvApprovedBy")
   disposalsStaffApproved AssetDisposal[] @relation("DisposalStaffApprovedBy")
-  auditLogs       AuditLog[]
-  invitations     Invitation[]
-  members         Member[]
-  sessions        Session[]
-  teammember      teamMember[]
-  department      department?    @relation(fields: [departmentId], references: [id_department])
-  divisi          divisi?        @relation(fields: [divisiId], references: [id_divisi])
+  auditLogs              AuditLog[]
+  invitations            Invitation[]
+  members                Member[]
+  sessions               Session[]
+  teammember             teamMember[]
+  department             department?     @relation(fields: [departmentId], references: [id_department])
+  divisi                 divisi?         @relation(fields: [divisiId], references: [id_divisi])
 
   @@index([departmentId])
   @@index([divisiId])
@@ -119,6 +119,7 @@ model Organization {
   auditLogs        AuditLog[]
   assetHistory     AssetHistory[]
   assetDisposals   AssetDisposal[]
+  assetGroups      AssetGroup[]
 
   @@map("organization")
 }
@@ -235,35 +236,36 @@ model Asset {
   inComeDate    DateTime?
   brokenDate    DateTime?
 
-  warrantyExpire  DateTime?
-  locationId      String?
-  departmentId    String?
-  assignedUserId  String?
-  assignedStatus  AssetAssignmentStatus @default(AVAILABLE)
-  brand           String?               @db.Char(100)
-  model           String?               @db.Char(100)
-  partNumber      String?               @db.Char(100)
-  serialNumber    String?               @db.Char(100)
-  no_spb          String?               @db.Char(100)
-  document_number String?               @db.Char(100)
-  PIC             String?               @db.Char(100)
-  notes           String?
-  photoUrl        String?               @db.Text
-  createdAt       DateTime              @default(now())
-  updatedAt       DateTime?
-  kode_asset      String?               @db.Char(100)
-  garansi_exp     DateTime?
-  status          String                @default("ACTIVE") @db.VarChar(50)
-  vendorName      String?               @db.Char(100)
-  history         AssetHistory[]
-  loans           AssetLoan[]
-  item            Item                  @relation(fields: [itemId, organizationId], references: [id, organizationId])
-  location        Location?             @relation(fields: [locationId, organizationId], references: [id, organizationId])
-  department      department?           @relation(fields: [departmentId], references: [id_department])
-  transfers       AssetTransfer[]       @relation("AssetTransfers")
-  disposals       AssetDisposal[]       @relation("AssetDisposals")
-  organizationId  String
-  organization    Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  warrantyExpire   DateTime?
+  locationId       String?
+  departmentId     String?
+  assignedUserId   String?
+  assignedStatus   AssetAssignmentStatus @default(AVAILABLE)
+  brand            String?               @db.Char(100)
+  model            String?               @db.Char(100)
+  partNumber       String?               @db.Char(100)
+  serialNumber     String?               @db.Char(100)
+  no_spb           String?               @db.Char(100)
+  document_number  String?               @db.Char(100)
+  PIC              String?               @db.Char(100)
+  notes            String?
+  photoUrl         String?               @db.Text
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime?
+  kode_asset       String?               @db.Char(100)
+  garansi_exp      DateTime?
+  status           String                @default("ACTIVE") @db.VarChar(50)
+  vendorName       String?               @db.Char(100)
+  history          AssetHistory[]
+  loans            AssetLoan[]
+  item             Item                  @relation(fields: [itemId, organizationId], references: [id, organizationId])
+  location         Location?             @relation(fields: [locationId, organizationId], references: [id, organizationId])
+  department       department?           @relation(fields: [departmentId], references: [id_department])
+  transfers        AssetTransfer[]       @relation("AssetTransfers")
+  disposals        AssetDisposal[]       @relation("AssetDisposals")
+  organizationId   String
+  organization     Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assetSubClusters AssetSubCluster[]     @relation("AssetSubClusters")
 
   @@unique([id, organizationId])
   @@unique([kode_asset, organizationId])
@@ -306,6 +308,84 @@ model StockTransaction {
   @@map("stock_transactions")
 }
 
+// Kategory Untuk Asset
+model AssetGroup {
+  id             String  @id @default(uuid())
+  code           String? @db.VarChar(20) // contoh: 01
+  name           String
+  description    String? @db.Text
+  organizationId String
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  categories AssetCategory[]
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@map("asset_groups")
+}
+
+model AssetCategory {
+  id           String  @id @default(uuid())
+  assetGroupId String
+  code         String? @db.VarChar(20) // contoh: 01.02
+  name         String
+  description  String? @db.Text
+
+  assetGroup AssetGroup @relation(fields: [assetGroupId], references: [id], onDelete: Cascade)
+
+  assetClusters AssetCluster[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([assetGroupId, code])
+  @@index([assetGroupId])
+  @@map("asset_categories")
+}
+
+model AssetCluster {
+  id              String  @id @default(uuid())
+  assetCategoryId String
+  code            String? @db.VarChar(20) // contoh: 01.02.03
+  name            String
+  description     String? @db.Text
+
+  assetCategory AssetCategory @relation(fields: [assetCategoryId], references: [id], onDelete: Cascade)
+
+  assetSubClusters AssetSubCluster[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([assetCategoryId, code])
+  @@index([assetCategoryId])
+  @@map("asset_clusters")
+}
+
+model AssetSubCluster {
+  id             String  @id @default(uuid())
+  assetClusterId String
+  code           String? @db.VarChar(20) // contoh: 01.02.03.01
+  name           String
+  description    String? @db.Text
+  notes          String? @db.Text // keterangan
+
+  assetCluster AssetCluster @relation(fields: [assetClusterId], references: [id], onDelete: Cascade)
+
+  assets Asset[] @relation("AssetSubClusters")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([assetClusterId, code])
+  @@index([assetClusterId])
+  @@map("asset_sub_clusters")
+}
+
+// Kategory untuk item
 model Category {
   id             String       @id @default(uuid())
   name           String
@@ -498,21 +578,21 @@ enum AssetType {
 }
 
 model AssetDisposal {
-  id                String       @id @default(uuid())
+  id                String   @id @default(uuid())
   assetId           String
-  reason            String?      @db.Text
-  status            String       @default("PENDING_SPV") @db.VarChar(50) // PENDING_SPV, PENDING_STAFF, APPROVED, REJECTED
+  reason            String?  @db.Text
+  status            String   @default("PENDING_SPV") @db.VarChar(50) // PENDING_SPV, PENDING_STAFF, APPROVED, REJECTED
   requestedById     String
   spvApprovedById   String?
   staffApprovedById String?
-  disposalDate      DateTime     @default(now())
-  
-  requestedBy       User         @relation("DisposalRequestedBy", fields: [requestedById], references: [id])
-  spvApprovedBy     User?        @relation("DisposalSpvApprovedBy", fields: [spvApprovedById], references: [id])
-  staffApprovedBy   User?        @relation("DisposalStaffApprovedBy", fields: [staffApprovedById], references: [id])
-  asset             Asset        @relation("AssetDisposals", fields: [assetId, organizationId], references: [id, organizationId], onDelete: Cascade)
-  organizationId    String
-  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  disposalDate      DateTime @default(now())
+
+  requestedBy     User         @relation("DisposalRequestedBy", fields: [requestedById], references: [id])
+  spvApprovedBy   User?        @relation("DisposalSpvApprovedBy", fields: [spvApprovedById], references: [id])
+  staffApprovedBy User?        @relation("DisposalStaffApprovedBy", fields: [staffApprovedById], references: [id])
+  asset           Asset        @relation("AssetDisposals", fields: [assetId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([assetId, organizationId])
   @@index([requestedById])

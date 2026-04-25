@@ -70,6 +70,15 @@ export const sidebarData: SidebarData = {
           },
         },
         {
+          title: 'Klasifikasi Aset',
+          url: '/asset-classification',
+          icon: Tags,
+          permission: {
+            resource: 'asset.classification',
+            actions: ['view'],
+          },
+        },
+        {
           title: 'Master Item',
           url: '/items',
           icon: Package,
@@ -96,24 +105,7 @@ export const sidebarData: SidebarData = {
             actions: ['view'],
           },
         },
-        {
-          title: 'Department',
-          url: '/departments',
-          icon: Network,
-          permission: {
-            resource: 'department',
-            actions: ['view'],
-          },
-        },
-        {
-          title: 'Divisi',
-          url: '/divisions',
-          icon: Layers,
-          permission: {
-            resource: 'division',
-            actions: ['view'],
-          },
-        },
+
         {
           title: 'Mutasi Aset',
           url: '/asset-transfers',
@@ -222,6 +214,24 @@ export const sidebarData: SidebarData = {
           icon: Building2,
           permission: {
             resource: 'ac',
+            actions: ['view'],
+          },
+        },
+        {
+          title: 'Department',
+          url: '/departments',
+          icon: Network,
+          permission: {
+            resource: 'department',
+            actions: ['view'],
+          },
+        },
+        {
+          title: 'Divisi',
+          url: '/divisions',
+          icon: Layers,
+          permission: {
+            resource: 'division',
             actions: ['view'],
           },
         },

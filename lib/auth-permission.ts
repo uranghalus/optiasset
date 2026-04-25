@@ -51,7 +51,7 @@ export const statement = {
     'scan-code',
     'assign',
   ],
-
+  'asset.classification': ['view', 'list', 'create', 'edit', 'delete'],
   /** Sidebar: Kategori Aset — hanya global-scope roles */
   'asset.category': ['view', 'list', 'create', 'edit', 'delete'],
 
@@ -111,6 +111,7 @@ export const owner = ac.newRole({
     'sync-user',
     'unsync-user',
   ],
+  'asset.classification': ['view', 'list', 'create', 'edit', 'delete'],
   user: [
     'view',
     'list',

@@ -98,9 +98,20 @@ export async function getAllAssets({
         brand: true,
         model: true,
         photoUrl: true,
-
         departmentId: true,
-
+        assetSubClusters: {
+          include: {
+            assetCluster: {
+              include: {
+                assetCategory: {
+                  include: {
+                    assetGroup: true,
+                  },
+                },
+              },
+            },
+          },
+        },
         item: {
           select: {
             name: true,
@@ -498,8 +509,8 @@ export async function getAssetById(id: string) {
     if (asset.assignedUserId) {
       assignedUser = await prisma.user.findUnique({
         where: { id: asset.assignedUserId },
-        select: { 
-          name: true, 
+        select: {
+          name: true,
           email: true,
           department: {
             select: { nama_department: true }

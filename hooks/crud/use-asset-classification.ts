@@ -1,400 +1,209 @@
 import {
-    createAssetCategory,
-    createAssetCluster,
-    createAssetGroup,
-    createAssetSubCluster,
-    deleteAssetGroup,
-    getAssetGroups,
-    getAssetGroupsForSelect,
-    getCategoriesByGroup,
-    getClassificationTree,
-    getClustersByCategory,
-    getSubClusterById,
-    getSubClustersByCluster,
-    updateAssetGroup,
-} from '@/action/asset-classification-action';
-
-import { PaginationState } from '@/types';
+  QueryKey,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import {
-    useMutation,
-    useQuery,
-    useQueryClient,
-} from '@tanstack/react-query';
+  createAssetCategory,
+  createAssetCluster,
+  createAssetGroup,
+  createAssetSubCluster,
+  updateAssetGroup,
+  updateAssetCategory,
+  updateAssetCluster,
+  updateAssetSubCluster,
+  deleteAssetGroup,
+  deleteAssetCategory,
+  deleteAssetCluster,
+  deleteAssetSubCluster,
+  getAssetGroups,
+  getAssetGroupsForSelect,
+  getCategoriesByGroup,
+  getClassificationTree,
+  getClustersByCategory,
+  getSubClustersByCluster,
+  getSubClusterById,
+} from "@/action/asset-classification-action";
+import { ClassificationTree, PaginationState } from "@/types";
+import { useState } from "react";
+import {
+  taxonomyKeys,
+  taxonomyQueryKeys,
+} from "@/constants/classification-keys";
+import {
+  useTaxonomyMutation,
+  optimisticInsertGroup,
+  optimisticUpdateNode,
+  optimisticDeleteNode,
+  optimisticInsertCategory,
+  optimisticInsertCluster,
+  optimisticInsertSubCluster,
+} from "./asset-classification/helper";
+export { useClassificationEditor } from "./asset-classification/use-classification-editor";
 
-
-
-/* =========================
- ASSET GROUP (GOLONGAN)
-========================= */
-
-export function useAssetGroups({
-    page,
-    pageSize
-}: PaginationState) {
-
-    return useQuery({
-        queryKey: [
-            'asset-groups',
-            page,
-            pageSize
-        ],
-        queryFn: () => getAssetGroups({
-            page,
-            pageSize
-        })
-    });
-
+// LINK Group
+export function useAssetGroups({ page, pageSize }: PaginationState) {
+  return useQuery({
+    queryKey: taxonomyQueryKeys.groupList(page, pageSize),
+    queryFn: () =>
+      getAssetGroups({
+        page,
+        pageSize,
+      }),
+  });
 }
-
-
 export function useAssetGroupsForSelect() {
-    return useQuery({
-        queryKey: ['asset-groups-select'],
-        queryFn: () => getAssetGroupsForSelect()
-    })
+  return useQuery({
+    queryKey: taxonomyKeys.groupSelect,
+    queryFn: getAssetGroupsForSelect,
+  });
 }
 
+export const useCreateAssetGroup = () =>
+  useTaxonomyMutation(
+    createAssetGroup,
+    [taxonomyKeys.groups, taxonomyKeys.groupSelect],
+    optimisticInsertGroup,
+  );
 
+export const useUpdateAssetGroup = () =>
+  useTaxonomyMutation(
+    ({ id, formData }: any) => updateAssetGroup(id, formData),
+    [taxonomyKeys.groups],
+    optimisticUpdateNode,
+  );
 
-/* =========================
- CATEGORY
-========================= */
+export const useDeleteAssetGroup = () =>
+  useTaxonomyMutation(
+    deleteAssetGroup,
+    [taxonomyKeys.groups],
+    optimisticDeleteNode,
+  );
 
-export function useCategoriesByGroup(
-    assetGroupId?: string
-) {
-    return useQuery({
-        queryKey: [
-            'asset-categories',
-            assetGroupId
-        ],
-        queryFn: () => {
-            if (!assetGroupId) {
-                throw new Error('assetGroupId required');
-            }
+// LINK Category
+export function useCategoriesByGroup(groupId?: string) {
+  return useQuery({
+    queryKey: groupId
+      ? taxonomyQueryKeys.categoriesByGroup(groupId)
+      : ["disabled"],
 
-            return getCategoriesByGroup(
-                assetGroupId
-            );
-        },
-        enabled: !!assetGroupId
-    })
+    queryFn: () => {
+      if (!groupId) throw new Error();
+
+      return getCategoriesByGroup(groupId);
+    },
+
+    enabled: !!groupId,
+  });
 }
 
+export const useCreateAssetCategory = () =>
+  useTaxonomyMutation(
+    createAssetCategory,
+    [taxonomyKeys.categories],
+    optimisticInsertCategory,
+  );
 
+export const useUpdateAssetCategory = () =>
+  useTaxonomyMutation(
+    ({ id, formData }: any) => updateAssetCategory(id, formData),
+    [taxonomyKeys.categories],
+    optimisticUpdateNode,
+  );
 
-/* =========================
- CLUSTER
-========================= */
+export const useDeleteAssetCategory = () =>
+  useTaxonomyMutation(
+    deleteAssetCategory,
+    [taxonomyKeys.categories],
+    optimisticDeleteNode,
+  );
+// LINK Cluster
+export function useClustersByCategory(id?: string) {
+  return useQuery({
+    queryKey: id ? taxonomyQueryKeys.clustersByCategory(id) : ["disabled"],
 
-export function useClustersByCategory(
-    categoryId?: string
-) {
-    return useQuery({
-        queryKey: [
-            'asset-clusters',
-            categoryId
-        ],
-        queryFn: () => {
-            if (!categoryId) {
-                throw new Error('categoryId required');
-            }
+    queryFn: () => {
+      if (!id) throw new Error();
 
-            return getClustersByCategory(
-                categoryId
-            )
-        },
-        enabled: !!categoryId
-    })
+      return getClustersByCategory(id);
+    },
+
+    enabled: !!id,
+  });
 }
+export const useCreateAssetCluster = () =>
+  useTaxonomyMutation(
+    createAssetCluster,
+    [taxonomyKeys.clusters],
+    optimisticInsertCluster,
+  );
 
+export const useUpdateAssetCluster = () =>
+  useTaxonomyMutation(
+    ({ id, formData }: any) => updateAssetCluster(id, formData),
+    [taxonomyKeys.clusters],
+    optimisticUpdateNode,
+  );
 
+export const useDeleteAssetCluster = () =>
+  useTaxonomyMutation(
+    deleteAssetCluster,
+    [taxonomyKeys.clusters],
+    optimisticDeleteNode,
+  );
+// LINK Sub Cluster
+export function useSubClustersByCluster(id?: string) {
+  return useQuery({
+    queryKey: id ? taxonomyQueryKeys.subClustersByCluster(id) : ["disabled"],
 
-/* =========================
- SUB CLUSTER
-========================= */
+    queryFn: () => {
+      if (!id) throw new Error();
 
-export function useSubClustersByCluster(
-    clusterId?: string
-) {
-    return useQuery({
-        queryKey: [
-            'asset-sub-clusters',
-            clusterId
-        ],
-        queryFn: () => {
-            if (!clusterId) {
-                throw new Error('clusterId required');
-            }
+      return getSubClustersByCluster(id);
+    },
 
-            return getSubClustersByCluster(
-                clusterId
-            )
-        },
-        enabled: !!clusterId
-    })
+    enabled: !!id,
+  });
 }
+export const useCreateAssetSubCluster = () =>
+  useTaxonomyMutation(
+    createAssetSubCluster,
+    [taxonomyKeys.subClusters],
+    optimisticInsertSubCluster,
+  );
 
+export const useUpdateAssetSubCluster = () =>
+  useTaxonomyMutation(
+    ({ id, formData }: any) => updateAssetSubCluster(id, formData),
+    [taxonomyKeys.subClusters],
+    optimisticUpdateNode,
+  );
 
+export const useDeleteAssetSubCluster = () =>
+  useTaxonomyMutation(
+    deleteAssetSubCluster,
+    [taxonomyKeys.subClusters],
+    optimisticDeleteNode,
+  );
+export function useSubClusterById(id?: string) {
+  return useQuery({
+    queryKey: id ? taxonomyQueryKeys.subClusterDetail(id) : ["disabled"],
 
-/* =========================
- SUB CLUSTER DETAIL
-========================= */
+    queryFn: () => {
+      if (!id) throw new Error();
 
-export function useSubClusterById(
-    id?: string
-) {
-    return useQuery({
-        queryKey: [
-            'asset-sub-cluster',
-            id
-        ],
-        queryFn: () => {
-            if (!id) {
-                throw new Error(
-                    'SubCluster id required'
-                );
-            }
+      return getSubClusterById(id);
+    },
 
-            return getSubClusterById(id);
-        },
-        enabled: !!id,
-        retry: 1
-    })
+    enabled: !!id,
+  });
 }
-
-
-
-/* =========================
- TREE
-========================= */
-
 export function useClassificationTree() {
+  return useQuery({
+    queryKey: taxonomyKeys.tree,
 
-    return useQuery({
-        queryKey: [
-            'asset-classification-tree'
-        ],
-        queryFn: () => getClassificationTree()
-    })
-
-}
-
-
-
-/* =========================
- CREATE GROUP
-========================= */
-
-export function useCreateAssetGroup() {
-
-    const queryClient =
-        useQueryClient();
-
-    return useMutation({
-        mutationFn: (
-            formData: FormData
-        ) => createAssetGroup(
-            formData
-        ),
-
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: ['asset-groups']
-            });
-
-            queryClient.invalidateQueries({
-                queryKey: [
-                    'asset-groups-select'
-                ]
-            });
-
-            queryClient.invalidateQueries({
-                queryKey: [
-                    'asset-classification-tree'
-                ]
-            });
-        }
-    })
-
-}
-
-
-
-/* =========================
- UPDATE GROUP
-========================= */
-
-export function useUpdateAssetGroup() {
-
-    const queryClient =
-        useQueryClient();
-
-    return useMutation({
-        mutationFn: ({
-            id,
-            formData
-        }: {
-            id: string;
-            formData: FormData;
-        }) =>
-            updateAssetGroup(
-                id,
-                formData
-            ),
-
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: ['asset-groups']
-            });
-
-            queryClient.invalidateQueries({
-                queryKey: [
-                    'asset-classification-tree'
-                ]
-            });
-        }
-    })
-
-}
-
-
-
-/* =========================
- DELETE GROUP
-========================= */
-
-export function useDeleteAssetGroup() {
-
-    const queryClient =
-        useQueryClient();
-
-    return useMutation({
-        mutationFn: (
-            id: string
-        ) => deleteAssetGroup(
-            id
-        ),
-
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: [
-                    'asset-groups'
-                ]
-            });
-
-            queryClient.invalidateQueries({
-                queryKey: [
-                    'asset-classification-tree'
-                ]
-            });
-        }
-    })
-
-}
-
-
-
-/* =========================
- CREATE CATEGORY
-========================= */
-
-export function useCreateAssetCategory() {
-
-    const queryClient =
-        useQueryClient();
-
-    return useMutation({
-        mutationFn: (
-            formData: FormData
-        ) => createAssetCategory(
-            formData
-        ),
-
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: [
-                    'asset-categories'
-                ]
-            });
-
-            queryClient.invalidateQueries({
-                queryKey: [
-                    'asset-classification-tree'
-                ]
-            });
-        }
-    })
-
-}
-
-
-
-/* =========================
- CREATE CLUSTER
-========================= */
-
-export function useCreateAssetCluster() {
-
-    const queryClient =
-        useQueryClient();
-
-    return useMutation({
-        mutationFn: (
-            formData: FormData
-        ) => createAssetCluster(
-            formData
-        ),
-
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: [
-                    'asset-clusters'
-                ]
-            });
-
-            queryClient.invalidateQueries({
-                queryKey: [
-                    'asset-classification-tree'
-                ]
-            });
-        }
-    })
-
-}
-
-
-
-/* =========================
- CREATE SUB CLUSTER
-========================= */
-
-export function useCreateAssetSubCluster() {
-
-    const queryClient =
-        useQueryClient();
-
-    return useMutation({
-        mutationFn: (
-            formData: FormData
-        ) => createAssetSubCluster(
-            formData
-        ),
-
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: [
-                    'asset-sub-clusters'
-                ]
-            });
-
-            queryClient.invalidateQueries({
-                queryKey: [
-                    'asset-classification-tree'
-                ]
-            });
-        }
-    })
-
+    queryFn: getClassificationTree,
+  });
 }

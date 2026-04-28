@@ -1,5 +1,5 @@
 export type ActionState = {
-  status: 'idle' | 'success' | 'error';
+  status: "idle" | "success" | "error";
   message?: string;
   fieldErrors?: Record<string, string>;
 };
@@ -34,7 +34,7 @@ export type BaseNavItem = {
 };
 
 export type NavLink = BaseNavItem & {
-  url: LinkProps['to'] | (string & {});
+  url: LinkProps["to"] | (string & {});
   items?: never;
 };
 
@@ -57,3 +57,38 @@ export type SidebarData = {
   teams: Team[];
   navGroups: NavGroup[];
 };
+
+// LINK Asset Classification
+export type AssetSubClusterNode = {
+  id: string;
+  code: string | null;
+  name: string;
+  description?: string | null;
+  notes?: string | null;
+};
+
+export type AssetClusterNode = {
+  id: string;
+  code: string | null;
+  name: string;
+  description?: string | null;
+  assetSubClusters: AssetSubClusterNode[];
+};
+
+export type AssetCategoryNode = {
+  id: string;
+  code: string | null;
+  name: string;
+  description?: string | null;
+  assetClusters: AssetClusterNode[];
+};
+
+export type AssetGroupNode = {
+  id: string;
+  code: string | null;
+  name: string;
+  description?: string | null;
+  categories: AssetCategoryNode[];
+};
+
+export type ClassificationTree = AssetGroupNode[];

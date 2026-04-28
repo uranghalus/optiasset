@@ -237,7 +237,114 @@ export async function createAssetCategory(formData: FormData) {
 }
 
 /* =========================
- CLUSTER
+ CATEGORY UPDATE
+========================= */
+
+export async function updateAssetCategory(id: string, formData: FormData) {
+  const session = await getServerSession();
+  if (!session) throw new Error("Unauthorized");
+
+  const orgId = session.session?.activeOrganizationId;
+
+  if (!orgId) throw new Error("No active organization");
+
+  const existing = await prisma.assetCategory.findFirst({
+    where: {
+      id,
+      assetGroup: {
+        organizationId: orgId,
+      },
+    },
+  });
+
+  if (!existing) throw new Error("Category not found");
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.assetCategory.update({
+      where: { id },
+      data: {
+        code: formData.get("code")?.toString(),
+
+        name: formData.get("name")?.toString(),
+
+        description: formData.get("description")?.toString(),
+      },
+    });
+
+    await createAuditLog({
+      userId: session.user.id,
+      organizationId: orgId,
+      action: "UPDATE",
+      entityType: "ASSET_CATEGORY",
+      entityId: id,
+      entityInfo: result.name,
+      details: {
+        oldData: existing,
+        newData: result,
+      },
+      tx,
+    });
+
+    return result;
+  });
+
+  revalidatePath("/master/asset-classification");
+
+  return updated;
+}
+
+/* =========================
+ CATEGORY DELETE
+========================= */
+
+export async function deleteAssetCategory(id: string) {
+  const session = await getServerSession();
+
+  if (!session) throw new Error("Unauthorized");
+
+  const orgId = session.session?.activeOrganizationId;
+
+  if (!orgId) throw new Error("No active organization");
+
+  const deleted = await prisma.$transaction(async (tx) => {
+    const existing = await tx.assetCategory.findFirst({
+      where: {
+        id,
+        assetGroup: {
+          organizationId: orgId,
+        },
+      },
+    });
+
+    if (!existing) throw new Error("Category not found");
+
+    const result = await tx.assetCategory.delete({
+      where: { id },
+    });
+
+    await createAuditLog({
+      userId: session.user.id,
+      organizationId: orgId,
+      action: "DELETE",
+      entityType: "ASSET_CATEGORY",
+      entityId: id,
+      entityInfo: result.name,
+      details: {
+        deletedData: result,
+      },
+      tx,
+    });
+
+    return result;
+  });
+
+  revalidatePath("/master/asset-classification");
+
+  return deleted;
+}
+
+/* =========================
+LINK CLUSTER
 ========================= */
 
 export async function getClustersByCategory(categoryId: string) {
@@ -287,6 +394,115 @@ export async function createAssetCluster(formData: FormData) {
 
   return created;
 }
+/* =========================
+ CLUSTER UPDATE
+========================= */
+
+export async function updateAssetCluster(id: string, formData: FormData) {
+  const session = await getServerSession();
+
+  if (!session) throw new Error("Unauthorized");
+
+  const orgId = session.session?.activeOrganizationId;
+  if (!orgId) throw new Error("No active organization");
+
+  const existing = await prisma.assetCluster.findFirst({
+    where: {
+      id,
+      assetCategory: {
+        assetGroup: {
+          organizationId: orgId,
+        },
+      },
+    },
+  });
+
+  if (!existing) throw new Error("Cluster not found");
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.assetCluster.update({
+      where: { id },
+      data: {
+        code: formData.get("code")?.toString(),
+
+        name: formData.get("name")?.toString(),
+
+        description: formData.get("description")?.toString(),
+      },
+    });
+
+    await createAuditLog({
+      userId: session.user.id,
+      organizationId: orgId!,
+      action: "UPDATE",
+      entityType: "ASSET_CLUSTER",
+      entityId: id,
+      entityInfo: result.name,
+      details: {
+        oldData: existing,
+        newData: result,
+      },
+      tx,
+    });
+
+    return result;
+  });
+
+  revalidatePath("/master/asset-classification");
+
+  return updated;
+}
+
+/* =========================
+ CLUSTER DELETE
+========================= */
+
+export async function deleteAssetCluster(id: string) {
+  const session = await getServerSession();
+
+  if (!session) throw new Error("Unauthorized");
+
+  const orgId = session.session?.activeOrganizationId;
+  if (!orgId) throw new Error("No active organization");
+
+  const deleted = await prisma.$transaction(async (tx) => {
+    const existing = await tx.assetCluster.findFirst({
+      where: {
+        id,
+        assetCategory: {
+          assetGroup: {
+            organizationId: orgId,
+          },
+        },
+      },
+    });
+
+    if (!existing) throw new Error("Cluster not found");
+
+    const result = await tx.assetCluster.delete({
+      where: { id },
+    });
+
+    await createAuditLog({
+      userId: session.user.id,
+      organizationId: orgId!,
+      action: "DELETE",
+      entityType: "ASSET_CLUSTER",
+      entityId: id,
+      entityInfo: result.name,
+      details: {
+        deletedData: result,
+      },
+      tx,
+    });
+
+    return result;
+  });
+
+  revalidatePath("/master/asset-classification");
+
+  return deleted;
+}
 
 /* =========================
  SUB CLUSTER
@@ -313,10 +529,10 @@ export async function createAssetSubCluster(formData: FormData) {
     const result = await tx.assetSubCluster.create({
       data: {
         assetClusterId: formData.get("assetClusterId")!.toString(),
-        code: formData.get("code")?.toString(),
+        code: formData.get("code")?.toString() ?? undefined,
         name: formData.get("name")!.toString(),
-        description: formData.get("description")?.toString(),
-        notes: formData.get("notes")?.toString(),
+        description: formData.get("description")?.toString() ?? undefined,
+        notes: formData.get("notes")?.toString() ?? undefined,
       },
     });
 
@@ -417,4 +633,118 @@ export async function getSubClusterById(id: string) {
       },
     },
   });
+}
+
+/* =========================
+ SUBCLUSTER UPDATE
+========================= */
+
+export async function updateAssetSubCluster(id: string, formData: FormData) {
+  const session = await getServerSession();
+
+  if (!session) throw new Error("Unauthorized");
+
+  const orgId = session.session?.activeOrganizationId;
+  if (!orgId) throw new Error("No active organization");
+  const existing = await prisma.assetSubCluster.findFirst({
+    where: {
+      id,
+      assetCluster: {
+        assetCategory: {
+          assetGroup: {
+            organizationId: orgId,
+          },
+        },
+      },
+    },
+  });
+
+  if (!existing) throw new Error("Sub cluster not found");
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.assetSubCluster.update({
+      where: { id },
+      data: {
+        code: formData.get("code")?.toString(),
+
+        name: formData.get("name")?.toString(),
+
+        description: formData.get("description")?.toString(),
+
+        notes: formData.get("notes")?.toString(),
+      },
+    });
+
+    await createAuditLog({
+      userId: session.user.id,
+      organizationId: orgId!,
+      action: "UPDATE",
+      entityType: "ASSET_SUB_CLUSTER",
+      entityId: id,
+      entityInfo: result.name,
+      details: {
+        oldData: existing,
+        newData: result,
+      },
+      tx,
+    });
+
+    return result;
+  });
+
+  revalidatePath("/master/asset-classification");
+
+  return updated;
+}
+
+/* =========================
+ SUBCLUSTER DELETE
+========================= */
+
+export async function deleteAssetSubCluster(id: string) {
+  const session = await getServerSession();
+
+  if (!session) throw new Error("Unauthorized");
+
+  const orgId = session.session?.activeOrganizationId;
+  if (!orgId) throw new Error("No active organization");
+  const deleted = await prisma.$transaction(async (tx) => {
+    const existing = await tx.assetSubCluster.findFirst({
+      where: {
+        id,
+        assetCluster: {
+          assetCategory: {
+            assetGroup: {
+              organizationId: orgId,
+            },
+          },
+        },
+      },
+    });
+
+    if (!existing) throw new Error("Sub cluster not found");
+
+    const result = await tx.assetSubCluster.delete({
+      where: { id },
+    });
+
+    await createAuditLog({
+      userId: session.user.id,
+      organizationId: orgId!,
+      action: "DELETE",
+      entityType: "ASSET_SUB_CLUSTER",
+      entityId: id,
+      entityInfo: result.name,
+      details: {
+        deletedData: result,
+      },
+      tx,
+    });
+
+    return result;
+  });
+
+  revalidatePath("/master/asset-classification");
+
+  return deleted;
 }

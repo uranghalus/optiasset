@@ -90,6 +90,7 @@ export async function createAssetGroup(formData: FormData) {
   });
 
   revalidatePath("/master/asset-group");
+  revalidatePath("/master/asset-classification");
 
   return created;
 }
@@ -137,6 +138,7 @@ export async function updateAssetGroup(id: string, formData: FormData) {
   });
 
   revalidatePath("/master/asset-group");
+  revalidatePath("/master/asset-classification");
 
   return updated;
 }
@@ -180,6 +182,7 @@ export async function deleteAssetGroup(id: string) {
   });
 
   revalidatePath("/master/asset-group");
+  revalidatePath("/master/asset-classification");
 
   return deleted;
 }
@@ -206,9 +209,21 @@ export async function createAssetCategory(formData: FormData) {
   const orgId = session.session?.activeOrganizationId!;
 
   const created = await prisma.$transaction(async (tx) => {
+    // Validate parent exists and belongs to org
+    const parent = await tx.assetGroup.findFirst({
+      where: {
+        id: formData.get("assetGroupId")?.toString(),
+        organizationId: orgId,
+      },
+    });
+
+    if (!parent) {
+      throw new Error("Parent Group not found or unauthorized");
+    }
+
     const result = await tx.assetCategory.create({
       data: {
-        assetGroupId: formData.get("assetGroupId")!.toString(),
+        assetGroupId: parent.id,
         code: formData.get("code")?.toString(),
         name: formData.get("name")!.toString(),
         description: formData.get("description")?.toString(),
@@ -231,7 +246,7 @@ export async function createAssetCategory(formData: FormData) {
     return result;
   });
 
-  revalidatePath("/master/asset-category");
+  revalidatePath("/master/asset-classification");
 
   return created;
 }
@@ -365,9 +380,23 @@ export async function createAssetCluster(formData: FormData) {
   const orgId = session.session?.activeOrganizationId!;
 
   const created = await prisma.$transaction(async (tx) => {
+    // Validate parent
+    const parent = await tx.assetCategory.findFirst({
+      where: {
+        id: formData.get("assetCategoryId")?.toString(),
+        assetGroup: {
+          organizationId: orgId,
+        },
+      },
+    });
+
+    if (!parent) {
+      throw new Error("Parent Category not found or unauthorized");
+    }
+
     const result = await tx.assetCluster.create({
       data: {
-        assetCategoryId: formData.get("assetCategoryId")!.toString(),
+        assetCategoryId: parent.id,
         code: formData.get("code")?.toString(),
         name: formData.get("name")!.toString(),
         description: formData.get("description")?.toString(),
@@ -390,7 +419,7 @@ export async function createAssetCluster(formData: FormData) {
     return result;
   });
 
-  revalidatePath("/master/asset-cluster");
+  revalidatePath("/master/asset-classification");
 
   return created;
 }
@@ -526,9 +555,25 @@ export async function createAssetSubCluster(formData: FormData) {
   const orgId = session.session?.activeOrganizationId!;
 
   const created = await prisma.$transaction(async (tx) => {
+    // Validate parent
+    const parent = await tx.assetCluster.findFirst({
+      where: {
+        id: formData.get("assetClusterId")?.toString(),
+        assetCategory: {
+          assetGroup: {
+            organizationId: orgId,
+          },
+        },
+      },
+    });
+
+    if (!parent) {
+      throw new Error("Parent Cluster not found or unauthorized");
+    }
+
     const result = await tx.assetSubCluster.create({
       data: {
-        assetClusterId: formData.get("assetClusterId")!.toString(),
+        assetClusterId: parent.id,
         code: formData.get("code")?.toString() ?? undefined,
         name: formData.get("name")!.toString(),
         description: formData.get("description")?.toString() ?? undefined,
@@ -552,7 +597,7 @@ export async function createAssetSubCluster(formData: FormData) {
     return result;
   });
 
-  revalidatePath("/master/asset-sub-cluster");
+  revalidatePath("/master/asset-classification");
 
   return created;
 }

@@ -124,6 +124,10 @@ export function TaxonomyForm({ mode, selected, editor }: any) {
           return;
 
         case "category":
+          if (!selected.parentId || selected.parentId.includes("-")) {
+            alert("Harap tunggu hingga parent tersimpan di database.");
+            return;
+          }
           fd.append("assetGroupId", selected.parentId);
 
           createCategory.mutate(fd, {
@@ -132,6 +136,10 @@ export function TaxonomyForm({ mode, selected, editor }: any) {
           return;
 
         case "cluster":
+          if (!selected.parentId || selected.parentId.includes("-")) {
+            alert("Harap tunggu hingga parent tersimpan di database.");
+            return;
+          }
           fd.append("assetCategoryId", selected.parentId);
 
           createCluster.mutate(fd, {
@@ -140,6 +148,10 @@ export function TaxonomyForm({ mode, selected, editor }: any) {
           return;
 
         case "subcluster":
+          if (!selected.parentId || selected.parentId.includes("-")) {
+            alert("Harap tunggu hingga parent tersimpan di database.");
+            return;
+          }
           fd.append("assetClusterId", selected.parentId);
 
           createSubCluster.mutate(fd, {

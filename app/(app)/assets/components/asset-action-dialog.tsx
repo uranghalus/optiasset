@@ -37,6 +37,7 @@ import {
   useUpdateAsset,
   useItemsForSelect,
   useLocationsForSelect,
+  useGenerateAssetCode,
 } from "@/hooks/crud/use-assets";
 import { AssetForm, AssetFormSchema } from "@/schema/asset-schema";
 import { getAssetFormAccess, isValidImageFile } from "@/lib/utils";
@@ -67,11 +68,11 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
 
   const createMutation = useCreateAsset();
   const updateMutation = useUpdateAsset();
-  const { data: role } = useActiveMemberRole()
-  const { canView, isReadonly } = getAssetFormAccess(role)
+  const { data: role } = useActiveMemberRole();
+  const { canView, isReadonly } = getAssetFormAccess(role);
   const { data: items } = useItemsForSelect();
   const { data: locations } = useLocationsForSelect();
-  const { data: dept } = useDepartmentsForSelect()
+  const { data: dept } = useDepartmentsForSelect();
   const form = useForm<AssetForm>({
     resolver: zodResolver(AssetFormSchema),
     defaultValues: {
@@ -93,24 +94,33 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
       photo: undefined,
     },
   });
-  const selectedGroup =
-    form.watch(
-      "assetGroupId"
-    )
+  const selectedGroup = form.watch("assetGroupId");
+  const selectedCategory = form.watch("assetCategoryId");
+  const selectedCluster = form.watch("assetClusterId");
+  const selectedSubCluster = form.watch("assetSubClusterId");
 
-  const selectedCategory =
-    form.watch(
-      "assetCategoryId"
-    )
-
-  const selectedCluster =
-    form.watch(
-      "assetClusterId"
-    )
   const { data: groups } = useAssetGroupsForSelect();
   const { data: categories } = useCategoriesByGroup(selectedGroup);
   const { data: clusters } = useClustersByCategory(selectedCategory);
   const { data: subClusters } = useSubClustersByCluster(selectedCluster);
+
+  const { data: generatedCode, isFetching: generatingCode } =
+    useGenerateAssetCode(
+      selectedGroup,
+      selectedCategory,
+      selectedCluster,
+      selectedSubCluster,
+    );
+
+  useEffect(() => {
+    if (isEdit) return;
+    if (!generatedCode) return;
+
+    form.setValue("kode_asset", generatedCode, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  }, [generatedCode]);
   useEffect(() => {
     if (currentRow) {
       form.reset({
@@ -139,7 +149,9 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
           : "",
         photo: undefined,
       });
-      setImagePreview(currentRow.photoUrl ? `/uploads/${currentRow.photoUrl}` : null);
+      setImagePreview(
+        currentRow.photoUrl ? `/uploads/${currentRow.photoUrl}` : null,
+      );
     } else {
       form.reset({
         itemId: "",
@@ -166,35 +178,17 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
     setImageError(null);
   }, [currentRow, form, open]);
   useEffect(() => {
-    form.setValue(
-      "assetCategoryId",
-      ""
-    )
-    form.setValue(
-      "assetClusterId",
-      ""
-    )
-    form.setValue(
-      "assetSubClusterId",
-      ""
-    )
-  }, [selectedGroup])
+    form.setValue("assetCategoryId", "");
+    form.setValue("assetClusterId", "");
+    form.setValue("assetSubClusterId", "");
+  }, [selectedGroup]);
   useEffect(() => {
-    form.setValue(
-      "assetClusterId",
-      ""
-    )
-    form.setValue(
-      "assetSubClusterId",
-      ""
-    )
-  }, [selectedCategory])
+    form.setValue("assetClusterId", "");
+    form.setValue("assetSubClusterId", "");
+  }, [selectedCategory]);
   useEffect(() => {
-    form.setValue(
-      "assetSubClusterId",
-      ""
-    )
-  }, [selectedCluster])
+    form.setValue("assetSubClusterId", "");
+  }, [selectedCluster]);
   const isPending = createMutation.isPending || updateMutation.isPending;
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -227,7 +221,9 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
     setImagePreview(null);
     setImageError(null);
     form.setValue("photo", undefined);
-    const fileInput = document.getElementById("photo-input") as HTMLInputElement;
+    const fileInput = document.getElementById(
+      "photo-input",
+    ) as HTMLInputElement;
     if (fileInput) fileInput.value = "";
   };
 
@@ -317,13 +313,19 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
                       title="Cari Item"
                       valueKey="id"
                       value={items?.find((item) => item.id === field.value)}
-                      searchFn={(search: string, offset: number, size: number) =>
+                      searchFn={(
+                        search: string,
+                        offset: number,
+                        size: number,
+                      ) =>
                         Promise.resolve(
                           items
                             ?.filter((item) =>
-                              item.name.toLowerCase().includes(search.toLowerCase())
+                              item.name
+                                .toLowerCase()
+                                .includes(search.toLowerCase()),
                             )
-                            .slice(offset, offset + size) || []
+                            .slice(offset, offset + size) || [],
                         )
                       }
                       renderText={(item) => item.name}
@@ -337,207 +339,167 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
               />
               {canView && (
                 <>
+                  {/* ==============================
+      AUTO GENERATED ASSET CODE
+  ============================== */}
+
                   <Controller
                     name="kode_asset"
                     control={form.control}
                     render={({ field, fieldState }) => (
                       <Field data-invalid={fieldState.invalid}>
-                        <FieldLabel>Asset Tag / kode_asset</FieldLabel>
-                        <Input {...field} placeholder="AST-0001" readOnly={isReadonly} />
+                        <FieldLabel>Kode Asset</FieldLabel>
+
+                        <Input
+                          {...field}
+                          readOnly
+                          placeholder="Auto generated from classification"
+                          className="font-mono"
+                        />
+
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Kode otomatis terbentuk dari Golongan → Kategori →
+                          Cluster → Sub Cluster
+                        </p>
+
                         {fieldState.invalid && (
                           <FieldError errors={[fieldState.error]} />
                         )}
                       </Field>
                     )}
                   />
+
+                  {/* ==============================
+      GOLONGAN
+  ============================== */}
+
                   <Controller
                     name="assetGroupId"
                     control={form.control}
                     render={({ field }) => (
                       <Field>
-                        <FieldLabel>
-                          Golongan
-                        </FieldLabel>
+                        <FieldLabel>Golongan</FieldLabel>
 
                         <Combobox
                           title="Pilih Golongan"
                           valueKey="id"
-                          value={
-                            groups?.find(
-                              g => g.id === field.value
+                          value={groups?.find((g) => g.id === field.value)}
+                          searchFn={(search, offset, size) =>
+                            Promise.resolve(
+                              groups
+                                ?.filter((g) =>
+                                  g.name
+                                    .toLowerCase()
+                                    .includes(search.toLowerCase()),
+                                )
+                                .slice(offset, offset + size) || [],
                             )
                           }
-                          searchFn={
-                            (search, offset, size) =>
-                              Promise.resolve(
-                                groups
-                                  ?.filter(
-                                    g => g.name
-                                      .toLowerCase()
-                                      .includes(
-                                        search.toLowerCase()
-                                      )
-                                  )
-                                  .slice(
-                                    offset,
-                                    offset + size
-                                  ) || []
-                              )
-                          }
-                          renderText={
-                            item => item.name
-                          }
-                          onChange={item =>
-                            field.onChange(
-                              item.id
-                            )
-                          }
+                          renderText={(item) => `${item.code} - ${item.name}`}
+                          onChange={(item) => field.onChange(item.id)}
                         />
-
                       </Field>
                     )}
                   />
+
+                  {/* ==============================
+      KATEGORI
+  ============================== */}
+
                   <Controller
                     name="assetCategoryId"
                     control={form.control}
                     render={({ field }) => (
                       <Field>
-                        <FieldLabel>
-                          Kategori
-                        </FieldLabel>
+                        <FieldLabel>Kategori</FieldLabel>
 
                         <Combobox
                           title="Pilih Kategori"
                           valueKey="id"
-                          value={
-                            categories?.find(
-                              x => x.id === field.value
+                          value={categories?.find((x) => x.id === field.value)}
+                          searchFn={(search, offset, size) =>
+                            Promise.resolve(
+                              categories
+                                ?.filter((x) =>
+                                  x.name
+                                    .toLowerCase()
+                                    .includes(search.toLowerCase()),
+                                )
+                                .slice(offset, offset + size) || [],
                             )
                           }
-                          searchFn={
-                            (search, offset, size) =>
-                              Promise.resolve(
-                                categories
-                                  ?.filter(
-                                    x => x.name
-                                      .toLowerCase()
-                                      .includes(
-                                        search.toLowerCase()
-                                      )
-                                  )
-                                  .slice(
-                                    offset,
-                                    offset + size
-                                  ) || []
-                              )
-                          }
-                          renderText={
-                            x => x.name
-                          }
-                          onChange={x =>
-                            field.onChange(x.id)
-                          }
-                          disabled={
-                            !selectedGroup
-                          }
+                          renderText={(x) => `${x.code} - ${x.name}`}
+                          onChange={(x) => field.onChange(x.id)}
+                          disabled={!selectedGroup}
                         />
-
                       </Field>
                     )}
                   />
+
+                  {/* ==============================
+      CLUSTER
+  ============================== */}
+
                   <Controller
                     name="assetClusterId"
                     control={form.control}
                     render={({ field }) => (
                       <Field>
-                        <FieldLabel>
-                          Cluster
-                        </FieldLabel>
+                        <FieldLabel>Cluster</FieldLabel>
 
                         <Combobox
                           title="Pilih Cluster"
                           valueKey="id"
-                          value={
-                            clusters?.find(
-                              x => x.id === field.value
+                          value={clusters?.find((x) => x.id === field.value)}
+                          searchFn={(search, offset, size) =>
+                            Promise.resolve(
+                              clusters
+                                ?.filter((x) =>
+                                  x.name
+                                    .toLowerCase()
+                                    .includes(search.toLowerCase()),
+                                )
+                                .slice(offset, offset + size) || [],
                             )
                           }
-                          searchFn={
-                            (search, offset, size) =>
-                              Promise.resolve(
-                                clusters
-                                  ?.filter(
-                                    x => x.name
-                                      .toLowerCase()
-                                      .includes(
-                                        search.toLowerCase()
-                                      )
-                                  )
-                                  .slice(
-                                    offset,
-                                    offset + size
-                                  ) || []
-                              )
-                          }
-                          renderText={
-                            x => x.name
-                          }
-                          onChange={x =>
-                            field.onChange(x.id)
-                          }
-                          disabled={
-                            !selectedCategory
-                          }
+                          renderText={(x) => `${x.code} - ${x.name}`}
+                          onChange={(x) => field.onChange(x.id)}
+                          disabled={!selectedCategory}
                         />
-
                       </Field>
                     )}
                   />
+
+                  {/* ==============================
+      SUB CLUSTER
+  ============================== */}
+
                   <Controller
                     name="assetSubClusterId"
                     control={form.control}
                     render={({ field }) => (
                       <Field>
-                        <FieldLabel>
-                          Sub Cluster
-                        </FieldLabel>
+                        <FieldLabel>Sub Cluster</FieldLabel>
 
                         <Combobox
                           title="Pilih Sub Cluster"
                           valueKey="id"
-                          value={
-                            subClusters?.find(
-                              x => x.id === field.value
+                          value={subClusters?.find((x) => x.id === field.value)}
+                          searchFn={(search, offset, size) =>
+                            Promise.resolve(
+                              subClusters
+                                ?.filter((x) =>
+                                  x.name
+                                    .toLowerCase()
+                                    .includes(search.toLowerCase()),
+                                )
+                                .slice(offset, offset + size) || [],
                             )
                           }
-                          searchFn={
-                            (search, offset, size) =>
-                              Promise.resolve(
-                                subClusters
-                                  ?.filter(
-                                    x => x.name
-                                      .toLowerCase()
-                                      .includes(
-                                        search.toLowerCase()
-                                      )
-                                  )
-                                  .slice(
-                                    offset,
-                                    offset + size
-                                  ) || []
-                              )
-                          }
-                          renderText={
-                            x => x.name
-                          }
-                          onChange={x =>
-                            field.onChange(x.id)
-                          }
-                          disabled={
-                            !selectedCluster
-                          }
+                          renderText={(x) => `${x.code} - ${x.name}`}
+                          onChange={(x) => field.onChange(x.id)}
+                          disabled={!selectedCluster}
                         />
-
                       </Field>
                     )}
                   />
@@ -674,13 +636,19 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
                       title="Cari Lokasi"
                       valueKey="id"
                       value={locations?.find((loc) => loc.id === field.value)}
-                      searchFn={(search: string, offset: number, size: number) =>
+                      searchFn={(
+                        search: string,
+                        offset: number,
+                        size: number,
+                      ) =>
                         Promise.resolve(
                           locations
                             ?.filter((loc) =>
-                              loc.name.toLowerCase().includes(search.toLowerCase())
+                              loc.name
+                                .toLowerCase()
+                                .includes(search.toLowerCase()),
                             )
-                            .slice(offset, offset + size) || []
+                            .slice(offset, offset + size) || [],
                         )
                       }
                       renderText={(loc) => loc.name}
@@ -704,14 +672,22 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
                       }>
                         title="Cari Departemen"
                         valueKey="id_department"
-                        value={dept?.find((loc) => loc.id_department === field.value)}
-                        searchFn={(search: string, offset: number, size: number) =>
+                        value={dept?.find(
+                          (loc) => loc.id_department === field.value,
+                        )}
+                        searchFn={(
+                          search: string,
+                          offset: number,
+                          size: number,
+                        ) =>
                           Promise.resolve(
                             dept
                               ?.filter((loc) =>
-                                loc.nama_department.toLowerCase().includes(search.toLowerCase())
+                                loc.nama_department
+                                  .toLowerCase()
+                                  .includes(search.toLowerCase()),
                               )
-                              .slice(offset, offset + size) || []
+                              .slice(offset, offset + size) || [],
                           )
                         }
                         renderText={(loc) => loc.nama_department}
@@ -739,7 +715,12 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
                       <FieldLabel>Harga Beli</FieldLabel>
-                      <Input type="number" {...field} placeholder="0" readOnly={isReadonly} />
+                      <Input
+                        type="number"
+                        {...field}
+                        placeholder="0"
+                        readOnly={isReadonly}
+                      />
                     </Field>
                   )}
                 />
@@ -762,7 +743,11 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
                     <FieldLabel>Vendor / Toko</FieldLabel>
-                    <Input {...field} placeholder="e.g. PT Maju Bersama" readOnly={isReadonly} />
+                    <Input
+                      {...field}
+                      placeholder="e.g. PT Maju Bersama"
+                      readOnly={isReadonly}
+                    />
                   </Field>
                 )}
               />
@@ -857,7 +842,6 @@ export function AssetActionDialog({ open, onOpenChange, currentRow }: Props) {
             </Button>
           </DialogFooter>
         </form>
-
       </DialogContent>
     </Dialog>
   );

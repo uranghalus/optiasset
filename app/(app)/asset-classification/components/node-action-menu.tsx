@@ -85,7 +85,7 @@ export function NodeActionMenu({ node, level, editor }: any) {
           Edit
         </DropdownMenuItem>
 
-        {level !== "subcluster" && (
+        {!node.id.includes("-") && level !== "subcluster" && (
           <DropdownMenuItem
             onSelect={(e) => {
               e.preventDefault();

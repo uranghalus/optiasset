@@ -2,15 +2,16 @@ import {
   createAsset,
   deleteAsset,
   exportAssetPDF,
+  generateAssetCode,
   getAllAssets,
   getAssetById,
   getDepartmentsForAssetSelect,
   getItemsForSelect,
   getLocationsForSelect,
   updateAsset,
-} from '@/action/asset-action';
-import { PaginationState } from '@/types';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+} from "@/action/asset-action";
+import { PaginationState } from "@/types";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 // Get all assets
 export function useAssets({
@@ -20,7 +21,7 @@ export function useAssets({
   departmentId,
 }: PaginationState) {
   return useQuery({
-    queryKey: ['assets', page, pageSize, condition, departmentId], // 🔥 TAMBAHKAN INI
+    queryKey: ["assets", page, pageSize, condition, departmentId], // 🔥 TAMBAHKAN INI
     queryFn: () => getAllAssets({ page, pageSize, condition, departmentId }),
   });
 }
@@ -31,9 +32,9 @@ interface UseAssetByIdProps {
 
 export function useAssetById({ id, organizationId }: UseAssetByIdProps) {
   return useQuery({
-    queryKey: ['asset', id, organizationId],
+    queryKey: ["asset", id, organizationId],
     queryFn: () => {
-      if (!id) throw new Error('Asset ID is required');
+      if (!id) throw new Error("Asset ID is required");
       return getAssetById(id);
     },
     enabled: !!id, // hanya jalan kalau ada id
@@ -46,7 +47,7 @@ export function useAssetLookup() {
       const res = await getAssetById(id);
 
       if (!res) {
-        throw new Error('Asset tidak ditemukan');
+        throw new Error("Asset tidak ditemukan");
       }
 
       return res;
@@ -56,7 +57,7 @@ export function useAssetLookup() {
 // Get items for select
 export function useItemsForSelect() {
   return useQuery({
-    queryKey: ['items-for-select'],
+    queryKey: ["items-for-select"],
     queryFn: () => getItemsForSelect(),
   });
 }
@@ -64,7 +65,7 @@ export function useItemsForSelect() {
 // Get locations for select
 export function useLocationsForSelect() {
   return useQuery({
-    queryKey: ['locations-for-select'],
+    queryKey: ["locations-for-select"],
     queryFn: () => getLocationsForSelect(),
   });
 }
@@ -72,7 +73,7 @@ export function useLocationsForSelect() {
 // Get departments for select
 export function useDepartmentsForAssetSelect() {
   return useQuery({
-    queryKey: ['departments-for-asset-select'],
+    queryKey: ["departments-for-asset-select"],
     queryFn: () => getDepartmentsForAssetSelect(),
   });
 }
@@ -83,7 +84,7 @@ export function useCreateAsset() {
   return useMutation({
     mutationFn: (formData: FormData) => createAsset(formData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
     },
   });
 }
@@ -95,7 +96,7 @@ export function useUpdateAsset() {
     mutationFn: ({ id, formData }: { id: string; formData: FormData }) =>
       updateAsset(id, formData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
     },
   });
 }
@@ -106,7 +107,7 @@ export function useDeleteAsset() {
   return useMutation({
     mutationFn: (id: string) => deleteAsset(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
     },
   });
 }
@@ -119,7 +120,7 @@ export function useExportAssets() {
       dateTo,
       organizationId,
     }: {
-      type: 'all' | 'latest' | 'range';
+      type: "all" | "latest" | "range";
       dateFrom?: Date;
       dateTo?: Date;
       organizationId: string;
@@ -131,5 +132,26 @@ export function useExportAssets() {
         organizationId,
       });
     },
+  });
+}
+export function useGenerateAssetCode(
+  groupId?: string,
+  categoryId?: string,
+  clusterId?: string,
+  subClusterId?: string,
+) {
+  return useQuery({
+    queryKey: [
+      "generate-asset-code",
+      groupId,
+      categoryId,
+      clusterId,
+      subClusterId,
+    ],
+
+    queryFn: () =>
+      generateAssetCode(groupId!, categoryId!, clusterId!, subClusterId),
+
+    enabled: !!groupId && !!categoryId && !!clusterId,
   });
 }

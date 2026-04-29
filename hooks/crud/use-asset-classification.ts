@@ -66,6 +66,11 @@ export const useCreateAssetGroup = () =>
     createAssetGroup,
     [taxonomyKeys.groups, taxonomyKeys.groupSelect],
     optimisticInsertGroup,
+    {
+      loading: "Menambahkan data...",
+      success: "Data berhasil ditambahkan",
+      error: "Gagal menambahkan data"
+    }
   );
 
 export const useUpdateAssetGroup = () =>
@@ -73,6 +78,11 @@ export const useUpdateAssetGroup = () =>
     ({ id, formData }: any) => updateAssetGroup(id, formData),
     [taxonomyKeys.groups],
     optimisticUpdateNode,
+    {
+      loading: "Memperbarui data...",
+      success: "Data berhasil diperbarui",
+      error: "Gagal memperbarui data"
+    }
   );
 
 export const useDeleteAssetGroup = () =>
@@ -80,6 +90,11 @@ export const useDeleteAssetGroup = () =>
     deleteAssetGroup,
     [taxonomyKeys.groups],
     optimisticDeleteNode,
+    {
+      loading: "Menghapus data...",
+      success: "Data berhasil dihapus",
+      error: "Gagal menghapus data"
+    }
   );
 
 // LINK Category
@@ -104,6 +119,11 @@ export const useCreateAssetCategory = () =>
     createAssetCategory,
     [taxonomyKeys.categories],
     optimisticInsertCategory,
+    {
+      loading: "Menambahkan data...",
+      success: "Data berhasil ditambahkan",
+      error: "Gagal menambahkan data"
+    }
   );
 
 export const useUpdateAssetCategory = () =>
@@ -111,6 +131,11 @@ export const useUpdateAssetCategory = () =>
     ({ id, formData }: any) => updateAssetCategory(id, formData),
     [taxonomyKeys.categories],
     optimisticUpdateNode,
+    {
+      loading: "Memperbarui data...",
+      success: "Data berhasil diperbarui",
+      error: "Gagal memperbarui data"
+    }
   );
 
 export const useDeleteAssetCategory = () =>
@@ -118,6 +143,11 @@ export const useDeleteAssetCategory = () =>
     deleteAssetCategory,
     [taxonomyKeys.categories],
     optimisticDeleteNode,
+    {
+      loading: "Menghapus data...",
+      success: "Data berhasil dihapus",
+      error: "Gagal menghapus data"
+    }
   );
 // LINK Cluster
 export function useClustersByCategory(id?: string) {
@@ -138,6 +168,11 @@ export const useCreateAssetCluster = () =>
     createAssetCluster,
     [taxonomyKeys.clusters],
     optimisticInsertCluster,
+    {
+      loading: "Menambahkan data...",
+      success: "Data berhasil ditambahkan",
+      error: "Gagal menambahkan data"
+    }
   );
 
 export const useUpdateAssetCluster = () =>
@@ -145,6 +180,11 @@ export const useUpdateAssetCluster = () =>
     ({ id, formData }: any) => updateAssetCluster(id, formData),
     [taxonomyKeys.clusters],
     optimisticUpdateNode,
+    {
+      loading: "Memperbarui data...",
+      success: "Data berhasil diperbarui",
+      error: "Gagal memperbarui data"
+    }
   );
 
 export const useDeleteAssetCluster = () =>
@@ -152,6 +192,11 @@ export const useDeleteAssetCluster = () =>
     deleteAssetCluster,
     [taxonomyKeys.clusters],
     optimisticDeleteNode,
+    {
+      loading: "Menghapus data...",
+      success: "Data berhasil dihapus",
+      error: "Gagal menghapus data"
+    }
   );
 // LINK Sub Cluster
 export function useSubClustersByCluster(id?: string) {
@@ -172,6 +217,11 @@ export const useCreateAssetSubCluster = () =>
     createAssetSubCluster,
     [taxonomyKeys.subClusters],
     optimisticInsertSubCluster,
+    {
+      loading: "Menambahkan data...",
+      success: "Data berhasil ditambahkan",
+      error: "Gagal menambahkan data"
+    }
   );
 
 export const useUpdateAssetSubCluster = () =>
@@ -179,6 +229,11 @@ export const useUpdateAssetSubCluster = () =>
     ({ id, formData }: any) => updateAssetSubCluster(id, formData),
     [taxonomyKeys.subClusters],
     optimisticUpdateNode,
+    {
+      loading: "Memperbarui data...",
+      success: "Data berhasil diperbarui",
+      error: "Gagal memperbarui data"
+    }
   );
 
 export const useDeleteAssetSubCluster = () =>
@@ -186,6 +241,11 @@ export const useDeleteAssetSubCluster = () =>
     deleteAssetSubCluster,
     [taxonomyKeys.subClusters],
     optimisticDeleteNode,
+    {
+      loading: "Menghapus data...",
+      success: "Data berhasil dihapus",
+      error: "Gagal menghapus data"
+    }
   );
 export function useSubClusterById(id?: string) {
   return useQuery({

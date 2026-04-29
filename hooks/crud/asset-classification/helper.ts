@@ -1,6 +1,7 @@
 import { taxonomyKeys } from "@/constants/classification-keys";
 import { ClassificationTree } from "@/types";
 import { QueryKey, useQueryClient, useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 export function useTaxonomyMutation<TVariables>(
   mutationFn: (vars: TVariables) => Promise<any>,
@@ -9,42 +10,156 @@ export function useTaxonomyMutation<TVariables>(
 
   optimisticUpdater?: (
     oldData: ClassificationTree | undefined,
-    variables: TVariables,
+    variables: TVariables
   ) => ClassificationTree,
+
+  messages?: {
+    loading?: string
+    success?: string
+    error?: string
+  }
+
 ) {
-  const qc = useQueryClient();
+
+  const qc =
+    useQueryClient();
 
   return useMutation({
+
     mutationFn,
 
-    onMutate: async (variables) => {
-      if (!optimisticUpdater) return;
+    onMutate: async (
+      variables
+    ) => {
+
+      let toastId:
+        string | number | undefined;
+
+      if (messages?.loading) {
+        toastId =
+          toast.loading(
+            messages.loading
+          );
+      }
+
+      if (!optimisticUpdater) {
+        return {
+          toastId
+        };
+      }
 
       await qc.cancelQueries({
-        queryKey: taxonomyKeys.tree,
+        queryKey:
+          taxonomyKeys.tree
       });
 
-      const previous = qc.getQueryData<ClassificationTree>(taxonomyKeys.tree);
 
-      qc.setQueryData(taxonomyKeys.tree, (old: ClassificationTree) =>
-        optimisticUpdater(old, variables),
+      const previous =
+        qc.getQueryData<
+          ClassificationTree
+        >(
+          taxonomyKeys.tree
+        );
+
+
+      qc.setQueryData(
+        taxonomyKeys.tree,
+        (
+          old:
+            ClassificationTree
+        ) =>
+          optimisticUpdater(
+            old,
+            variables
+          )
       );
 
-      return { previous };
+
+      return {
+        previous,
+        toastId
+      };
+
     },
 
-    onError: (_err, _vars, context) => {
-      if (context?.previous) {
-        qc.setQueryData(taxonomyKeys.tree, context.previous);
+
+
+    onError: (
+      _err,
+      _vars,
+      context
+    ) => {
+
+      if (
+        context?.previous
+      ) {
+        qc.setQueryData(
+          taxonomyKeys.tree,
+          context.previous
+        )
       }
+
+
+      if (
+        context?.toastId
+      ) {
+        toast.dismiss(
+          context.toastId
+        )
+      }
+
+
+      toast.error(
+        messages?.error ||
+        "Operasi gagal"
+      );
+
     },
+
+
+
+    onSuccess: (
+      _data,
+      _vars,
+      context
+    ) => {
+
+      if (
+        context?.toastId
+      ) {
+        toast.dismiss(
+          context.toastId
+        )
+      }
+
+
+      toast.success(
+        messages?.success ||
+        "Berhasil"
+      );
+
+    },
+
+
 
     onSettled: () => {
+
       qc.invalidateQueries({
-        queryKey: taxonomyKeys.tree,
+        queryKey:
+          taxonomyKeys.tree
       });
-    },
-  });
+
+
+      invalidate.forEach(
+        (key) =>
+          qc.invalidateQueries({
+            queryKey: key
+          })
+      )
+
+    }
+
+  })
 }
 
 function tempId(prefix: string) {
@@ -257,9 +372,9 @@ export function optimisticRenameNode(
               assetSubClusters: cluster.assetSubClusters.map((sub) =>
                 sub.id === id
                   ? {
-                      ...sub,
-                      ...payload,
-                    }
+                    ...sub,
+                    ...payload,
+                  }
                   : sub,
               ),
             };

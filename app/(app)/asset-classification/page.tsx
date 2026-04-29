@@ -6,5 +6,16 @@ export const metadata: Metadata = {
   description: "Manajemen klasifikasi aset perusahaan",
 };
 export default function AssetClassificationPage() {
-  return <AssetClassificationWrapper />;
+
+  return <div className="space-y-4">
+    <div className="flex flex-wrap items-end justify-between gap-2">
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight">Klasifikasi Aset</h2>
+        <p className="text-muted-foreground">
+          Manajemen klasifikasi aset perusahaan
+        </p>
+      </div>
+    </div>
+    <AssetClassificationWrapper />
+  </div>;
 }

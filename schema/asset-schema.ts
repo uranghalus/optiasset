@@ -18,6 +18,10 @@ export const AssetFormSchema = z.object({
   kode_asset: z.string().optional(),
   vendorName: z.string().optional(),
   garansi_exp: z.string().optional(),
+  assetGroupId: z.string().min(1, "Golongan wajib dipilih"),
+  assetCategoryId: z.string().min(1),
+  assetClusterId: z.string().min(1),
+  assetSubClusterId: z.string().min(1),
   photo: z.instanceof(File).optional(),
 });
 

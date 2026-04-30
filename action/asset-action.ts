@@ -280,6 +280,10 @@ export async function createAsset(formData: FormData) {
         notes: formData.get("notes")?.toString() || null,
         kode_asset: formData.get("kode_asset")?.toString() || null,
         vendorName: formData.get("vendorName")?.toString() || null,
+        group: formData.get("assetGroupId")?.toString() || null,
+        assetCategoryId: formData.get("assetCategoryId")?.toString() || null,
+        assetClusterId: formData.get("assetClusterId")?.toString() || null,
+        assetSubClusterId: formData.get("assetSubClusterId")?.toString() || null,
         garansi_exp: parseDateOrNull("garansi_exp"),
         photoUrl,
       },
@@ -1032,8 +1036,8 @@ export async function generateAssetCode(
 
   const subCluster = subClusterId
     ? await prisma.assetSubCluster.findUnique({
-        where: { id: subClusterId },
-      })
+      where: { id: subClusterId },
+    })
     : null;
 
   if (!group || !category || !cluster) {

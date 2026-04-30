@@ -124,7 +124,7 @@ export function TaxonomyForm({ mode, selected, editor }: any) {
           return;
 
         case "category":
-          if (!selected.parentId || selected.parentId.includes("-")) {
+          if (!selected.parentId) {
             alert("Harap tunggu hingga parent tersimpan di database.");
             return;
           }
@@ -136,7 +136,7 @@ export function TaxonomyForm({ mode, selected, editor }: any) {
           return;
 
         case "cluster":
-          if (!selected.parentId || selected.parentId.includes("-")) {
+          if (!selected.parentId) {
             alert("Harap tunggu hingga parent tersimpan di database.");
             return;
           }
@@ -148,10 +148,11 @@ export function TaxonomyForm({ mode, selected, editor }: any) {
           return;
 
         case "subcluster":
-          if (!selected.parentId || selected.parentId.includes("-")) {
-            alert("Harap tunggu hingga parent tersimpan di database.");
+          if (!selected.parentId) {
+            alert("Parent tidak valid");
             return;
           }
+
           fd.append("assetClusterId", selected.parentId);
 
           createSubCluster.mutate(fd, {

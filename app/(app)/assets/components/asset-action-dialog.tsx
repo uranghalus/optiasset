@@ -25,11 +25,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Field, FieldLabel, FieldError } from "@/components/ui/field";
+import { Combobox } from "@/components/ui/combobox";
 
 import { format } from "date-fns";
 import { Camera, X } from "lucide-react";
-
-import { Field, FieldLabel, FieldError } from "@/components/ui/field";
 
 import { Asset, AssetType } from "@/generated/prisma/client";
 import {
@@ -42,7 +42,6 @@ import {
 import { AssetForm, AssetFormSchema } from "@/schema/asset-schema";
 import { getAssetFormAccess, isValidImageFile } from "@/lib/utils";
 import { useActiveMemberRole } from "@/hooks/use-active-member";
-import { Combobox } from "@/components/ui/combobox";
 import { useDepartmentsForSelect } from "@/hooks/crud/use-divisi";
 import {
   useAssetGroupsForSelect,

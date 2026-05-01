@@ -4,11 +4,8 @@
 import { useAssets } from "@/hooks/crud/use-assets";
 import { useActiveMemberRole } from "@/hooks/use-active-member";
 
-
 import { useState, useMemo } from "react";
-import {
-  assetColumn,
-} from "./asset-column";
+import { assetColumn } from "./asset-column";
 
 import { useDataTable } from "@/hooks/use-data-table";
 import { DataTableToolbar } from "@/components/datatable/datatable-toolbar";
@@ -37,6 +34,7 @@ import {
 
 import { usePermission } from "@/hooks/use-permission";
 import { useDepartmentsForSelect } from "@/hooks/crud/use-divisi";
+import Link from "next/link";
 
 export default function AssetTable() {
   const { setOpen } = useDialog();
@@ -51,13 +49,11 @@ export default function AssetTable() {
   });
   const [columnFilters, setColumnFilters] = useState<any[]>([]);
 
-  const selectedDept = columnFilters.find(
-    (f) => f.id === "departmentId"
-  )?.value as string[] | undefined;
+  const selectedDept = columnFilters.find((f) => f.id === "departmentId")
+    ?.value as string[] | undefined;
 
-  const selectedCondition = columnFilters.find(
-    (f) => f.id === "condition"
-  )?.value as string[] | undefined;
+  const selectedCondition = columnFilters.find((f) => f.id === "condition")
+    ?.value as string[] | undefined;
 
   const { data, isLoading } = useAssets({
     page: pagination.pageIndex,
@@ -66,12 +62,11 @@ export default function AssetTable() {
     condition: selectedCondition,
   });
 
-
   /* =======================
      FILTER CONFIG
   ======================= */
   const filters = useMemo(() => {
-    if (role !== "owner" && role !== "staff_asset" as any) return [];
+    if (role !== "owner" && role !== ("staff_asset" as any)) return [];
 
     return [
       {
@@ -83,13 +78,13 @@ export default function AssetTable() {
         })),
       },
       {
-        columnId: 'condition',
-        title: 'Kondisi Aset',
+        columnId: "condition",
+        title: "Kondisi Aset",
         options: [
-          { label: 'Bagus', value: 'GOOD' },
-          { label: 'Dalam Perbaikan', value: 'REPAIR' },
-          { label: 'Rusak', value: 'BROKEN' },
-          { label: 'Hilang', value: 'LOST' },
+          { label: "Bagus", value: "GOOD" },
+          { label: "Dalam Perbaikan", value: "REPAIR" },
+          { label: "Rusak", value: "BROKEN" },
+          { label: "Hilang", value: "LOST" },
         ],
       },
     ];
@@ -118,9 +113,11 @@ export default function AssetTable() {
       >
         <div className="flex gap-2">
           {can("asset", ["create"]) && (
-            <Button onClick={() => setOpen("add")} className="gap-2">
-              <Plus className="size-4" />
-              Tambah Aset
+            <Button className="gap-2" asChild>
+              <Link href="/assets/create">
+                <Plus className="size-4" />
+                Tambah Aset
+              </Link>
             </Button>
           )}
 
@@ -168,10 +165,7 @@ export default function AssetTable() {
 
       <DataTable table={table} loading={isLoading} />
 
-      <DataTablePagination
-        table={table}
-        pageCount={data?.pageCount ?? 0}
-      />
+      <DataTablePagination table={table} pageCount={data?.pageCount ?? 0} />
     </div>
   );
 }

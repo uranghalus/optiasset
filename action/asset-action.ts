@@ -241,8 +241,11 @@ export async function getAvailableAssetsForLoanSelect({
 export async function createAsset(formData: FormData) {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
-  const departmentId = session.user.departmentId;
-  if (!departmentId) throw new Error("User has no department");
+
+  // Ambil department dari session sebagai fallback
+  const sessionDeptId = session.user.departmentId;
+  if (!sessionDeptId) throw new Error("User has no department");
+
   const itemId = formData.get("itemId")?.toString();
   if (!itemId) throw new Error("Item is required");
 
@@ -263,6 +266,10 @@ export async function createAsset(formData: FormData) {
   const photoFile = formData.get("photo") as File | null;
   const photoUrl = photoFile ? await saveUploadedFile(photoFile) : null;
 
+  // Ambil department dari form (jika admin memilih dari dropdown), fallback ke session
+  const formDepartmentId = formData.get("departmentId")?.toString();
+  const finalDepartmentId = formDepartmentId || sessionDeptId;
+
   const asset = await prisma.$transaction(async (tx) => {
     const newAsset = await tx.asset.create({
       data: {
@@ -276,14 +283,27 @@ export async function createAsset(formData: FormData) {
         brand: formData.get("brand")?.toString() || null,
         model: formData.get("model")?.toString() || null,
         partNumber: formData.get("partNumber")?.toString() || null,
-        departmentId: departmentId,
+
+        // 👇 FIELD YANG BARU DITAMBAHKAN 👇
+        serialNumber: formData.get("serialNumber")?.toString() || null,
+        document_number: formData.get("document_number")?.toString() || null,
+        no_spb: formData.get("no_spb")?.toString() || null,
+
+        // 👇 MENGGUNAKAN FINAL DEPARTMENT ID 👇
+        departmentId: finalDepartmentId,
+
         notes: formData.get("notes")?.toString() || null,
         kode_asset: formData.get("kode_asset")?.toString() || null,
         vendorName: formData.get("vendorName")?.toString() || null,
-        group: formData.get("assetGroupId")?.toString() || null,
-        assetCategoryId: formData.get("assetCategoryId")?.toString() || null,
-        assetClusterId: formData.get("assetClusterId")?.toString() || null,
-        assetSubClusterId: formData.get("assetSubClusterId")?.toString() || null,
+        ...(formData.get("assetSubClusterId")?.toString()
+          ? {
+              assetSubClusters: {
+                connect: [
+                  { id: formData.get("assetSubClusterId")!.toString() },
+                ],
+              },
+            }
+          : {}),
         garansi_exp: parseDateOrNull("garansi_exp"),
         photoUrl,
       },
@@ -327,6 +347,7 @@ export async function createAsset(formData: FormData) {
 
     return newAsset;
   });
+
   revalidatePath("/assets");
   return asset;
 }
@@ -345,8 +366,13 @@ export async function updateAsset(id: string, formData: FormData) {
     where: { id, organizationId: activeOrgId },
   });
   if (!asset) throw new Error("Asset not found");
-  const departmentId = session.user.departmentId;
-  if (!departmentId) throw new Error("User has no department");
+
+  // Perbaikan Department: Ambil dari form dulu, kalau kosong baru pakai session
+  const sessionDeptId = session.user.departmentId;
+  if (!sessionDeptId) throw new Error("User has no department");
+  const formDepartmentId = formData.get("departmentId")?.toString();
+  const finalDepartmentId = formDepartmentId || sessionDeptId;
+
   const parseDateOrNull = (key: string) => {
     const val = formData.get(key)?.toString();
     return val ? new Date(val) : null;
@@ -357,11 +383,27 @@ export async function updateAsset(id: string, formData: FormData) {
     return val ? parseFloat(val) : null;
   };
 
-  // Handle file upload
+  // Perbaikan logika Foto: Cek apakah user menghapus foto
+  const removePhoto = formData.get("removePhoto") === "true";
   const photoFile = formData.get("photo") as File | null;
-  const photoUrl = photoFile
-    ? await saveUploadedFile(photoFile)
-    : asset.photoUrl;
+
+  let finalPhotoUrl = asset.photoUrl;
+  if (removePhoto) {
+    finalPhotoUrl = null;
+  } else if (photoFile) {
+    finalPhotoUrl = await saveUploadedFile(photoFile);
+  }
+
+  // Handle relasi Sub Cluster
+  const assetSubClusterId = formData.get("assetSubClusterId")?.toString();
+  const subClusterUpdateObj = assetSubClusterId
+    ? {
+        assetSubClusters: {
+          set: [], // Hapus relasi lama
+          connect: [{ id: assetSubClusterId }], // Hubungkan yang baru
+        },
+      }
+    : {};
 
   const updated = await prisma.$transaction(async (tx) => {
     const newLocationId = formData.get("locationId")?.toString();
@@ -379,14 +421,26 @@ export async function updateAsset(id: string, formData: FormData) {
         brand: formData.get("brand")?.toString() || asset.brand,
         model: formData.get("model")?.toString() || asset.model,
         partNumber: formData.get("partNumber")?.toString() || asset.partNumber,
+
+        // 👇 TAMBAHAN FIELD BARU 👇
+        serialNumber:
+          formData.get("serialNumber")?.toString() || asset.serialNumber,
+        document_number:
+          formData.get("document_number")?.toString() || asset.document_number,
+        no_spb: formData.get("no_spb")?.toString() || asset.no_spb,
+
         locationId: newLocationId || asset.locationId,
-        departmentId: departmentId,
+        departmentId: finalDepartmentId, // Gunakan finalDepartmentId
         notes: formData.get("notes")?.toString() || asset.notes,
         kode_asset: formData.get("kode_asset")?.toString() || asset.kode_asset,
         vendorName: formData.get("vendorName")?.toString() || asset.vendorName,
         garansi_exp: parseDateOrNull("garansi_exp") ?? asset.garansi_exp,
-        photoUrl,
+
+        photoUrl: finalPhotoUrl, // Gunakan URL foto yang sudah divalidasi
         updatedAt: new Date(),
+
+        // Gabungkan update sub cluster jika ada
+        ...subClusterUpdateObj,
       },
     });
 
@@ -454,6 +508,7 @@ export async function updateAsset(id: string, formData: FormData) {
 
     return result;
   });
+
   revalidatePath("/assets");
   return updated;
 }
@@ -494,6 +549,7 @@ export async function getAssetById(id: string) {
 
   const activeOrgId = session.session?.activeOrganizationId;
   if (!activeOrgId) throw new Error("No active organizationId found");
+
   try {
     const asset = await prisma.asset.findFirst({
       where: {
@@ -504,6 +560,20 @@ export async function getAssetById(id: string) {
         item: true,
         location: true,
         department: true,
+        // 👇 TAMBAHKAN INI: Tarik data relasi Sub Cluster
+        assetSubClusters: {
+          include: {
+            // Jika Anda butuh menarik relasi ke atasnya (Cluster, Kategori, Golongan)
+            // Sesuaikan nama relasinya ('assetCluster', dll) dengan schema Prisma Anda.
+            // Contoh (uncomment jika schema Anda mendukung ini):
+
+            assetCluster: {
+              include: {
+                assetCategory: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -523,7 +593,20 @@ export async function getAssetById(id: string) {
       });
     }
 
-    return { ...asset, assignedUser };
+    // Ekstrak ID Sub Cluster dari array (karena bentuknya many-to-many / one-to-many)
+    // Ambil index pertama [0] sebagai data klasifikasi utama aset ini
+    const subCluster = asset.assetSubClusters?.[0];
+
+    return {
+      ...asset,
+      assignedUser,
+      // 👇 Memudahkan frontend membaca ID untuk mengisi defaultValues dropdown
+      assetSubClusterId: subCluster?.id || null,
+      assetClusterId: subCluster?.assetClusterId || null,
+      assetCategoryId: subCluster?.assetCluster?.assetCategoryId || null,
+      assetGroupId:
+        subCluster?.assetCluster?.assetCategory?.assetGroupId || null,
+    };
   } catch (error) {
     console.error(error);
     throw new Error("Failed to fetch asset");
@@ -1036,8 +1119,8 @@ export async function generateAssetCode(
 
   const subCluster = subClusterId
     ? await prisma.assetSubCluster.findUnique({
-      where: { id: subClusterId },
-    })
+        where: { id: subClusterId },
+      })
     : null;
 
   if (!group || !category || !cluster) {

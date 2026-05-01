@@ -12,6 +12,7 @@ import {
 } from "@/action/asset-action";
 import { PaginationState } from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 // Get all assets
 export function useAssets({
@@ -81,10 +82,31 @@ export function useDepartmentsForAssetSelect() {
 // Create asset
 export function useCreateAsset() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (formData: FormData) => createAsset(formData),
+    onMutate: () => {
+      // Munculkan toast loading dengan ID khusus
+      toast.loading("Menyimpan data aset...", {
+        id: "create-asset-toast",
+        description: "Proses penyimpanan sedang berlangsung.",
+      });
+    },
     onSuccess: () => {
+      // Timpa loading menjadi success menggunakan ID yang sama
+      toast.success("Berhasil!", {
+        id: "create-asset-toast",
+        description: "Data aset berhasil ditambahkan.",
+      });
+
       queryClient.invalidateQueries({ queryKey: ["assets"] });
+    },
+    onError: (error: any) => {
+      // Timpa loading menjadi error menggunakan ID yang sama
+      toast.error("Gagal menyimpan data", {
+        id: "create-asset-toast",
+        description: error?.message || "Terjadi kesalahan yang tidak terduga.",
+      });
     },
   });
 }
@@ -95,8 +117,28 @@ export function useUpdateAsset() {
   return useMutation({
     mutationFn: ({ id, formData }: { id: string; formData: FormData }) =>
       updateAsset(id, formData),
+    onMutate: () => {
+      // Munculkan toast loading dengan ID khusus
+      toast.loading("Menyimpan data aset...", {
+        id: "update-asset-toast",
+        description: "Proses penyimpanan sedang berlangsung.",
+      });
+    },
     onSuccess: () => {
+      // Timpa loading menjadi success menggunakan ID yang sama
+      toast.success("Berhasil!", {
+        id: "update-asset-toast",
+        description: "Data aset berhasil diupdate.",
+      });
+
       queryClient.invalidateQueries({ queryKey: ["assets"] });
+    },
+    onError: (error: any) => {
+      // Timpa loading menjadi error menggunakan ID yang sama
+      toast.error("Gagal menyimpan data", {
+        id: "update-asset-toast",
+        description: error?.message || "Terjadi kesalahan yang tidak terduga.",
+      });
     },
   });
 }
@@ -106,8 +148,28 @@ export function useDeleteAsset() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteAsset(id),
+    onMutate: () => {
+      // Munculkan toast loading dengan ID khusus
+      toast.loading("Menghapus data aset...", {
+        id: "delete-asset-toast",
+        description: "Proses penghapusan sedang berlangsung.",
+      });
+    },
     onSuccess: () => {
+      // Timpa loading menjadi success menggunakan ID yang sama
+      toast.success("Berhasil!", {
+        id: "delete-asset-toast",
+        description: "Data aset berhasil dihapus.",
+      });
+
       queryClient.invalidateQueries({ queryKey: ["assets"] });
+    },
+    onError: (error: any) => {
+      // Timpa loading menjadi error menggunakan ID yang sama
+      toast.error("Gagal menghapus data", {
+        id: "delete-asset-toast",
+        description: error?.message || "Terjadi kesalahan yang tidak terduga.",
+      });
     },
   });
 }
@@ -152,6 +214,6 @@ export function useGenerateAssetCode(
     queryFn: () =>
       generateAssetCode(groupId!, categoryId!, clusterId!, subClusterId),
 
-    enabled: !!groupId && !!categoryId && !!clusterId,
+    enabled: !!groupId && !!categoryId && !!clusterId && !!subClusterId,
   });
 }

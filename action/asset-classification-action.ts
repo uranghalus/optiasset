@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "@/lib/get-session";
 import { createAuditLog } from "@/lib/logger";
 import { revalidatePath } from "next/cache";
-
+import * as XLSX from "xlsx";
 /* =========================
  TYPES
 ========================= */
@@ -850,4 +850,99 @@ export async function deleteAssetSubCluster(id: string) {
   revalidatePath("/master/asset-classification");
 
   return deleted;
+}
+
+export async function importAssetExcel(formData: FormData, organizationId: string) {
+  try {
+    const file = formData.get("file") as File;
+    if (!file) return { error: "File tidak ditemukan" };
+
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: "buffer" });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+
+    // Convert ke JSON
+    const rows = XLSX.utils.sheet_to_json(worksheet);
+
+    for (const row of rows as any[]) {
+      // Mapping kolom Excel ke variabel (Sesuaikan nama kolom jika berbeda di file asli)
+      const groupCode = row["Golongan Aset"]?.toString();
+      const categoryCode = row["Bidang/Kategori Aset"]?.toString();
+      const clusterCode = row["Kelompok Aset"]?.toString();
+      const subClusterCode = row["Sub. Kelompok Aset"]?.toString();
+      const name = row["Uraian"]?.toString();
+      const notes = row["Keterangan"]?.toString();
+
+      if (!groupCode || !name) continue; // Skip jika data minimal tidak ada
+
+      // 1. Simpan ke AssetGroup (Golongan)
+      // Gunakan upsert berdasarkan @@unique([organizationId, code])
+      const group = await prisma.assetGroup.upsert({
+        where: {
+          organizationId_code: { organizationId, code: groupCode }
+        },
+        update: {}, // Biarkan jika sudah ada, atau update name: name
+        create: {
+          code: groupCode,
+          name: name,
+          organizationId: organizationId
+        }
+      });
+
+      // 2. Simpan ke AssetCategory (Bidang) jika ada kodenya
+      if (categoryCode) {
+        const category = await prisma.assetCategory.upsert({
+          where: {
+            assetGroupId_code: { assetGroupId: group.id, code: categoryCode }
+          },
+          update: {},
+          create: {
+            code: categoryCode,
+            name: name,
+            assetGroupId: group.id
+          }
+        });
+
+        // 3. Simpan ke AssetCluster (Kelompok) jika ada kodenya
+        if (clusterCode) {
+          const cluster = await prisma.assetCluster.upsert({
+            where: {
+              assetCategoryId_code: { assetCategoryId: category.id, code: clusterCode }
+            },
+            update: {},
+            create: {
+              code: clusterCode,
+              name: name,
+              assetCategoryId: category.id
+            }
+          });
+
+          // 4. Simpan ke AssetSubCluster (Sub Kelompok)
+          if (subClusterCode) {
+            await prisma.assetSubCluster.upsert({
+              where: {
+                assetClusterId_code: { assetClusterId: cluster.id, code: subClusterCode }
+              },
+              update: {
+                notes: notes,
+                name: name // Update nama jika ada perubahan di Excel
+              },
+              create: {
+                code: subClusterCode,
+                name: name,
+                notes: notes,
+                assetClusterId: cluster.id
+              }
+            });
+          }
+        }
+      }
+    }
+
+    return { success: "Data berhasil diimport" };
+  } catch (error) {
+    console.error("IMPORT_ERROR:", error);
+    return { error: "Gagal memproses file" };
+  }
 }

@@ -85,35 +85,24 @@ export function useTaxonomyMutation<TVariables>(
 
 
     onError: (
-      _err,
+      err: any, // Ubah parameter ini
       _vars,
       context
     ) => {
-
-      if (
-        context?.previous
-      ) {
-        qc.setQueryData(
-          taxonomyKeys.tree,
-          context.previous
-        )
+      if (context?.previous) {
+        qc.setQueryData(taxonomyKeys.tree, context.previous)
       }
 
-
-      if (
-        context?.toastId
-      ) {
-        toast.dismiss(
-          context.toastId
-        )
+      if (context?.toastId) {
+        toast.dismiss(context.toastId)
       }
 
+      // Tampilkan pesan error asli dari server
+      const errorMessage = err?.message || messages?.error || "Operasi gagal";
+      toast.error(errorMessage);
 
-      toast.error(
-        messages?.error ||
-        "Operasi gagal"
-      );
-
+      // Log ke console untuk melihat detailnya
+      console.error("Mutation Error:", err);
     },
 
 

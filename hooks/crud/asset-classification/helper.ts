@@ -152,7 +152,16 @@ export function useTaxonomyMutation<TVariables>(
 }
 
 function tempId(prefix: string) {
-  return `${prefix}-${crypto.randomUUID()}`;
+  // Gunakan crypto.randomUUID jika tersedia (di localhost atau HTTPS)
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+
+  // Fallback aman untuk akses HTTP IP Address (Docker)
+  const fallbackUuid = Math.random().toString(36).substring(2, 15) +
+    Math.random().toString(36).substring(2, 15);
+
+  return `${prefix}-${fallbackUuid}`;
 }
 
 // LINK optimistic insert group

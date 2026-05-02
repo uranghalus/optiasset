@@ -7,63 +7,68 @@
 export const PERMISSIONS = {
   // ── Organisasi & SDM ────────────────────────────────────────────────
   ac: ["view", "list", "create", "edit", "delete", "read", "update"],
-  role: ["view", "list", "create", "edit", "delete", "read", "update"],
+  role: ['view', 'list', 'create', 'edit', 'delete', 'read', 'update'],
   employee: [
-    "view",
-    "list",
-    "create",
-    "edit",
-    "delete",
-    "sync-user",
-    "unsync-user",
+    'view',
+    'list',
+    'create',
+    'edit',
+    'delete',
+    'sync-user',
+    'unsync-user',
   ],
+  'asset.classification': ['view', 'list', 'create', 'edit', 'delete'],
   user: [
-    "view",
-    "list",
-    "create",
-    "edit",
-    "delete",
-    "set-role",
-    "ban",
-    "impersonate",
-    "set-password",
+    'view',
+    'list',
+    'create',
+    'edit',
+    'delete',
+    'set-role',
+    'ban',
+    'impersonate',
+    'set-password',
   ],
-  department: ["view", "list", "create", "edit", "delete"],
-  division: ["view", "list", "create", "edit", "delete"],
-  team: ["view", "create", "update", "delete"],
+  department: ['view', 'list', 'create', 'edit', 'delete'],
+  division: ['view', 'list', 'create', 'edit', 'delete'],
+  team: ['view', 'create', 'update', 'delete'],
+  member: ['create', 'update', 'delete'],
+  invitation: ['create', 'cancel'],
+  organization: ['update', 'delete'],
 
-  // ── Asset Management ────────────────────────────────────────────────
-  /** Daftar Aset + Tambah Aset */
-  asset: ["view", "list", "create", "edit", "delete", "export", "import"],
-  /** Kategori Aset */
-  "asset.category": ["view", "list", "create", "edit", "delete"],
-  /** Lokasi Aset */
-  "asset.location": ["view", "list", "create", "edit", "delete"],
-  /** Peminjaman Aset */
-  "asset.loan": ["view", "create", "return"],
-  /** Maintenance Aset */
-  "asset.maintenance": ["view", "create", "edit", "complete"],
-  /** Mutasi Aset */
-  "asset.transfer": [
-    "view",
-    "create",
-    "approve",
-    "complete",
-    "cancel",
-    "cross_department",
+  // Asset Management — global scope
+  asset: [
+    'view',
+    'list',
+    'edit',
+    'delete',
+    'export',
+    'import',
+    'create',
+    'generate-code',
+    'scan-code',
+    'assign',
   ],
-  /** Riwayat Aset */
-  "asset.history": ["view"],
+  'asset.category': ['view', 'list', 'create', 'edit', 'delete'],
+  'asset.location': ['view', 'list', 'create', 'edit', 'delete'],
+  'asset.loan': ['view', 'create', 'return'],
+  'asset.maintenance': ['view', 'create', 'edit', 'complete'],
+  'asset.transfer': [
+    'view',
+    'create',
+    'approve',
+    'complete',
+    'cancel',
+    'cross_department',
+  ],
+  'asset.history': ['view'],
 
-  // ── Inventory Control ───────────────────────────────────────────────
-  /** Master Item, Kategori Item, Gudang, Stok, Penerimaan, Penyesuaian, Mutasi Stok */
-  inventory: ["view", "create", "edit", "delete"],
+  // Inventory Control
+  inventory: ['view', 'create', 'edit', 'delete'],
 
-  // ── Audit & Laporan ─────────────────────────────────────────────────
-  /** Log Audit */
-  "audit.log": ["view"],
-  /** Laporan */
-  report: ["view"],
+  // Audit & Laporan
+  'audit.log': ['view'],
+  report: ['view'],
 } as const;
 
 /** Label ramah-pengguna untuk setiap resource (ditampilkan di dialog) */

@@ -22,6 +22,7 @@ import {
   Handshake,
   MoreHorizontalIcon,
   Send,
+  UploadCloud,
 } from "lucide-react";
 import Link from "next/link";
 

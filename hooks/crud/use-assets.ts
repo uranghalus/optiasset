@@ -8,6 +8,7 @@ import {
   getDepartmentsForAssetSelect,
   getItemsForSelect,
   getLocationsForSelect,
+  importAssetExcel,
   updateAsset,
 } from "@/action/asset-action";
 import { PaginationState } from "@/types";
@@ -196,6 +197,7 @@ export function useExportAssets() {
     },
   });
 }
+// LINK generate asset code
 export function useGenerateAssetCode(
   groupId?: string,
   categoryId?: string,
@@ -215,5 +217,57 @@ export function useGenerateAssetCode(
       generateAssetCode(groupId!, categoryId!, clusterId!, subClusterId),
 
     enabled: !!groupId && !!categoryId && !!clusterId && !!subClusterId,
+  });
+}
+// LINK Import asset
+export function useImportAsset() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      formData,
+      organizationId,
+    }: {
+      formData: FormData;
+      organizationId: string;
+    }) => importAssetExcel(formData, organizationId),
+    onMutate: () => {
+      // Munculkan toast loading dengan ID khusus
+      toast.loading("Mengimpor data aset dari Excel...", {
+        id: "import-asset-toast",
+        description: "Mohon tunggu, proses ini mungkin membutuhkan waktu.",
+      });
+    },
+    onSuccess: (result) => {
+      // Result didapat dari return value server action: { success: number, failed: number, errors: string[] }
+
+      if (result.failed > 0) {
+        // Timpa loading menjadi warning jika ada baris yang gagal
+        toast.warning("Import selesai dengan peringatan!", {
+          id: "import-asset-toast",
+          description: `Berhasil: ${result.success} baris. Gagal: ${result.failed} baris.`,
+        });
+      } else {
+        // Timpa loading menjadi success jika semua baris berhasil
+        toast.success("Import Berhasil!", {
+          id: "import-asset-toast",
+          description: `${result.success} data aset berhasil ditambahkan.`,
+        });
+      }
+
+      // Refresh data tabel asset
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
+      // Anda juga bisa menambahkan invalidation untuk item dan location jika diperlukan
+      // queryClient.invalidateQueries({ queryKey: ["items"] });
+      // queryClient.invalidateQueries({ queryKey: ["locations"] });
+    },
+    onError: (error: any) => {
+      // Timpa loading menjadi error menggunakan ID yang sama
+      toast.error("Gagal mengimpor data", {
+        id: "import-asset-toast",
+        description:
+          error?.message || "Terjadi kesalahan format Excel atau sistem.",
+      });
+    },
   });
 }

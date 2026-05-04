@@ -163,7 +163,8 @@ export async function updateAssetGroup(id: string, formData: FormData) {
 
       return result;
     } catch (err: any) {
-      if (err.code === "P2002") throw new Error("Kode sudah dipakai oleh data lain");
+      if (err.code === "P2002")
+        throw new Error("Kode sudah dipakai oleh data lain");
       throw err;
     }
   });
@@ -214,7 +215,9 @@ export async function deleteAssetGroup(id: string) {
       return result;
     } catch (err: any) {
       if (err.code === "P2003") {
-        throw new Error("Gagal menghapus: Masih ada data kategori yang terhubung dengan golongan ini.");
+        throw new Error(
+          "Gagal menghapus: Masih ada data kategori yang terhubung dengan golongan ini.",
+        );
       }
       throw err;
     }
@@ -346,7 +349,8 @@ export async function updateAssetCategory(id: string, formData: FormData) {
 
       return result;
     } catch (err: any) {
-      if (err.code === "P2002") throw new Error("Kode sudah dipakai oleh data lain");
+      if (err.code === "P2002")
+        throw new Error("Kode sudah dipakai oleh data lain");
       throw err;
     }
   });
@@ -392,7 +396,9 @@ export async function deleteAssetCategory(id: string) {
       return result;
     } catch (err: any) {
       if (err.code === "P2003") {
-        throw new Error("Gagal menghapus: Masih ada data klaster yang terhubung dengan kategori ini.");
+        throw new Error(
+          "Gagal menghapus: Masih ada data klaster yang terhubung dengan kategori ini.",
+        );
       }
       throw err;
     }
@@ -521,7 +527,8 @@ export async function updateAssetCluster(id: string, formData: FormData) {
 
       return result;
     } catch (err: any) {
-      if (err.code === "P2002") throw new Error("Kode sudah dipakai oleh data lain");
+      if (err.code === "P2002")
+        throw new Error("Kode sudah dipakai oleh data lain");
       throw err;
     }
   });
@@ -567,7 +574,9 @@ export async function deleteAssetCluster(id: string) {
       return result;
     } catch (err: any) {
       if (err.code === "P2003") {
-        throw new Error("Gagal menghapus: Masih ada data sub-klaster yang terhubung dengan klaster ini.");
+        throw new Error(
+          "Gagal menghapus: Masih ada data sub-klaster yang terhubung dengan klaster ini.",
+        );
       }
       throw err;
     }
@@ -592,7 +601,9 @@ export async function getSubClustersByCluster(clusterId: string) {
   return prisma.assetSubCluster.findMany({
     where: {
       assetClusterId: clusterId,
-      assetCluster: { assetCategory: { assetGroup: { organizationId: orgId } } }, // Security Fix
+      assetCluster: {
+        assetCategory: { assetGroup: { organizationId: orgId } },
+      }, // Security Fix
     },
     orderBy: { code: "asc" },
   });
@@ -727,7 +738,9 @@ export async function getSubClusterById(id: string) {
   return prisma.assetSubCluster.findFirst({
     where: {
       id,
-      assetCluster: { assetCategory: { assetGroup: { organizationId: orgId } } }, // Security Fix
+      assetCluster: {
+        assetCategory: { assetGroup: { organizationId: orgId } },
+      }, // Security Fix
     },
     include: {
       assetCluster: {
@@ -760,7 +773,9 @@ export async function updateAssetSubCluster(id: string, formData: FormData) {
   const existing = await prisma.assetSubCluster.findFirst({
     where: {
       id,
-      assetCluster: { assetCategory: { assetGroup: { organizationId: orgId } } },
+      assetCluster: {
+        assetCategory: { assetGroup: { organizationId: orgId } },
+      },
     },
   });
 
@@ -791,7 +806,8 @@ export async function updateAssetSubCluster(id: string, formData: FormData) {
 
       return result;
     } catch (err: any) {
-      if (err.code === "P2002") throw new Error("Kode sudah dipakai oleh data lain");
+      if (err.code === "P2002")
+        throw new Error("Kode sudah dipakai oleh data lain");
       throw err;
     }
   });
@@ -816,7 +832,9 @@ export async function deleteAssetSubCluster(id: string) {
     const existing = await tx.assetSubCluster.findFirst({
       where: {
         id,
-        assetCluster: { assetCategory: { assetGroup: { organizationId: orgId } } },
+        assetCluster: {
+          assetCategory: { assetGroup: { organizationId: orgId } },
+        },
       },
     });
 
@@ -841,7 +859,9 @@ export async function deleteAssetSubCluster(id: string) {
       return result;
     } catch (err: any) {
       if (err.code === "P2003") {
-        throw new Error("Gagal menghapus: Masih ada data yang terhubung dengan sub-klaster ini.");
+        throw new Error(
+          "Gagal menghapus: Masih ada data yang terhubung dengan sub-klaster ini.",
+        );
       }
       throw err;
     }
@@ -852,7 +872,10 @@ export async function deleteAssetSubCluster(id: string) {
   return deleted;
 }
 
-export async function importAssetExcel(formData: FormData, organizationId: string) {
+export async function importAssetExcel(
+  formData: FormData,
+  organizationId: string,
+) {
   try {
     const file = formData.get("file") as File;
     if (!file) return { error: "File tidak ditemukan" };
@@ -862,87 +885,99 @@ export async function importAssetExcel(formData: FormData, organizationId: strin
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
 
-    // Convert ke JSON
-    const rows = XLSX.utils.sheet_to_json(worksheet);
+    // PENTING: header: 1 akan mengubah baris menjadi Array, bukan Object.
+    // raw: false memastikan "01" tetap jadi string, bukan angka 1.
+    const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false });
 
-    for (const row of rows as any[]) {
-      // Mapping kolom Excel ke variabel (Sesuaikan nama kolom jika berbeda di file asli)
-      const groupCode = row["Golongan Aset"]?.toString();
-      const categoryCode = row["Bidang/Kategori Aset"]?.toString();
-      const clusterCode = row["Kelompok Aset"]?.toString();
-      const subClusterCode = row["Sub. Kelompok Aset"]?.toString();
-      const name = row["Uraian"]?.toString();
-      const notes = row["Keterangan"]?.toString();
+    let currentGroupId: string | null = null;
+    let currentCategoryId: string | null = null;
+    let currentClusterId: string | null = null;
 
-      if (!groupCode || !name) continue; // Skip jika data minimal tidak ada
+    // Kita mulai dari i = 1 (baris ke-2) untuk MELEWATI header Excel
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i] as any[];
 
-      // 1. Simpan ke AssetGroup (Golongan)
-      // Gunakan upsert berdasarkan @@unique([organizationId, code])
-      const group = await prisma.assetGroup.upsert({
-        where: {
-          organizationId_code: { organizationId, code: groupCode }
-        },
-        update: {}, // Biarkan jika sudah ada, atau update name: name
-        create: {
-          code: groupCode,
-          name: name,
-          organizationId: organizationId
-        }
-      });
+      // Skip jika baris benar-benar kosong
+      if (!row || row.length === 0) continue;
 
-      // 2. Simpan ke AssetCategory (Bidang) jika ada kodenya
-      if (categoryCode) {
+      // Ambil data berdasarkan urutan kolom (0, 1, 2, 3, 4, 5)
+      const groupCode = row[0]?.toString().trim();
+      const categoryCode = row[1]?.toString().trim();
+      const clusterCode = row[2]?.toString().trim();
+      const subClusterCode = row[3]?.toString().trim();
+      const name = row[4]?.toString().trim();
+      const notes = row[5]?.toString().trim();
+
+      // Skip jika kolom Uraian (nama) kosong, karena nama wajib ada di schema
+      if (!name) continue;
+
+      // 1. Simpan ke AssetGroup
+      if (groupCode) {
+        const group = await prisma.assetGroup.upsert({
+          where: { organizationId_code: { organizationId, code: groupCode } },
+          update: { name },
+          create: { code: groupCode, name, organizationId },
+        });
+        currentGroupId = group.id;
+      }
+
+      // 2. Simpan ke AssetCategory
+      if (categoryCode && currentGroupId) {
         const category = await prisma.assetCategory.upsert({
           where: {
-            assetGroupId_code: { assetGroupId: group.id, code: categoryCode }
-          },
-          update: {},
-          create: {
-            code: categoryCode,
-            name: name,
-            assetGroupId: group.id
-          }
-        });
-
-        // 3. Simpan ke AssetCluster (Kelompok) jika ada kodenya
-        if (clusterCode) {
-          const cluster = await prisma.assetCluster.upsert({
-            where: {
-              assetCategoryId_code: { assetCategoryId: category.id, code: clusterCode }
+            assetGroupId_code: {
+              assetGroupId: currentGroupId,
+              code: categoryCode,
             },
-            update: {},
-            create: {
-              code: clusterCode,
-              name: name,
-              assetCategoryId: category.id
-            }
-          });
+          },
+          update: { name },
+          create: { code: categoryCode, name, assetGroupId: currentGroupId },
+        });
+        currentCategoryId = category.id;
+      }
 
-          // 4. Simpan ke AssetSubCluster (Sub Kelompok)
-          if (subClusterCode) {
-            await prisma.assetSubCluster.upsert({
-              where: {
-                assetClusterId_code: { assetClusterId: cluster.id, code: subClusterCode }
-              },
-              update: {
-                notes: notes,
-                name: name // Update nama jika ada perubahan di Excel
-              },
-              create: {
-                code: subClusterCode,
-                name: name,
-                notes: notes,
-                assetClusterId: cluster.id
-              }
-            });
-          }
-        }
+      // 3. Simpan ke AssetCluster
+      if (clusterCode && currentCategoryId) {
+        const cluster = await prisma.assetCluster.upsert({
+          where: {
+            assetCategoryId_code: {
+              assetCategoryId: currentCategoryId,
+              code: clusterCode,
+            },
+          },
+          update: { name },
+          create: {
+            code: clusterCode,
+            name,
+            assetCategoryId: currentCategoryId,
+          },
+        });
+        currentClusterId = cluster.id;
+      }
+
+      // 4. Simpan ke AssetSubCluster
+      if (subClusterCode && currentClusterId) {
+        await prisma.assetSubCluster.upsert({
+          where: {
+            assetClusterId_code: {
+              assetClusterId: currentClusterId,
+              code: subClusterCode,
+            },
+          },
+          update: { name, notes: notes || "" },
+          create: {
+            code: subClusterCode,
+            name,
+            notes: notes || "",
+            assetClusterId: currentClusterId,
+          },
+        });
       }
     }
 
     return { success: "Data berhasil diimport" };
-  } catch (error) {
-    console.error("IMPORT_ERROR:", error);
-    return { error: "Gagal memproses file" };
+  } catch (error: any) {
+    console.error("❌ IMPORT_ERROR:", error);
+    return { error: error.message || "Gagal memproses file ke database" };
   }
 }

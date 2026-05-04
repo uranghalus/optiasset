@@ -12,7 +12,8 @@ import fs from "fs";
 import path from "path";
 import ExcelJS from "exceljs";
 import { buildAssetFilter } from "@/lib/filter";
-
+import * as XLSX from "xlsx";
+import { getColumnIndex, ASSET_MAPPER } from "@/lib/excel-mapper";
 // Helper function to save uploaded file
 async function saveUploadedFile(file: File): Promise<string | null> {
   if (!file) return null;
@@ -1162,4 +1163,160 @@ export async function generateAssetCode(
   const seq = String(nextSequence).padStart(4, "0");
 
   return `${prefix}.${seq}`;
+}
+
+// LINK Import Excel
+export async function importAssetExcel(
+  formData: FormData,
+  organizationId: string,
+) {
+  const file = formData.get("file") as File;
+  const targetSubClusterId = formData.get("targetSubClusterId") as string;
+
+  if (!file) throw new Error("File tidak ditemukan");
+
+  // Convert File API (dari Frontend) ke Buffer (untuk XLSX di Backend Node.js)
+  const bytes = await file.arrayBuffer();
+  const buffer = Buffer.from(bytes);
+
+  // Lanjut pakai buffer ini di XLSX seperti script sebelumnya
+  const workbook = XLSX.read(buffer, { type: "buffer", cellDates: true });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
+
+  // 1. Cari baris header (menghindari baris judul seperti "DM 1")
+  const headerIndex = rows.findIndex(
+    (r) => r.includes("Unit") || r.includes("Kode Asset"),
+  );
+  if (headerIndex === -1) throw new Error("Format Excel tidak dikenali");
+
+  const headers = rows[headerIndex].map((h) => String(h).trim());
+  const dataRows = rows.slice(headerIndex + 1);
+
+  // 2. Mapping Indeks Kolom
+  const col = {
+    unit: getColumnIndex(headers, ASSET_MAPPER.unit),
+    model: getColumnIndex(headers, ASSET_MAPPER.model),
+    kode: getColumnIndex(headers, ASSET_MAPPER.kode_asset),
+    pic: getColumnIndex(headers, ASSET_MAPPER.pic),
+    sn: getColumnIndex(headers, ASSET_MAPPER.sn),
+    lokasi: getColumnIndex(headers, ASSET_MAPPER.lokasi),
+    baik: getColumnIndex(headers, ASSET_MAPPER.kondisi_baik),
+    rusak: getColumnIndex(headers, ASSET_MAPPER.kondisi_rusak),
+    tgl: getColumnIndex(headers, ASSET_MAPPER.tgl_pengadaan),
+    kepemilikan: getColumnIndex(headers, ASSET_MAPPER.kepemilikan),
+    keterangan: getColumnIndex(headers, ASSET_MAPPER.keterangan),
+  };
+
+  const results = { success: 0, failed: 0, errors: [] as string[] };
+
+  // 3. Loop Data
+  for (const [index, row] of dataRows.entries()) {
+    const unitName = row[col.unit];
+    if (!unitName) continue;
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        // --- A. PENANGANAN BULAN & TAHUN ---
+        let purchaseDate = null;
+        if (col.tgl !== -1 && row[col.tgl]) {
+          const tglValue = row[col.tgl];
+
+          if (tglValue instanceof Date) {
+            // Jika excel membacanya langsung sebagai Date
+            purchaseDate = tglValue;
+          } else if (typeof tglValue === "number") {
+            // Jika terbaca sebagai format serial number excel (misal: 45000)
+            // Asumsi base date excel adalah 1 Jan 1900
+            purchaseDate = new Date(
+              Math.round((tglValue - 25569) * 86400 * 1000),
+            );
+          } else {
+            // Jika terbaca sebagai teks string (misal: "05/2026" atau "Mei-2026")
+            // Kita coba convert. Jika hanya bulan & tahun, akan tersimpan sebagai tgl 1 bulan tersebut
+            const parsedDate = new Date(tglValue);
+            if (!isNaN(parsedDate.getTime())) {
+              purchaseDate = parsedDate;
+            }
+          }
+        }
+        // A. Handle Lokasi (Lantai/Area)
+        let locationId = null;
+        if (col.lokasi !== -1 && row[col.lokasi]) {
+          const locName = String(row[col.lokasi]).trim();
+          const loc = await tx.location.upsert({
+            where: { id_organizationId: { id: locName, organizationId } }, // Jika ID pake nama atau handle logic custom
+            create: { name: locName, organizationId },
+            update: {},
+          });
+          locationId = loc.id;
+        }
+
+        // B. Handle Item (Parent Asset)
+        // Kita gunakan nama unit + model untuk identifikasi Item unik
+        // --- B. PENANGANAN KEPEMILIKAN & KETERANGAN ---
+        let finalNotes = "";
+
+        // Ambil data keterangan jika ada
+        if (col.keterangan !== -1 && row[col.keterangan]) {
+          finalNotes += String(row[col.keterangan]).trim();
+        }
+
+        // Ambil data kepemilikan jika ada, lalu gabung ke notes
+        if (col.kepemilikan !== -1 && row[col.kepemilikan]) {
+          const statusMilik = String(row[col.kepemilikan]).trim();
+          finalNotes += finalNotes
+            ? ` | Kepemilikan: ${statusMilik}`
+            : `Kepemilikan: ${statusMilik}`;
+        }
+        const modelName =
+          col.model !== -1 ? String(row[col.model] || "").trim() : "";
+        let item = await tx.item.findFirst({
+          where: { name: String(unitName), organizationId },
+        });
+
+        if (!item) {
+          item = await tx.item.create({
+            data: {
+              name: String(unitName),
+              code: `ITM-${Math.random().toString(36).substring(7).toUpperCase()}`,
+              assetType: "FIXED", // Sesuaikan enum anda
+              organizationId,
+            },
+          });
+        }
+
+        // C. Tentukan Kondisi
+        let condition = "BAIK";
+        if (col.rusak !== -1 && row[col.rusak]) condition = "RUSAK";
+
+        // D. Create Asset
+        await tx.asset.create({
+          data: {
+            itemId: item.id,
+            organizationId,
+            kode_asset: col.kode !== -1 ? String(row[col.kode] || "") : null,
+            serialNumber: col.sn !== -1 ? String(row[col.sn] || "") : null,
+            model: modelName,
+            PIC: col.pic !== -1 ? String(row[col.pic] || "") : null,
+            condition: condition,
+            locationId: locationId,
+            status: "ACTIVE",
+            purchaseDate: purchaseDate, // Memasukkan hasil parsing tanggal
+            notes: finalNotes || null,
+            // Hubungkan ke SubCluster yang dipilih user di UI
+            assetSubClusters: {
+              connect: { id: targetSubClusterId },
+            },
+          },
+        });
+      });
+      results.success++;
+    } catch (err: any) {
+      results.failed++;
+      results.errors.push(`Baris ${index + headerIndex + 2}: ${err.message}`);
+    }
+  }
+
+  return results;
 }

@@ -25,6 +25,7 @@ import {
   getClustersByCategory,
   getSubClustersByCluster,
   getSubClusterById,
+  importAssetExcel,
 } from "@/action/asset-classification-action";
 import { ClassificationTree, PaginationState } from "@/types";
 import { useState } from "react";
@@ -69,8 +70,8 @@ export const useCreateAssetGroup = () =>
     {
       loading: "Menambahkan data...",
       success: "Data berhasil ditambahkan",
-      error: "Gagal menambahkan data"
-    }
+      error: "Gagal menambahkan data",
+    },
   );
 
 export const useUpdateAssetGroup = () =>
@@ -81,8 +82,8 @@ export const useUpdateAssetGroup = () =>
     {
       loading: "Memperbarui data...",
       success: "Data berhasil diperbarui",
-      error: "Gagal memperbarui data"
-    }
+      error: "Gagal memperbarui data",
+    },
   );
 
 export const useDeleteAssetGroup = () =>
@@ -93,8 +94,8 @@ export const useDeleteAssetGroup = () =>
     {
       loading: "Menghapus data...",
       success: "Data berhasil dihapus",
-      error: "Gagal menghapus data"
-    }
+      error: "Gagal menghapus data",
+    },
   );
 
 // LINK Category
@@ -122,8 +123,8 @@ export const useCreateAssetCategory = () =>
     {
       loading: "Menambahkan data...",
       success: "Data berhasil ditambahkan",
-      error: "Gagal menambahkan data"
-    }
+      error: "Gagal menambahkan data",
+    },
   );
 
 export const useUpdateAssetCategory = () =>
@@ -134,8 +135,8 @@ export const useUpdateAssetCategory = () =>
     {
       loading: "Memperbarui data...",
       success: "Data berhasil diperbarui",
-      error: "Gagal memperbarui data"
-    }
+      error: "Gagal memperbarui data",
+    },
   );
 
 export const useDeleteAssetCategory = () =>
@@ -146,8 +147,8 @@ export const useDeleteAssetCategory = () =>
     {
       loading: "Menghapus data...",
       success: "Data berhasil dihapus",
-      error: "Gagal menghapus data"
-    }
+      error: "Gagal menghapus data",
+    },
   );
 // LINK Cluster
 export function useClustersByCategory(id?: string) {
@@ -171,8 +172,8 @@ export const useCreateAssetCluster = () =>
     {
       loading: "Menambahkan data...",
       success: "Data berhasil ditambahkan",
-      error: "Gagal menambahkan data"
-    }
+      error: "Gagal menambahkan data",
+    },
   );
 
 export const useUpdateAssetCluster = () =>
@@ -183,8 +184,8 @@ export const useUpdateAssetCluster = () =>
     {
       loading: "Memperbarui data...",
       success: "Data berhasil diperbarui",
-      error: "Gagal memperbarui data"
-    }
+      error: "Gagal memperbarui data",
+    },
   );
 
 export const useDeleteAssetCluster = () =>
@@ -195,8 +196,8 @@ export const useDeleteAssetCluster = () =>
     {
       loading: "Menghapus data...",
       success: "Data berhasil dihapus",
-      error: "Gagal menghapus data"
-    }
+      error: "Gagal menghapus data",
+    },
   );
 // LINK Sub Cluster
 export function useSubClustersByCluster(id?: string) {
@@ -220,8 +221,8 @@ export const useCreateAssetSubCluster = () =>
     {
       loading: "Menambahkan data...",
       success: "Data berhasil ditambahkan",
-      error: "Gagal menambahkan data"
-    }
+      error: "Gagal menambahkan data",
+    },
   );
 
 export const useUpdateAssetSubCluster = () =>
@@ -232,8 +233,8 @@ export const useUpdateAssetSubCluster = () =>
     {
       loading: "Memperbarui data...",
       success: "Data berhasil diperbarui",
-      error: "Gagal memperbarui data"
-    }
+      error: "Gagal memperbarui data",
+    },
   );
 
 export const useDeleteAssetSubCluster = () =>
@@ -244,8 +245,8 @@ export const useDeleteAssetSubCluster = () =>
     {
       loading: "Menghapus data...",
       success: "Data berhasil dihapus",
-      error: "Gagal menghapus data"
-    }
+      error: "Gagal menghapus data",
+    },
   );
 export function useSubClusterById(id?: string) {
   return useQuery({
@@ -266,4 +267,46 @@ export function useClassificationTree() {
 
     queryFn: getClassificationTree,
   });
+}
+interface ImportPayload {
+  formData: FormData;
+  organizationId: string;
+}
+
+export function useImportAssetExcel() {
+  return useTaxonomyMutation<ImportPayload>(
+    // 1. mutationFn
+    async ({ formData, organizationId }) => {
+      const result = await importAssetExcel(formData, organizationId);
+
+      // Jika server action mereturn object error, kita throw agar masuk ke onError helper
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      return result;
+    },
+
+    // 2. invalidate keys
+    // taxonomyKeys.tree sudah di-handle otomatis di onSettled helper Anda.
+    // Tambahkan key lain di sini jika ada list flat yang perlu di-refresh juga.
+    [
+      ["asset-groups"],
+      ["asset-categories"],
+      ["asset-clusters"],
+      ["asset-sub-clusters"],
+    ],
+
+    // 3. optimisticUpdater
+    // Kita biarkan undefined (atau null jika tipe menuntut, tapi di type Anda '?' jadi bisa undefined)
+    // karena memprediksi struktur tree baru dari file Excel mentah terlalu kompleks.
+    undefined,
+
+    // 4. messages
+    {
+      loading: "Membaca dan mengimpor data Excel...",
+      success: "Data hierarki aset berhasil diimpor!",
+      error: "Gagal mengimpor data Excel",
+    },
+  );
 }

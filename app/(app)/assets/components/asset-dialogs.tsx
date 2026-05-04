@@ -11,6 +11,7 @@ import { BarcodeScannerDialog } from "@/components/assets/barcode-scanner-dialog
 import { AssetLoanDialog } from "./asset-loan-dialog";
 import { AssetWithItem } from "./asset-column";
 import AssetAssignDialog from "./asset-assign-dialog";
+import ImportAssetDialog from "./import-asset-dialog";
 
 export default function AssetDialogs() {
   const { currentRow, open, setCurrentRow, setOpen } = useDialog();
@@ -20,6 +21,11 @@ export default function AssetDialogs() {
         key="asset-add"
         open={open === "add"}
         onOpenChange={() => setOpen("add")}
+      />
+      <ImportAssetDialog
+        key="asset-import"
+        open={open === "import"}
+        onOpenChange={() => setOpen("import")}
       />
       <BarcodeScannerDialog />
       <AssetPrintDialog />

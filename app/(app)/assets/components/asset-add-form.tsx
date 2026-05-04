@@ -237,9 +237,7 @@ export default function AssetAddForm() {
     <div className="p-4 border border-gray-100 rounded-lg">
       <form
         id="asset-form"
-        onSubmit={form.handleSubmit(onSubmit, (err) => {
-          console.log("VALIDATION ERROR:", err);
-        })}
+        onSubmit={form.handleSubmit(onSubmit)}
         className="space-y-6"
       >
         {form.formState.errors.root?.message && (

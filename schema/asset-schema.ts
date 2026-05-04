@@ -26,3 +26,14 @@ export const AssetFormSchema = z.object({
 });
 
 export type AssetForm = z.infer<typeof AssetFormSchema>;
+export const ImportFormSchema = z.object({
+  assetGroupId: z.string().min(1, "Golongan wajib diisi"),
+  assetCategoryId: z.string().min(1, "Kategori wajib diisi"),
+  assetClusterId: z.string().min(1, "Cluster wajib diisi"),
+  assetSubClusterId: z.string().min(1, "Sub Cluster wajib diisi"),
+  file: z
+    .any()
+    .refine((file) => file instanceof File, "File Excel wajib diunggah"),
+});
+
+export type ImportForm = z.infer<typeof ImportFormSchema>;

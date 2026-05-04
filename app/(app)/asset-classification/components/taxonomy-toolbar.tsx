@@ -15,7 +15,7 @@ export function TaxonomyToolbar({
   setSearch,
 }: any) {
   const { refetch, isFetching } = useClassificationTree();
-  const { open, setOpen } = useDialog()
+  const { open, setOpen } = useDialog();
   return (
     <div className="border-b bg-background sticky top-0 z-20">
       <div className="flex items-center justify-between gap-4 p-4">
@@ -24,9 +24,9 @@ export function TaxonomyToolbar({
             <Plus className="mr-2 h-4 w-4" />
             Tambah Golongan
           </Button>
-          <Button onClick={() => setOpen('import-category')}>
+          <Button onClick={() => setOpen("import-golongan")}>
             <Import className="mr-2 h-4 w-4" />
-            Impor Kategori
+            Impor Golongan
           </Button>
           <Button variant="outline" onClick={onExpandAll}>
             <GitBranch className="mr-2 h-4 w-4" />

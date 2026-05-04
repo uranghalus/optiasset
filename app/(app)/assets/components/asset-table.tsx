@@ -20,6 +20,7 @@ import {
   Plus,
   Printer,
   ScanLine,
+  UploadCloud,
 } from "lucide-react";
 import { ButtonGroup } from "@/components/ui/button-group";
 import {
@@ -131,7 +132,16 @@ export default function AssetTable() {
                 Scan QR <ScanLine className="size-4" />
               </Button>
             )}
-
+            {can("asset", ["import"]) && (
+              <Button
+                onClick={() => {
+                  setOpen("import");
+                }}
+              >
+                <UploadCloud className="h-4 w-4 me-2" />
+                Import Asset
+              </Button>
+            )}
             {can("asset", ["export"]) && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

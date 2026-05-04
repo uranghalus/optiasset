@@ -555,28 +555,6 @@ model AssetTransfer {
   @@map("asset_transfers")
 }
 
-model div_team_rel {
-  A      String
-  B      String
-  team   Team   @relation(fields: [A], references: [id], onDelete: Cascade)
-  divisi divisi @relation(fields: [B], references: [id_divisi], onDelete: Cascade)
-
-  @@unique([A, B], map: "_div_team_rel_AB_unique")
-  @@index([B], map: "_div_team_rel_B_index")
-  @@map("_div_team_rel")
-}
-
-enum TransactionType {
-  IN
-  OUT
-  ADJUSTMENT
-}
-
-enum AssetType {
-  FIXED
-  SUPPLY
-}
-
 model AssetDisposal {
   id                String   @id @default(uuid())
   assetId           String
@@ -600,4 +578,26 @@ model AssetDisposal {
   @@index([staffApprovedById])
   @@index([organizationId])
   @@map("asset_disposals")
+}
+
+model div_team_rel {
+  A      String
+  B      String
+  team   Team   @relation(fields: [A], references: [id], onDelete: Cascade)
+  divisi divisi @relation(fields: [B], references: [id_divisi], onDelete: Cascade)
+
+  @@unique([A, B], map: "_div_team_rel_AB_unique")
+  @@index([B], map: "_div_team_rel_B_index")
+  @@map("_div_team_rel")
+}
+
+enum TransactionType {
+  IN
+  OUT
+  ADJUSTMENT
+}
+
+enum AssetType {
+  FIXED
+  SUPPLY
 }

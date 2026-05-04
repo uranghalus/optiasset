@@ -1,10 +1,11 @@
 "use client";
 
-import { Plus, RefreshCw, GitBranch, Search } from "lucide-react";
+import { Plus, RefreshCw, GitBranch, Search, Import } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useClassificationTree } from "@/hooks/crud/use-asset-classification";
+import { useDialog } from "@/context/dialog-provider";
 
 export function TaxonomyToolbar({
   onCreateGroup,
@@ -14,7 +15,7 @@ export function TaxonomyToolbar({
   setSearch,
 }: any) {
   const { refetch, isFetching } = useClassificationTree();
-
+  const { open, setOpen } = useDialog()
   return (
     <div className="border-b bg-background sticky top-0 z-20">
       <div className="flex items-center justify-between gap-4 p-4">
@@ -23,7 +24,10 @@ export function TaxonomyToolbar({
             <Plus className="mr-2 h-4 w-4" />
             Tambah Golongan
           </Button>
-
+          <Button onClick={() => setOpen('import-category')}>
+            <Import className="mr-2 h-4 w-4" />
+            Impor Kategori
+          </Button>
           <Button variant="outline" onClick={onExpandAll}>
             <GitBranch className="mr-2 h-4 w-4" />
             Expand All

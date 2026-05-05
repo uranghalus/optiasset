@@ -15,15 +15,21 @@ export default function AuditLogTable() {
   });
 
   const { data, isLoading } = useAuditLogs({
-    page: pagination.pageIndex,
+    // Pastikan menggunakan pageIndex + 1 karena server pakai Math.max(1, page)
+    page: pagination.pageIndex + 1,
     pageSize: pagination.pageSize,
   });
 
   const { table } = useDataTable({
     data: data?.data ?? [],
-    columns: auditLogColumns,
+    columns: auditLogColumns as any,
     columnResizeMode: "onEnd",
+    manualPagination: true,
+
+    // SESUAIKAN DISINI: Server mengirim 'total' dan 'pageCount' langsung di root
+    rowCount: data?.total ?? 0,
     pageCount: data?.pageCount ?? 0,
+
     pagination,
     onPaginationChange: setPagination,
   });
@@ -38,7 +44,11 @@ export default function AuditLogTable() {
 
       <DataTable table={table} loading={isLoading} />
 
-      <DataTablePagination table={table} pageCount={data?.pageCount ?? 0} />
+      {/* Sesuaikan juga di komponen pagination */}
+      <DataTablePagination
+        table={table}
+        pageCount={data?.pageCount ?? 0}
+      />
     </div>
   );
 }

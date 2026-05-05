@@ -22,3 +22,10 @@ export const UserFormSchema = z.object({
 });
 
 export type UserForm = z.infer<typeof UserFormSchema>;
+
+export const banUserSchema = z.object({
+  banReason: z.string().min(5, "Alasan ban minimal 5 karakter"),
+  banExpiresInDays: z.number().min(1, "Minimal 1 hari"),
+});
+
+export type BanUserInput = z.infer<typeof banUserSchema>;

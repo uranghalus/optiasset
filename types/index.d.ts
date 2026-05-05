@@ -10,6 +10,7 @@ export type PaginationState = {
   totalPages?: number;
   departmentId?: string[]; // 🔥 array
   condition?: string[]; // 🔥 array
+  search?: string;
 };
 
 /* ===================== */

@@ -51,14 +51,13 @@ export default function UsersTable() {
     columns: userColumns,
     columnResizeMode: "onEnd",
 
+    rowCount: data?.pagination.total ?? 0,
     pageCount: data?.pagination.totalPages ?? 0,
-
+    manualPagination: true,
     pagination, // ✅ pakai ini
 
     onPaginationChange: setPagination,
   });
-  console.log("TABLE STATE:", table.getState());
-  console.log("DATA:", data);
   return (
     <div className="p-3 rounded-md border space-y-4">
       <DataTableToolbar

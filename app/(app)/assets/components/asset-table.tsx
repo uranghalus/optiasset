@@ -4,7 +4,7 @@
 import { useAssets } from "@/hooks/crud/use-assets";
 import { useActiveMemberRole } from "@/hooks/use-active-member";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { assetColumn } from "./asset-column";
 
 import { useDataTable } from "@/hooks/use-data-table";
@@ -40,7 +40,7 @@ import Link from "next/link";
 export default function AssetTable() {
   const { setOpen } = useDialog();
   const { can } = usePermission();
-
+  const [search, setSearch] = useState("");
   const { data: role } = useActiveMemberRole();
   const { data: departments = [] } = useDepartmentsForSelect();
 
@@ -49,7 +49,8 @@ export default function AssetTable() {
     pageSize: 10,
   });
   const [columnFilters, setColumnFilters] = useState<any[]>([]);
-
+  // Ambil nilai search dari columnFilters (asumsi searchKey="kode_asset")
+  const searchValue = columnFilters.find((f) => f.id === "kode_asset")?.value as string;
   const selectedDept = columnFilters.find((f) => f.id === "departmentId")
     ?.value as string[] | undefined;
 
@@ -57,10 +58,11 @@ export default function AssetTable() {
     ?.value as string[] | undefined;
 
   const { data, isLoading } = useAssets({
-    page: pagination.pageIndex,
+    page: pagination.pageIndex + 1,
     pageSize: pagination.pageSize,
     departmentId: selectedDept,
     condition: selectedCondition,
+    search: searchValue, // ✅ kirim nilai search ke hook
   });
 
   /* =======================
@@ -95,15 +97,23 @@ export default function AssetTable() {
     data: data?.data ?? [],
     columns: assetColumn as any,
     columnResizeMode: "onEnd",
+    // Gunakan data dari server untuk sinkronisasi navigasi
     pageCount: data?.pageCount ?? 0,
+    rowCount: data?.total ?? 0,
+    manualPagination: true,
     pagination,
     onPaginationChange: setPagination,
     columnFilters,
-    onColumnFiltersChange: setColumnFilters, // 🔥 WAJIB
+    onColumnFiltersChange: (updater) => {
+      setColumnFilters(updater);
+      // 💡 RESET PAGINATION saat user mencari sesuatu
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    },
   });
-  console.log("FILTERS:", columnFilters);
-  console.log("DEPT:", selectedDept);
-  console.log("COND:", selectedCondition);
+  // Reset ke halaman 1 (index 0) setiap kali filter berubah
+  useEffect(() => {
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, [columnFilters]);
   return (
     <div className="p-3 rounded-md border space-y-4">
       <DataTableToolbar
@@ -111,6 +121,10 @@ export default function AssetTable() {
         searchKey="kode_asset"
         searchPlaceholder="Cari by Kode Asset / Tag..."
         filters={filters} // ✅ filter muncul lagi
+        onSearchChange={(value) => {
+          setSearch(value);
+          setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+        }}
       >
         <div className="flex gap-2">
           {can("asset", ["create"]) && (

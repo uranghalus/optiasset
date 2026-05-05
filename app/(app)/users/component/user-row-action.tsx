@@ -4,7 +4,7 @@ import { ButtonGroup } from '@/components/ui/button-group'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { useDialog } from '@/context/dialog-provider'
 import { Row } from '@tanstack/react-table'
-import { Trash2, Pencil, ChevronDownIcon, VolumeOffIcon, CheckIcon, AlertTriangleIcon, UserRoundXIcon, ShareIcon, CopyIcon, TrashIcon } from 'lucide-react'
+import { Trash2, Pencil, ChevronDownIcon, VolumeOffIcon, CheckIcon, AlertTriangleIcon, UserRoundXIcon, ShareIcon, CopyIcon, TrashIcon, OctagonMinus, Check } from 'lucide-react'
 import React from 'react'
 import { Button } from '@/components/ui/button'
 
@@ -36,36 +36,19 @@ export default function UserRowActions<TData>({ row }: UserRowActionsProps<TData
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
                     <DropdownMenuGroup>
-                        <DropdownMenuItem>
-                            <VolumeOffIcon />
-                            Mute Conversation
+                        <DropdownMenuItem variant="destructive" onClick={() => {
+                            setCurrentRow(user);
+                            setOpen("banned");
+                        }}>
+                            <OctagonMinus />
+                            Banned Pengguna
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
-                            <CheckIcon />
-                            Mark as Read
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                            <AlertTriangleIcon />
-                            Report Conversation
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                            <UserRoundXIcon />
-                            Block User
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                            <ShareIcon />
-                            Share Conversation
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                            <CopyIcon />
-                            Copy Conversation
-                        </DropdownMenuItem>
-                    </DropdownMenuGroup>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuGroup>
-                        <DropdownMenuItem variant="destructive">
-                            <TrashIcon />
-                            Delete Conversation
+                        <DropdownMenuItem variant="default" onClick={() => {
+                            setCurrentRow(user);
+                            setOpen("unban");
+                        }}>
+                            <Check />
+                            Aktifkan Pengguna
                         </DropdownMenuItem>
                     </DropdownMenuGroup>
                 </DropdownMenuContent>

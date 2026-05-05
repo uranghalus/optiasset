@@ -708,17 +708,21 @@ export async function getClassificationTree() {
     },
     include: {
       categories: {
+        orderBy: { code: "asc" }, // Urutkan Kategori berdasarkan kode
         include: {
           assetClusters: {
+            orderBy: { code: "asc" }, // Urutkan Klaster berdasarkan kode
             include: {
-              assetSubClusters: true,
+              assetSubClusters: {
+                orderBy: { code: "asc" }, // Urutkan Sub-Klaster berdasarkan kode
+              },
             },
           },
         },
       },
     },
     orderBy: {
-      code: "asc",
+      code: "asc", // Urutkan Golongan (Group) berdasarkan kode
     },
   });
 }
@@ -885,99 +889,82 @@ export async function importAssetExcel(
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
 
-    // PENTING: header: 1 akan mengubah baris menjadi Array, bukan Object.
-    // raw: false memastikan "01" tetap jadi string, bukan angka 1.
-    const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false });
+    const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false }) as any[][];
 
     let currentGroupId: string | null = null;
     let currentCategoryId: string | null = null;
     let currentClusterId: string | null = null;
 
-    // Kita mulai dari i = 1 (baris ke-2) untuk MELEWATI header Excel
-    for (let i = 1; i < rows.length; i++) {
-      const row = rows[i] as any[];
+    const result = await prisma.$transaction(async (tx) => {
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.length === 0) continue;
 
-      // Skip jika baris benar-benar kosong
-      if (!row || row.length === 0) continue;
+        const groupCode = row[0]?.toString().trim();
+        const categoryCode = row[1]?.toString().trim();
+        const clusterCode = row[2]?.toString().trim();
+        const subClusterCode = row[3]?.toString().trim();
+        const name = row[4]?.toString().trim();
+        const notes = row[5]?.toString().trim();
 
-      // Ambil data berdasarkan urutan kolom (0, 1, 2, 3, 4, 5)
-      const groupCode = row[0]?.toString().trim();
-      const categoryCode = row[1]?.toString().trim();
-      const clusterCode = row[2]?.toString().trim();
-      const subClusterCode = row[3]?.toString().trim();
-      const name = row[4]?.toString().trim();
-      const notes = row[5]?.toString().trim();
+        if (!name) continue;
 
-      // Skip jika kolom Uraian (nama) kosong, karena nama wajib ada di schema
-      if (!name) continue;
+        // Tentukan Target Level dari baris ini
+        const isGroupTarget = groupCode && !categoryCode && !clusterCode && !subClusterCode;
+        const isCategoryTarget = groupCode && categoryCode && !clusterCode && !subClusterCode;
+        const isClusterTarget = groupCode && categoryCode && clusterCode && !subClusterCode;
+        const isSubClusterTarget = groupCode && categoryCode && clusterCode && subClusterCode;
 
-      // 1. Simpan ke AssetGroup
-      if (groupCode) {
-        const group = await prisma.assetGroup.upsert({
-          where: { organizationId_code: { organizationId, code: groupCode } },
-          update: { name },
-          create: { code: groupCode, name, organizationId },
-        });
-        currentGroupId = group.id;
+        // 1. ASSET GROUP
+        if (groupCode) {
+          const group = await tx.assetGroup.upsert({
+            where: { organizationId_code: { organizationId, code: groupCode } },
+            // HANYA update nama jika baris ini memang khusus baris Golongan
+            update: isGroupTarget ? { name } : {},
+            create: { code: groupCode, name: isGroupTarget ? name : `Group ${groupCode}`, organizationId },
+          });
+          currentGroupId = group.id;
+        }
+
+        // 2. ASSET CATEGORY
+        if (categoryCode && currentGroupId) {
+          const category = await tx.assetCategory.upsert({
+            where: { assetGroupId_code: { assetGroupId: currentGroupId, code: categoryCode } },
+            // HANYA update nama jika baris ini memang khusus baris Kategori
+            update: isCategoryTarget ? { name } : {},
+            create: { code: categoryCode, name: isCategoryTarget ? name : `Category ${categoryCode}`, assetGroupId: currentGroupId },
+          });
+          currentCategoryId = category.id;
+        }
+
+        // 3. ASSET CLUSTER
+        if (clusterCode && currentCategoryId) {
+          const cluster = await tx.assetCluster.upsert({
+            where: { assetCategoryId_code: { assetCategoryId: currentCategoryId, code: clusterCode } },
+            // HANYA update nama jika baris ini memang khusus baris Cluster
+            update: isClusterTarget ? { name } : {},
+            create: { code: clusterCode, name: isClusterTarget ? name : `Cluster ${clusterCode}`, assetCategoryId: currentCategoryId },
+          });
+          currentClusterId = cluster.id;
+        }
+
+        // 4. ASSET SUB CLUSTER
+        if (subClusterCode && currentClusterId) {
+          await tx.assetSubCluster.upsert({
+            where: { assetClusterId_code: { assetClusterId: currentClusterId, code: subClusterCode } },
+            update: { name, notes: notes || "" }, // Subcluster selalu diupdate karena dia level paling dalam
+            create: { code: subClusterCode, name, notes: notes || "", assetClusterId: currentClusterId },
+          });
+        }
       }
+      return { success: true };
+    }, { timeout: 30000 });
 
-      // 2. Simpan ke AssetCategory
-      if (categoryCode && currentGroupId) {
-        const category = await prisma.assetCategory.upsert({
-          where: {
-            assetGroupId_code: {
-              assetGroupId: currentGroupId,
-              code: categoryCode,
-            },
-          },
-          update: { name },
-          create: { code: categoryCode, name, assetGroupId: currentGroupId },
-        });
-        currentCategoryId = category.id;
-      }
-
-      // 3. Simpan ke AssetCluster
-      if (clusterCode && currentCategoryId) {
-        const cluster = await prisma.assetCluster.upsert({
-          where: {
-            assetCategoryId_code: {
-              assetCategoryId: currentCategoryId,
-              code: clusterCode,
-            },
-          },
-          update: { name },
-          create: {
-            code: clusterCode,
-            name,
-            assetCategoryId: currentCategoryId,
-          },
-        });
-        currentClusterId = cluster.id;
-      }
-
-      // 4. Simpan ke AssetSubCluster
-      if (subClusterCode && currentClusterId) {
-        await prisma.assetSubCluster.upsert({
-          where: {
-            assetClusterId_code: {
-              assetClusterId: currentClusterId,
-              code: subClusterCode,
-            },
-          },
-          update: { name, notes: notes || "" },
-          create: {
-            code: subClusterCode,
-            name,
-            notes: notes || "",
-            assetClusterId: currentClusterId,
-          },
-        });
-      }
-    }
-
+    revalidatePath("/master/asset-classification");
     return { success: "Data berhasil diimport" };
+
   } catch (error: any) {
     console.error("❌ IMPORT_ERROR:", error);
-    return { error: error.message || "Gagal memproses file ke database" };
+    return { error: error.message || "Gagal memproses database" };
   }
 }

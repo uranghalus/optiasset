@@ -1,5 +1,9 @@
 'use client';
 
+// IMPORT TOAST LIBRARY ANDA DI SINI
+import { toast } from 'sonner'; // sesuaikan jika menggunakan react-hot-toast
+
+import { bannedUser, unbanUser } from '@/action/asset-action';
 import {
   createUserAction,
   deleteUserAction,
@@ -7,6 +11,7 @@ import {
   getUsersByDepartmentForSelect,
   updateUserAction,
 } from '@/action/user-action';
+import { BanUserInput } from '@/schema/user-schema';
 
 import {
   keepPreviousData,
@@ -110,31 +115,28 @@ export function useCreateUser() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (formData: FormData) => createUserAction(formData),
+    mutationFn: async (formData: FormData) => {
+      // Modifikasi promise agar melempar error jika server action return object { error }
+      const promise = createUserAction(formData).then((res: any) => {
+        if (res?.error) throw new Error(res.error);
+        return res;
+      });
 
-    onSuccess: (result) => {
-      // refresh users table
+      return toast.promise(promise, {
+        loading: 'Creating user...',
+        success: (data: any) => data?.message || 'User has been created',
+        error: (err) => err.message || 'Error creating user',
+      });
+    },
+
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: userKeys.all,
       });
 
-      // refresh all department selects
       queryClient.invalidateQueries({
         queryKey: userKeys.departments(),
       });
-
-      /*
-      Optional:
-      kalau createUserAction return
-      departmentId, bisa spesifik:
-
-      queryClient.invalidateQueries({
-        queryKey:
-         userKeys.department(
-          result.departmentId
-         )
-      })
-      */
     },
   });
 }
@@ -147,8 +149,18 @@ export function useUpdateUser() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, formData }: { id: string; formData: FormData }) =>
-      updateUserAction(id, formData),
+    mutationFn: async ({ id, formData }: { id: string; formData: FormData }) => {
+      const promise = updateUserAction(id, formData).then((res: any) => {
+        if (res?.error) throw new Error(res.error);
+        return res;
+      });
+
+      return toast.promise(promise, {
+        loading: 'Updating user...',
+        success: (data: any) => data?.message || 'User has been updated',
+        error: (err) => err.message || 'Error updating user',
+      });
+    },
 
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -170,7 +182,18 @@ export function useDeleteUser() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => deleteUserAction(id),
+    mutationFn: async (id: string) => {
+      const promise = deleteUserAction(id).then((res: any) => {
+        if (res?.error) throw new Error(res.error);
+        return res;
+      });
+
+      return toast.promise(promise, {
+        loading: 'Deleting user...',
+        success: (data: any) => data?.message || 'User has been deleted',
+        error: (err) => err.message || 'Error deleting user',
+      });
+    },
 
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -183,3 +206,68 @@ export function useDeleteUser() {
     },
   });
 }
+
+/* =========================
+   BAN USER
+========================= */
+
+export function useBanUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    // Tambahkan async di sini opsional, tapi membantu memperjelas flow
+    mutationFn: async ({ id, data }: { id: string; data: BanUserInput }) => {
+      const promise = bannedUser(id, data).then((res: any) => {
+        if (res?.error) throw new Error(res.error);
+        return res;
+      });
+
+      // 1. Panggil toast.promise tanpa me-return nilainya ke mutationFn
+      toast.promise(promise, {
+        loading: 'Banning user...',
+        success: (data: any) => data?.message || 'User has been banned',
+        error: (err) => err.message || 'Error banning user',
+      });
+
+      // 2. Return promise aslinya agar React Query bisa mendeteksi status sukses/error
+      return promise;
+    },
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: userKeys.all,
+      });
+    },
+  });
+}
+
+/* =========================
+   UNBAN USER
+========================= */
+
+export function useUnbanUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const promise = unbanUser(id).then((res: any) => {
+        if (res?.error) throw new Error(res.error);
+        return res;
+      });
+
+      return toast.promise(promise, {
+        loading: 'Unbanning user...',
+        success: (data: any) => data?.message || 'User has been unbanned',
+        error: (err) => err.message || 'Error unbanning user',
+      });
+    },
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: userKeys.all,
+      });
+    },
+  });
+}
+
+

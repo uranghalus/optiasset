@@ -28,10 +28,11 @@ type UseDataTableProps<TData> = {
   onColumnFiltersChange?: (updater: any) => void; // ✅ WAJIB
 
   onPaginationChange: (updater: any) => void;
-
+  manualPagination?: boolean;
   columnResizeMode?: any;
   columnResizeDirection?: any;
   enableRowSelection?: boolean;
+  rowCount?: number;
 };
 
 export function useDataTable<TData>({
@@ -46,6 +47,8 @@ export function useDataTable<TData>({
   columnResizeDirection = 'ltr',
   enableRowSelection = true,
   manualFilter = true,
+  manualPagination = false,
+  rowCount,
 }: UseDataTableProps<TData>) {
   const [rowSelection, setRowSelection] = useState({});
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -55,9 +58,9 @@ export function useDataTable<TData>({
     data,
     columns,
     pageCount,
-    manualPagination: true,
+    manualPagination,
     manualFiltering: manualFilter, // 🔥 penting untuk server-side filter
-
+    rowCount: rowCount,
     state: {
       pagination,
       sorting,

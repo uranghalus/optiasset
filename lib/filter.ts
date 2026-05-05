@@ -5,6 +5,7 @@ type BuildAssetFilterArgs = {
   filterDepartmentId?: string[];
   condition?: string[];
   organizationId: string;
+  search?: string;
 };
 
 export function isGlobalAccess(role?: string | null) {
@@ -17,7 +18,8 @@ export function buildAssetFilter({
   filterDepartmentId,
   condition,
   organizationId,
-}: BuildAssetFilterArgs) {
+  search, // 👈 Tambahkan parameter ini
+}: BuildAssetFilterArgs & { search?: string }) { // Pastikan type args mendukung search
   const where: any = {
     organizationId,
   };
@@ -25,14 +27,29 @@ export function buildAssetFilter({
   const isGlobal =
     role === 'owner' || role === 'admin' || role === 'staff_asset';
 
-  // ✅ CONDITION (MULTI)
+  // ✅ 1. SEARCH LOGIC (Global Search)
+  if (search) {
+    where.AND = [
+      {
+        OR: [
+          { kode_asset: { contains: search, mode: 'insensitive' } },
+          { brand: { contains: search, mode: 'insensitive' } },
+          { model: { contains: search, mode: 'insensitive' } },
+          // Jika ingin search berdasarkan nama item (relasi)
+          { item: { name: { contains: search, mode: 'insensitive' } } },
+        ],
+      },
+    ];
+  }
+
+  // ✅ 2. CONDITION (MULTI)
   if (condition?.length) {
     where.condition = {
       in: condition,
     };
   }
 
-  // ✅ DEPARTMENT LOGIC
+  // ✅ 3. DEPARTMENT LOGIC
   if (isGlobal) {
     if (filterDepartmentId?.length) {
       where.departmentId = {
@@ -40,6 +57,7 @@ export function buildAssetFilter({
       };
     }
   } else {
+    // User biasa hanya bisa lihat departemen mereka sendiri
     where.departmentId = userDepartmentId;
   }
 

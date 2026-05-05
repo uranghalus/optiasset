@@ -227,6 +227,7 @@ enum AssetAssignmentStatus {
   ASSIGNED
 }
 
+// LINK Asset
 model Asset {
   id            String    @id @default(uuid())
   itemId        String
@@ -258,7 +259,7 @@ model Asset {
   vendorName       String?               @db.Char(100)
   history          AssetHistory[]
   loans            AssetLoan[]
-  item             Item                  @relation(fields: [itemId, organizationId], references: [id, organizationId])
+  item             Item                  @relation(fields: [itemId, organizationId], references: [id, organizationId], onDelete: Cascade)
   location         Location?             @relation(fields: [locationId, organizationId], references: [id, organizationId])
   department       department?           @relation(fields: [departmentId], references: [id_department])
   transfers        AssetTransfer[]       @relation("AssetTransfers")
@@ -275,6 +276,7 @@ model Asset {
   @@map("assets")
 }
 
+// LINK STOCK
 model Stock {
   id             String             @id @default(uuid())
   itemId         String
@@ -283,7 +285,7 @@ model Stock {
   departmentId   String?
   updatedAt      DateTime           @updatedAt
   transactions   StockTransaction[]
-  item           Item               @relation(fields: [itemId, organizationId], references: [id, organizationId])
+  item           Item               @relation(fields: [itemId, organizationId], references: [id, organizationId], onDelete: Cascade)
   location       Location?          @relation(fields: [locationId, organizationId], references: [id, organizationId])
   organizationId String
   organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)

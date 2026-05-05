@@ -60,7 +60,7 @@ export async function getAllAssets({
   pageSize,
   departmentId,
   condition,
-  search
+  search,
 }: AssetArgs) {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized");
@@ -301,12 +301,12 @@ export async function createAsset(formData: FormData) {
         vendorName: formData.get("vendorName")?.toString() || null,
         ...(formData.get("assetSubClusterId")?.toString()
           ? {
-            assetSubClusters: {
-              connect: [
-                { id: formData.get("assetSubClusterId")!.toString() },
-              ],
-            },
-          }
+              assetSubClusters: {
+                connect: [
+                  { id: formData.get("assetSubClusterId")!.toString() },
+                ],
+              },
+            }
           : {}),
         garansi_exp: parseDateOrNull("garansi_exp"),
         photoUrl,
@@ -402,11 +402,11 @@ export async function updateAsset(id: string, formData: FormData) {
   const assetSubClusterId = formData.get("assetSubClusterId")?.toString();
   const subClusterUpdateObj = assetSubClusterId
     ? {
-      assetSubClusters: {
-        set: [], // Hapus relasi lama
-        connect: [{ id: assetSubClusterId }], // Hubungkan yang baru
-      },
-    }
+        assetSubClusters: {
+          set: [], // Hapus relasi lama
+          connect: [{ id: assetSubClusterId }], // Hubungkan yang baru
+        },
+      }
     : {};
 
   const updated = await prisma.$transaction(async (tx) => {
@@ -1123,8 +1123,8 @@ export async function generateAssetCode(
 
   const subCluster = subClusterId
     ? await prisma.assetSubCluster.findUnique({
-      where: { id: subClusterId },
-    })
+        where: { id: subClusterId },
+      })
     : null;
 
   if (!group || !category || !cluster) {
@@ -1182,11 +1182,18 @@ export async function importAssetExcel(
 
   const workbook = XLSX.read(buffer, { type: "buffer", cellDates: true });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false }) as any[][];
+  const rows = XLSX.utils.sheet_to_json(sheet, {
+    header: 1,
+    raw: false,
+  }) as any[][];
 
   // 1. CARI BARIS AWAL TABLE
   const startIdx = rows.findIndex((r) =>
-    r.some(cell => String(cell).toLowerCase().includes("unit") || String(cell).toLowerCase().includes("kode asset"))
+    r.some(
+      (cell) =>
+        String(cell).toLowerCase().includes("unit") ||
+        String(cell).toLowerCase().includes("kode asset"),
+    ),
   );
   if (startIdx === -1) throw new Error("Format Excel tidak dikenali");
 
@@ -1232,7 +1239,11 @@ export async function importAssetExcel(
   // 4. PRE-FETCH DEPARTEMEN
   const allDepartments = await prisma.department.findMany({
     where: { organization_id: organizationId, deleted_at: null },
-    select: { id_department: true, nama_department: true, kode_department: true }
+    select: {
+      id_department: true,
+      nama_department: true,
+      kode_department: true,
+    },
   });
 
   const results = { success: 0, failed: 0, errors: [] as string[] };
@@ -1244,13 +1255,15 @@ export async function importAssetExcel(
 
     try {
       await prisma.$transaction(async (tx) => {
-
         // --- A. TANGGAL PENGADAAN ---
         let purchaseDate = null;
         if (col.tgl !== -1 && row[col.tgl]) {
           const tglValue = row[col.tgl];
           if (tglValue instanceof Date) purchaseDate = tglValue;
-          else if (typeof tglValue === "number") purchaseDate = new Date(Math.round((tglValue - 25569) * 86400 * 1000));
+          else if (typeof tglValue === "number")
+            purchaseDate = new Date(
+              Math.round((tglValue - 25569) * 86400 * 1000),
+            );
           else {
             const parsedDate = new Date(tglValue);
             if (!isNaN(parsedDate.getTime())) purchaseDate = parsedDate;
@@ -1260,13 +1273,15 @@ export async function importAssetExcel(
         // --- B. LOKASI (Area & Lantai Digabung) ---
         let locationId = null;
         let locationParts = [];
-        if (col.lantai !== -1 && row[col.lantai]) locationParts.push(String(row[col.lantai]).trim());
-        if (col.area !== -1 && row[col.area]) locationParts.push(String(row[col.area]).trim());
+        if (col.lantai !== -1 && row[col.lantai])
+          locationParts.push(String(row[col.lantai]).trim());
+        if (col.area !== -1 && row[col.area])
+          locationParts.push(String(row[col.area]).trim());
 
         if (locationParts.length > 0) {
           const locName = locationParts.join(" - ");
           let existingLoc = await tx.location.findFirst({
-            where: { name: locName, organizationId }
+            where: { name: locName, organizationId },
           });
 
           if (existingLoc) {
@@ -1294,10 +1309,11 @@ export async function importAssetExcel(
           const excelDeptClean = rawPicValue.toLowerCase();
 
           // Cari apakah nama/kode tersebut ada di tabel Departemen
-          const existingDept = allDepartments.find(d =>
-            d.nama_department.toLowerCase() === excelDeptClean ||
-            d.kode_department.toLowerCase() === excelDeptClean ||
-            d.nama_department.toLowerCase().includes(excelDeptClean)
+          const existingDept = allDepartments.find(
+            (d) =>
+              d.nama_department.toLowerCase() === excelDeptClean ||
+              d.kode_department.toLowerCase() === excelDeptClean ||
+              d.nama_department.toLowerCase().includes(excelDeptClean),
           );
 
           if (existingDept) {
@@ -1313,12 +1329,17 @@ export async function importAssetExcel(
         // --- E. KONDISI (Berdasarkan Kolom Baik/Rusak) ---
         let condition = "BAIK"; // Default
         // Jika kolom 'rusak' ada isinya (misal dicentang, atau ditulis 'rusak', atau 'v')
-        if (col.rusak !== -1 && row[col.rusak] && String(row[col.rusak]).trim() !== "") {
+        if (
+          col.rusak !== -1 &&
+          row[col.rusak] &&
+          String(row[col.rusak]).trim() !== ""
+        ) {
           condition = "RUSAK";
         }
 
         // --- F. PARENT ITEM ---
-        const modelName = col.model !== -1 ? String(row[col.model] || "").trim() : "";
+        const modelName =
+          col.model !== -1 ? String(row[col.model] || "").trim() : "";
         let item = await tx.item.findFirst({
           where: { name: String(unitName), organizationId },
         });
@@ -1340,7 +1361,8 @@ export async function importAssetExcel(
             itemId: item.id,
             organizationId,
             kode_asset: col.kode !== -1 ? String(row[col.kode] || "") : null,
-            serialNumber: col.sn !== -1 ? String(row[col.sn] || "").trim() : null,
+            serialNumber:
+              col.sn !== -1 ? String(row[col.sn] || "").trim() : null,
             model: modelName,
 
             departmentId: finalDepartmentId, // Akan terisi jika itu departemen
@@ -1366,55 +1388,24 @@ export async function importAssetExcel(
 
   return results;
 }
-// LINK Banned User 
-export async function bannedUser(id: string, data: BanUserInput) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-  if (!session) throw new Error('Unauthorized');
-  const parsedData = banUserSchema.safeParse(data);
-  if (!parsedData.success) {
-    return {
-      error: "Data tidak valid",
-      details: parsedData.error
-    };
-  }
-  const { banReason, banExpiresInDays } = parsedData.data
-  // Konversi hari ke detik (Better Auth meminta format detik)
-  // 60 detik * 60 menit * 24 jam * jumlah hari
-  const banExpiresIn = banExpiresInDays
-    ? 60 * 60 * 24 * banExpiresInDays
-    : undefined;
-  try {
-    await auth.api.banUser({
-      body: {
-        userId: id,
-        banReason: banReason,
-        banExpiresIn: banExpiresIn,
-      },
-      headers: await headers(),
-    })
-    revalidatePath(`/users`);
-    return { success: true, message: "User berhasil dibanned." };
-  } catch (error: any) {
-    console.error("Ban User Error:", error);
-    return { error: error?.message || "Terjadi kesalahan saat mem-banned user." };
-  }
+// LINK Multi Delete Asset
+export async function deleteManyAsset(ids: string[]) {
+  const session = await getServerSession();
+  if (!session) return { success: false, message: "Unauthorized" };
+  const organizationId = session.session.activeOrganizationId;
+  if (!organizationId) return { success: false, message: "Unauthorized" };
 
-}
-// LINK Unbanned User
-export async function unbanUser(id: string) {
   try {
-    await auth.api.unbanUser({
-      body: {
-        userId: id,
+    const deletedAsset = await prisma.asset.deleteMany({
+      where: {
+        id: { in: ids },
+        organizationId: organizationId,
       },
-      headers: await headers(),
-    })
-    revalidatePath(`/users`);
-    return { success: true, message: "User berhasil di-unbanned." };
-  } catch (error: any) {
-    console.error("Unban User Error:", error);
-    return { error: error?.message || "Terjadi kesalahan saat meng-unbanned user." };
+    });
+    revalidatePath("/assets");
+    return deletedAsset;
+  } catch (error) {
+    console.error("Error deleting assets:", error);
+    return { success: false, message: "Failed to delete assets" };
   }
 }

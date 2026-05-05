@@ -11,6 +11,7 @@ import { useDialog } from "@/context/dialog-provider";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useActiveMemberRole } from "@/hooks/use-active-member";
+import { ItemBulkAction } from "./item-bulk-action";
 
 export default function ItemTable() {
   const { setOpen } = useDialog();
@@ -39,15 +40,15 @@ export default function ItemTable() {
        FILTER CONFIG
     ======================= */
   const filters = useMemo(() => {
-    if (role !== "owner" && role !== "staff_asset" as any) return [];
+    if (role !== "owner" && role !== ("staff_asset" as any)) return [];
 
     return [
       {
-        columnId: 'assetType',
-        title: 'Tipe Aset',
+        columnId: "assetType",
+        title: "Tipe Aset",
         options: [
-          { label: 'Fixed Asset', value: 'FIXED' },
-          { label: 'Supply Asset', value: 'SUPPLY' },
+          { label: "Fixed Asset", value: "FIXED" },
+          { label: "Supply Asset", value: "SUPPLY" },
         ],
       },
     ];
@@ -69,7 +70,7 @@ export default function ItemTable() {
       </DataTableToolbar>
 
       <DataTable table={table} loading={isLoading} />
-
+      <ItemBulkAction table={table} />
       <DataTablePagination table={table} pageCount={data?.pageCount ?? 0} />
     </div>
   );

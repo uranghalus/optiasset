@@ -1,7 +1,7 @@
 "use client";
 import { useDialog } from "@/context/dialog-provider";
 import React from "react";
-import { AssetActionDialog } from "./asset-action-dialog";
+
 import { Asset } from "@/generated/prisma/client";
 import { AssetDeleteDialog } from "./asset-delete-dialog";
 import { AssetQRDialog } from "./asset-qr-dialog";
@@ -17,11 +17,6 @@ export default function AssetDialogs() {
   const { currentRow, open, setCurrentRow, setOpen } = useDialog();
   return (
     <>
-      <AssetActionDialog
-        key="asset-add"
-        open={open === "add"}
-        onOpenChange={() => setOpen("add")}
-      />
       <ImportAssetDialog
         key="asset-import"
         open={open === "import"}
@@ -31,15 +26,6 @@ export default function AssetDialogs() {
       <AssetPrintDialog />
       {currentRow && (
         <>
-          <AssetActionDialog
-            key={`asset-edit-${(currentRow as Asset).id}`}
-            open={open === "edit"}
-            currentRow={currentRow as Asset}
-            onOpenChange={() => {
-              setOpen("edit");
-              setCurrentRow(undefined);
-            }}
-          />
           <AssetAssignDialog
             key={`asset-assign-${(currentRow as Asset).id}`}
             open={open === "assign"}

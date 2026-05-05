@@ -36,6 +36,7 @@ import {
 import { usePermission } from "@/hooks/use-permission";
 import { useDepartmentsForSelect } from "@/hooks/crud/use-divisi";
 import Link from "next/link";
+import { AssetBulkAction } from "./asset-bulk-action";
 
 export default function AssetTable() {
   const { setOpen } = useDialog();
@@ -50,7 +51,8 @@ export default function AssetTable() {
   });
   const [columnFilters, setColumnFilters] = useState<any[]>([]);
   // Ambil nilai search dari columnFilters (asumsi searchKey="kode_asset")
-  const searchValue = columnFilters.find((f) => f.id === "kode_asset")?.value as string;
+  const searchValue = columnFilters.find((f) => f.id === "kode_asset")
+    ?.value as string;
   const selectedDept = columnFilters.find((f) => f.id === "departmentId")
     ?.value as string[] | undefined;
 
@@ -188,7 +190,7 @@ export default function AssetTable() {
       </DataTableToolbar>
 
       <DataTable table={table} loading={isLoading} />
-
+      <AssetBulkAction table={table} />
       <DataTablePagination table={table} pageCount={data?.pageCount ?? 0} />
     </div>
   );

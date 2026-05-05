@@ -1,38 +1,41 @@
-'use client';
+"use client";
 
 // IMPORT TOAST LIBRARY ANDA DI SINI
-import { toast } from 'sonner'; // sesuaikan jika menggunakan react-hot-toast
+import { toast } from "sonner"; // sesuaikan jika menggunakan react-hot-toast
 
-import { bannedUser, unbanUser } from '@/action/asset-action';
 import {
   createUserAction,
+  deleteManyUser,
   deleteUserAction,
   getAllUsers,
   getUsersByDepartmentForSelect,
+  unbanManyUser,
   updateUserAction,
-} from '@/action/user-action';
-import { BanUserInput } from '@/schema/user-schema';
+  bannedUser,
+  unbanUser,
+} from "@/action/user-action";
+import { BanUserInput } from "@/schema/user-schema";
 
 import {
   keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
-} from '@tanstack/react-query';
+} from "@tanstack/react-query";
 
 /* =========================
    QUERY KEYS
 ========================= */
 
 export const userKeys = {
-  all: ['users'] as const,
+  all: ["users"] as const,
 
-  lists: () => [...userKeys.all, 'list'] as const,
+  lists: () => [...userKeys.all, "list"] as const,
 
   list: (params: { page: number; limit: number; search?: string }) =>
     [...userKeys.lists(), params] as const,
 
-  departments: () => ['users-by-department'] as const,
+  departments: () => ["users-by-department"] as const,
 
   department: (departmentId: string) =>
     [...userKeys.departments(), departmentId] as const,
@@ -97,7 +100,7 @@ export function useUsersByDepartment(departmentId?: string) {
   return useQuery({
     queryKey: departmentId
       ? userKeys.department(departmentId)
-      : ['users-by-department-empty'],
+      : ["users-by-department-empty"],
 
     queryFn: () => getUsersByDepartmentForSelect(departmentId!),
 
@@ -123,9 +126,9 @@ export function useCreateUser() {
       });
 
       return toast.promise(promise, {
-        loading: 'Creating user...',
-        success: (data: any) => data?.message || 'User has been created',
-        error: (err) => err.message || 'Error creating user',
+        loading: "Creating user...",
+        success: (data: any) => data?.message || "User has been created",
+        error: (err) => err.message || "Error creating user",
       });
     },
 
@@ -149,16 +152,22 @@ export function useUpdateUser() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, formData }: { id: string; formData: FormData }) => {
+    mutationFn: async ({
+      id,
+      formData,
+    }: {
+      id: string;
+      formData: FormData;
+    }) => {
       const promise = updateUserAction(id, formData).then((res: any) => {
         if (res?.error) throw new Error(res.error);
         return res;
       });
 
       return toast.promise(promise, {
-        loading: 'Updating user...',
-        success: (data: any) => data?.message || 'User has been updated',
-        error: (err) => err.message || 'Error updating user',
+        loading: "Updating user...",
+        success: (data: any) => data?.message || "User has been updated",
+        error: (err) => err.message || "Error updating user",
       });
     },
 
@@ -189,9 +198,9 @@ export function useDeleteUser() {
       });
 
       return toast.promise(promise, {
-        loading: 'Deleting user...',
-        success: (data: any) => data?.message || 'User has been deleted',
-        error: (err) => err.message || 'Error deleting user',
+        loading: "Deleting user...",
+        success: (data: any) => data?.message || "User has been deleted",
+        error: (err) => err.message || "Error deleting user",
       });
     },
 
@@ -224,9 +233,9 @@ export function useBanUser() {
 
       // 1. Panggil toast.promise tanpa me-return nilainya ke mutationFn
       toast.promise(promise, {
-        loading: 'Banning user...',
-        success: (data: any) => data?.message || 'User has been banned',
-        error: (err) => err.message || 'Error banning user',
+        loading: "Banning user...",
+        success: (data: any) => data?.message || "User has been banned",
+        error: (err) => err.message || "Error banning user",
       });
 
       // 2. Return promise aslinya agar React Query bisa mendeteksi status sukses/error
@@ -256,9 +265,9 @@ export function useUnbanUser() {
       });
 
       return toast.promise(promise, {
-        loading: 'Unbanning user...',
-        success: (data: any) => data?.message || 'User has been unbanned',
-        error: (err) => err.message || 'Error unbanning user',
+        loading: "Unbanning user...",
+        success: (data: any) => data?.message || "User has been unbanned",
+        error: (err) => err.message || "Error unbanning user",
       });
     },
 
@@ -270,4 +279,62 @@ export function useUnbanUser() {
   });
 }
 
+// LINK multi delete User
+export function useDeleteManyUser() {
+  const queryClient = useQueryClient();
 
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const promise = deleteManyUser(ids).then((res: any) => {
+        if (res?.error) throw new Error(res.error);
+        return res;
+      });
+
+      return toast.promise(promise, {
+        loading: "Deleting users...",
+        success: (data: any) => data?.message || "Users have been deleted",
+        error: (err) => err.message || "Error deleting users",
+      });
+    },
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: userKeys.all,
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: userKeys.departments(),
+      });
+    },
+  });
+}
+
+// LINK multi unban User
+export function useUnbanManyUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const promise = unbanManyUser(ids).then((res: any) => {
+        if (res?.error) throw new Error(res.error);
+        return res;
+      });
+
+      return toast.promise(promise, {
+        loading: "Unbanning users...",
+        success: (data: any) => data?.message || "Users have been unbanned",
+        error: (err) => err.message || "Error unbanning users",
+      });
+    },
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: userKeys.all,
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: userKeys.departments(),
+      });
+    },
+  });
+}

@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { User } from "@/generated/prisma/client";
 import { useDebounce } from "@/hooks/use-debounce";
+import UserBulkAction from "./user-bulk-action";
 export type UserWithRole = {
   id: string;
   name: string;
@@ -83,6 +84,7 @@ export default function UsersTable() {
         table={table}
         pageCount={data?.pagination.totalPages ?? 0}
       />
+      <UserBulkAction table={table} />
     </div>
   );
 }

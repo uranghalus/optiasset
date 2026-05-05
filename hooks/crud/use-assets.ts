@@ -1,6 +1,7 @@
 import {
   createAsset,
   deleteAsset,
+  deleteManyAsset,
   exportAssetPDF,
   generateAssetCode,
   getAllAssets,
@@ -267,6 +268,36 @@ export function useImportAsset() {
         id: "import-asset-toast",
         description:
           error?.message || "Terjadi kesalahan format Excel atau sistem.",
+      });
+    },
+  });
+}
+// LINK Multi Delete Asset
+export function useDeleteManyAsset() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => deleteManyAsset(ids),
+    onMutate: () => {
+      // Munculkan toast loading dengan ID khusus
+      toast.loading("Menghapus data aset...", {
+        id: "delete-many-asset-toast",
+        description: "Proses penghapusan sedang berlangsung.",
+      });
+    },
+    onSuccess: () => {
+      // Timpa loading menjadi success menggunakan ID yang sama
+      toast.success("Berhasil!", {
+        id: "delete-many-asset-toast",
+        description: "Data aset berhasil dihapus.",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
+    },
+    onError: (error: any) => {
+      // Timpa loading menjadi error menggunakan ID yang sama
+      toast.error("Gagal menghapus data", {
+        id: "delete-many-asset-toast",
+        description: error?.message || "Terjadi kesalahan yang tidak terduga.",
       });
     },
   });

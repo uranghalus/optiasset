@@ -25,7 +25,7 @@ export default function UserBulkAction<TData>({ table }: Props<TData>) {
 
   const handleOpenDelete = () => {
     if (selectedUsers.length === 0) return;
-    setOpen("delete");
+    setOpen("delete-users");
   };
   const handleOpenBan = () => {
     if (selectedUsers.length === 0) return;
@@ -96,8 +96,8 @@ export default function UserBulkAction<TData>({ table }: Props<TData>) {
         table={table}
       />
       <UsersMultiDeleteDialog
-        open={open === "delete"}
-        onOpenChange={(value) => setOpen("delete")}
+        open={open === "delete-users"}
+        onOpenChange={(value) => setOpen("delete-users")}
         table={table}
       />
     </>

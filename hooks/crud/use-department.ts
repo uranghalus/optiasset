@@ -2,6 +2,7 @@ import {
   createDepartment,
   deleteDepartment,
   getAllDepartments,
+  selectDepartment,
   updateDepartment,
 } from "@/action/department-action";
 import { PaginationState } from "@/types";
@@ -21,7 +22,9 @@ export function useCreateDepartment() {
   return useMutation({
     mutationFn: (formData: FormData) => createDepartment(formData),
     onSuccess: () => {
+      // PANGGIL DUA KALI UNTUK KEY YANG BERBEDA
       queryClient.invalidateQueries({ queryKey: ["departments"] });
+      queryClient.invalidateQueries({ queryKey: ["departments-select"] });
     },
   });
 }
@@ -34,9 +37,9 @@ export function useUpdateDepartment() {
     mutationFn: ({ id, formData }: { id: string; formData: FormData }) =>
       updateDepartment(id, formData),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["departments"],
-      });
+      // PANGGIL DUA KALI UNTUK KEY YANG BERBEDA
+      queryClient.invalidateQueries({ queryKey: ["departments"] });
+      queryClient.invalidateQueries({ queryKey: ["departments-select"] });
     },
   });
 }
@@ -48,9 +51,17 @@ export function useDeleteDepartment() {
   return useMutation({
     mutationFn: (id: string) => deleteDepartment(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["departments"],
-      });
+      // PANGGIL DUA KALI UNTUK KEY YANG BERBEDA
+      queryClient.invalidateQueries({ queryKey: ["departments"] });
+      queryClient.invalidateQueries({ queryKey: ["departments-select"] });
     },
+  });
+}
+
+// Select Department
+export function useSelectDepartment() {
+  return useQuery({
+    queryKey: ["departments-select"],
+    queryFn: () => selectDepartment(),
   });
 }

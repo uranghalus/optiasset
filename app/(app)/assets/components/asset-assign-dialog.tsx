@@ -25,8 +25,6 @@ import {
 
 import { Asset } from "@/generated/prisma/client";
 
-import { useDepartmentsForSelect }
-    from "@/hooks/crud/use-divisi";
 
 import {
     useUsersByDepartment
@@ -37,6 +35,7 @@ import {
     AssignSchema
 } from "@/schema/assign-schema";
 import { useAssignAsset } from "@/hooks/crud/use-asset-loans";
+import { useSelectDepartment } from "@/hooks/crud/use-department";
 
 type Props = {
     open: boolean;
@@ -66,7 +65,7 @@ export default function AssetAssignDialog({
     const {
         data: departments = [],
         isLoading: isDeptLoading
-    } = useDepartmentsForSelect();
+    } = useSelectDepartment();
 
     const {
         data: users = [],

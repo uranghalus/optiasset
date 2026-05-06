@@ -2,7 +2,6 @@ import {
   createDivisi,
   deleteDivisi,
   getAllDivisi,
-  getDepartmentsForSelect,
   updateDivisi,
 } from "@/action/divisi-action";
 import { PaginationState } from "@/types";
@@ -16,13 +15,6 @@ export function useDivisi({ page, pageSize }: PaginationState) {
   });
 }
 
-// Get departments for select dropdown
-export function useDepartmentsForSelect() {
-  return useQuery({
-    queryKey: ["departments-for-select"],
-    queryFn: () => getDepartmentsForSelect(),
-  });
-}
 
 // Create divisi
 export function useCreateDivisi() {

@@ -34,16 +34,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { usePermission } from "@/hooks/use-permission";
-import { useDepartmentsForSelect } from "@/hooks/crud/use-divisi";
 import Link from "next/link";
 import { AssetBulkAction } from "./asset-bulk-action";
+import { useSelectDepartment } from "@/hooks/crud/use-department";
 
 export default function AssetTable() {
   const { setOpen } = useDialog();
   const { can } = usePermission();
   const [search, setSearch] = useState("");
   const { data: role } = useActiveMemberRole();
-  const { data: departments = [] } = useDepartmentsForSelect();
+  const { data: departments = [] } = useSelectDepartment();
 
   const [pagination, setPagination] = useState({
     pageIndex: 0,

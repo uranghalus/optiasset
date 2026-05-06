@@ -7,7 +7,6 @@ import {
   useItemsForSelect,
   useLocationsForSelect,
 } from "@/hooks/crud/use-assets";
-import { useDepartmentsForSelect } from "@/hooks/crud/use-divisi";
 import {
   useAssetGroupsForSelect,
   useCategoriesByGroup,
@@ -35,6 +34,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { AssetType } from "@/generated/prisma/client";
 import { Camera, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useSelectDepartment } from "@/hooks/crud/use-department";
 
 export default function AssetAddForm() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -45,7 +45,7 @@ export default function AssetAddForm() {
   const { canView, isReadonly } = getAssetFormAccess(role);
   const { data: items } = useItemsForSelect();
   const { data: locations } = useLocationsForSelect();
-  const { data: dept } = useDepartmentsForSelect();
+  const { data: dept } = useSelectDepartment();
 
   // LINK Inisialisasi Form
   const form = useForm<AssetForm>({

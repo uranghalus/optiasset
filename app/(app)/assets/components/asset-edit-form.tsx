@@ -17,7 +17,6 @@ import {
   useAssetById,
   useUpdateAsset,
 } from "@/hooks/crud/use-assets";
-import { useDepartmentsForSelect } from "@/hooks/crud/use-divisi";
 import {
   useAssetGroupsForSelect,
   useCategoriesByGroup,
@@ -39,6 +38,7 @@ import { Field, FieldLabel, FieldError } from "@/components/ui/field";
 import { Combobox } from "@/components/ui/combobox";
 import { authClient } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
+import { useSelectDepartment } from "@/hooks/crud/use-department";
 
 export default function AssetEditForm({ assetId }: { assetId: string }) {
   const { data: session } = authClient.useSession();
@@ -57,7 +57,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
   // Fetching Data Pendukung
   const { data: items } = useItemsForSelect();
   const { data: locations } = useLocationsForSelect();
-  const { data: dept } = useDepartmentsForSelect();
+  const { data: dept } = useSelectDepartment();
 
   // Fetching Data Asset
   const { data: assetData, isLoading: isFetching } = useAssetById({

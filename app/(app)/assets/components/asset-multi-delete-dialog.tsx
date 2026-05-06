@@ -78,7 +78,7 @@ export function AssetMultiDeleteDialog<TData>({
         // Ganti <form> menjadi <div> karena submit diatur oleh handleConfirm
         <div className="space-y-4">
           <p className="mb-2">
-            Are you sure you want to delete the selected users? <br />
+            Are you sure you want to delete the selected assets? <br />
             This action cannot be undone.
           </p>
 

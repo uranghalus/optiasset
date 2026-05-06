@@ -33,10 +33,10 @@ import {
 import { divisi } from "@/generated/prisma/client";
 import {
   useCreateDivisi,
-  useDepartmentsForSelect,
   useUpdateDivisi,
 } from "@/hooks/crud/use-divisi";
 import { DivisiForm, DivisiFormSchema } from "@/schema/divisi-schema";
+import { useSelectDepartment } from "@/hooks/crud/use-department";
 
 type Props = {
   open: boolean;
@@ -49,7 +49,7 @@ export function DivisiActionDialog({ open, onOpenChange, currentRow }: Props) {
 
   const createMutation = useCreateDivisi();
   const updateMutation = useUpdateDivisi();
-  const { data: departments } = useDepartmentsForSelect();
+  const { data: departments } = useSelectDepartment();
 
   const form = useForm<DivisiForm>({
     resolver: zodResolver(DivisiFormSchema),

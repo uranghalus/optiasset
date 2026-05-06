@@ -8,7 +8,6 @@ import {
 } from '@/action/asset-loan-action';
 import { getUsersForSelect } from '@/action/user-action';
 import {
-  getDepartmentsForAssetSelect,
   getAvailableAssetsForLoanSelect,
   assignAssetAction,
 } from '@/action/asset-action';
@@ -113,13 +112,6 @@ export function useUsersForSelect() {
   });
 }
 
-// Get departments for loan
-export function useLoanDepartments() {
-  return useQuery({
-    queryKey: ['loan-departments'],
-    queryFn: () => getDepartmentsForAssetSelect(),
-  });
-}
 
 // Get divisis by department
 export function useLoanDivisis(departmentId?: string) {

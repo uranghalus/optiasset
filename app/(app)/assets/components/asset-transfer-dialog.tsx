@@ -33,12 +33,13 @@ import {
 } from "@/hooks/crud/use-asset-transfers";
 import {
   useLocationsForSelect,
-  useDepartmentsForAssetSelect,
+
 } from "@/hooks/crud/use-assets";
 import {
   AssetTransferForm,
   AssetTransferSchema,
 } from "@/schema/asset-transfer-schema";
+import { useSelectDepartment } from "@/hooks/crud/use-department";
 
 type AssetWithItem = Asset & {
   item: {
@@ -56,7 +57,7 @@ type Props = {
 export function AssetTransferDialog({ open, onOpenChange, asset }: Props) {
   const transferMutation = useTransferAsset();
   const { data: locations } = useLocationsForSelect();
-  const { data: departments } = useDepartmentsForAssetSelect();
+  const { data: departments } = useSelectDepartment();
 
   const form = useForm<AssetTransferForm>({
     resolver: zodResolver(AssetTransferSchema),

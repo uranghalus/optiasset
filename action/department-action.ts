@@ -155,3 +155,28 @@ export async function deleteDepartment(id: string) {
   revalidatePath('/assets/departments');
   return department;
 }
+// Select Departemen
+export async function selectDepartment() {
+  const session = await getServerSession();
+  if (!session) throw new Error('Unauthorized');
+
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error('No active organization');
+
+  const departments = await prisma.department.findMany({
+    where: {
+      organization_id: activeOrgId,
+      deleted_at: null,
+    },
+    select: {
+      id_department: true,
+      kode_department: true,
+      nama_department: true,
+    },
+    orderBy: {
+      nama_department: 'asc',
+    },
+  });
+  revalidatePath('/assets/departments');
+  return departments;
+}

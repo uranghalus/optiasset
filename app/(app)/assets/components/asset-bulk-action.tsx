@@ -24,7 +24,7 @@ export function AssetBulkAction<TData>({ table }: AssetBulkActionProps<TData>) {
 
   const handleOpenDelete = () => {
     if (selectedAssets.length === 0) return;
-    setOpen("delete");
+    setOpen("delete-assets");
   };
   return (
     <>
@@ -45,8 +45,8 @@ export function AssetBulkAction<TData>({ table }: AssetBulkActionProps<TData>) {
         </Tooltip>
       </DataTableBulkActions>
       <AssetMultiDeleteDialog
-        open={open === "delete"}
-        onOpenChange={(value) => setOpen("delete")}
+        open={open === "delete-assets"}
+        onOpenChange={(value) => setOpen("delete-assets")}
         table={table}
       />
     </>

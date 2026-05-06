@@ -6,7 +6,6 @@ import {
   generateAssetCode,
   getAllAssets,
   getAssetById,
-  getDepartmentsForAssetSelect,
   getItemsForSelect,
   getLocationsForSelect,
   importAssetExcel,
@@ -73,13 +72,6 @@ export function useLocationsForSelect() {
   });
 }
 
-// Get departments for select
-export function useDepartmentsForAssetSelect() {
-  return useQuery({
-    queryKey: ["departments-for-asset-select"],
-    queryFn: () => getDepartmentsForAssetSelect(),
-  });
-}
 
 // Create asset
 export function useCreateAsset() {

@@ -28,11 +28,11 @@ import {
 import { Field, FieldLabel, FieldError } from "@/components/ui/field";
 import {
   useRequestLoan,
-  useLoanDepartments,
   useLoanDivisis,
   useAvailableLoanAssets,
   useUsersForSelect,
 } from "@/hooks/crud/use-asset-loans";
+import { useSelectDepartment } from "@/hooks/crud/use-department";
 
 const RequestSchema = z.object({
   departmentId: z.string().min(1, "Departemen tujuan diperlukan"),
@@ -53,7 +53,7 @@ type Props = {
 export function LoanRequestDialog({ open, onOpenChange }: Props) {
   const loanMutation = useRequestLoan();
   const { data: users } = useUsersForSelect();
-  const { data: depts } = useLoanDepartments();
+  const { data: depts } = useSelectDepartment();
 
   const form = useForm<RequestForm>({
     resolver: zodResolver(RequestSchema),

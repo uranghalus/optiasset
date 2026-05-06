@@ -83,9 +83,12 @@ export const Combobox = <T extends object>({
 
   // 🔥 reset saat search berubah
   useEffect(() => {
-    setCanLoadMore(true);
-    getOptions();
-  }, [getOptions]);
+    // Hanya fetch data jika Popover sedang terbuka
+    if (open) {
+      setCanLoadMore(true);
+      getOptions();
+    }
+  }, [getOptions, open]);
 
   // 🔥 ensure selected value masuk options
   useEffect(() => {

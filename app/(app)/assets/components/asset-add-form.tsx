@@ -76,32 +76,6 @@ export default function AssetAddForm() {
     },
   });
 
-  const setDefaultAssetFormValues = () => {
-    form.reset({
-      itemId: "",
-      purchaseDate: format(new Date(), "yyyy-MM-dd"),
-      purchasePrice: "",
-      condition: "GOOD",
-      warrantyExpire: "",
-      locationId: "",
-      departmentId: "",
-      brand: "",
-      model: "",
-      partNumber: "",
-      notes: "",
-      kode_asset: "",
-      vendorName: "",
-      garansi_exp: "",
-      document_number: "",
-      no_spb: "",
-      serialNumber: "",
-      photo: null,
-    });
-
-    setImagePreview(null);
-    setImageError(null);
-  };
-
   // LINK Klasifikasi Asset
   const selectedGroup = form.watch("assetGroupId");
   const selectedCategory = form.watch("assetCategoryId");
@@ -585,6 +559,7 @@ export default function AssetAddForm() {
                       id_department: string;
                       nama_department: string;
                     }>
+                      key={`dept-combo-${dept?.length || 0}`}
                       title="Cari Departemen"
                       valueKey="id_department"
                       value={dept?.find(

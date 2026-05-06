@@ -257,3 +257,99 @@
 .sticky.right-0 {
   box-shadow: -8px 0 8px -8px rgba(0, 0, 0, 0.15);
 }
+/* ─── Color Themes ─────────────────────────────────────────────────────────── */
+
+/* Blue */
+.theme-blue {
+  --primary: oklch(0.5465 0.2147 262.8809);
+  --primary-foreground: oklch(1 0 0);
+  --ring: oklch(0.5465 0.2147 262.8809);
+  --sidebar-primary: oklch(0.5465 0.2147 262.8809);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-ring: oklch(0.5465 0.2147 262.8809);
+}
+.dark.theme-blue,
+.dark .theme-blue {
+  --primary: oklch(0.6932 0.17 258.3269);
+  --primary-foreground: oklch(1 0 0);
+  --ring: oklch(0.6932 0.17 258.3269);
+  --sidebar-primary: oklch(0.6932 0.17 258.3269);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-ring: oklch(0.6932 0.17 258.3269);
+}
+
+/* Green */
+.theme-green {
+  --primary: oklch(0.527 0.1766 152.0631);
+  --primary-foreground: oklch(1 0 0);
+  --ring: oklch(0.527 0.1766 152.0631);
+  --sidebar-primary: oklch(0.527 0.1766 152.0631);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-ring: oklch(0.527 0.1766 152.0631);
+}
+.dark.theme-green,
+.dark .theme-green {
+  --primary: oklch(0.6961 0.1729 154.0027);
+  --primary-foreground: oklch(1 0 0);
+  --ring: oklch(0.6961 0.1729 154.0027);
+  --sidebar-primary: oklch(0.6961 0.1729 154.0027);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-ring: oklch(0.6961 0.1729 154.0027);
+}
+
+/* Red */
+.theme-red {
+  --primary: oklch(0.5768 0.233 27.3249);
+  --primary-foreground: oklch(1 0 0);
+  --ring: oklch(0.5768 0.233 27.3249);
+  --sidebar-primary: oklch(0.5768 0.233 27.3249);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-ring: oklch(0.5768 0.233 27.3249);
+}
+.dark.theme-red,
+.dark .theme-red {
+  --primary: oklch(0.7048 0.1915 27.3249);
+  --primary-foreground: oklch(1 0 0);
+  --ring: oklch(0.7048 0.1915 27.3249);
+  --sidebar-primary: oklch(0.7048 0.1915 27.3249);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-ring: oklch(0.7048 0.1915 27.3249);
+}
+
+/* Orange */
+.theme-orange {
+  --primary: oklch(0.6557 0.199 55.4069);
+  --primary-foreground: oklch(1 0 0);
+  --ring: oklch(0.6557 0.199 55.4069);
+  --sidebar-primary: oklch(0.6557 0.199 55.4069);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-ring: oklch(0.6557 0.199 55.4069);
+}
+.dark.theme-orange,
+.dark .theme-orange {
+  --primary: oklch(0.7649 0.1647 55.4069);
+  --primary-foreground: oklch(1 0 0);
+  --ring: oklch(0.7649 0.1647 55.4069);
+  --sidebar-primary: oklch(0.7649 0.1647 55.4069);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-ring: oklch(0.7649 0.1647 55.4069);
+}
+
+/* Zinc (default — no override needed, matches :root) */
+.theme-zinc {
+  --primary: oklch(0.2787 0.0584 249.9713);
+  --primary-foreground: oklch(0.9842 0.0034 247.8575);
+  --ring: oklch(0.6231 0.188 259.8145);
+  --sidebar-primary: oklch(0.2787 0.0584 249.9713);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-ring: oklch(0.2787 0.0584 249.9713);
+}
+.dark.theme-zinc,
+.dark .theme-zinc {
+  --primary: oklch(0.6231 0.188 259.8145);
+  --primary-foreground: oklch(1 0 0);
+  --ring: oklch(0.6231 0.188 259.8145);
+  --sidebar-primary: oklch(0.6231 0.188 259.8145);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-ring: oklch(0.6231 0.188 259.8145);
+}

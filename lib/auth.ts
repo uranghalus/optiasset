@@ -24,24 +24,10 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: false,
     autoSignIn: false,
-    sendResetPassword: async ({ user, url, token }, request) => {
-      await sendEmail(
-        user.email,
-        "Reset Password Anda",
-        `<p>Halo ${user.name},</p><p>Silakan klik link berikut untuk mereset password Anda: <a href="${url}">${url}</a></p>`,
-      );
-    },
   },
   emailVerification: {
     sendOnSignUp: true,
     autoSignInAfterVerification: true,
-    sendVerificationEmail: async ({ user, url, token }, request) => {
-      await sendEmail(
-        user.email,
-        "Verifikasi Email Anda",
-        `<p>Halo ${user.name},</p><p>Silakan klik link berikut untuk memverifikasi email Anda: <a href="${url}">${url}</a></p>`,
-      );
-    },
   },
   user: {
     changeEmail: {

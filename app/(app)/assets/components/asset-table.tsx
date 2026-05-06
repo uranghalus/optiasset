@@ -3,15 +3,12 @@
 
 import { useAssets } from "@/hooks/crud/use-assets";
 import { useActiveMemberRole } from "@/hooks/use-active-member";
-
 import { useState, useMemo, useEffect } from "react";
 import { assetColumn } from "./asset-column";
-
 import { useDataTable } from "@/hooks/use-data-table";
 import { DataTableToolbar } from "@/components/datatable/datatable-toolbar";
 import { DataTable } from "@/components/datatable/data-table";
 import { DataTablePagination } from "@/components/datatable/datatable-pagination";
-
 import { useDialog } from "@/context/dialog-provider";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,41 +29,49 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
 import { usePermission } from "@/hooks/use-permission";
 import Link from "next/link";
 import { AssetBulkAction } from "./asset-bulk-action";
 import { useSelectDepartment } from "@/hooks/crud/use-department";
+import { useDebounce } from "@/hooks/use-debounce";
 
 export default function AssetTable() {
   const { setOpen } = useDialog();
   const { can } = usePermission();
-  const [search, setSearch] = useState("");
   const { data: role } = useActiveMemberRole();
   const { data: departments = [] } = useSelectDepartment();
+
+  // ❌ HAPUS const [search, setSearch] = useState("");
+  // Karena kita sudah mengandalkan columnFilters dari useDataTable
 
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10,
   });
+
   const [columnFilters, setColumnFilters] = useState<any[]>([]);
-  // Ambil nilai search dari columnFilters (asumsi searchKey="kode_asset")
+
+  // ✅ Ambil nilai search langsung dari filter Datatable
+  // PENTING: Pastikan "kode_asset" benar-benar ada di asset-column.tsx
   const searchValue = columnFilters.find((f) => f.id === "kode_asset")
     ?.value as string;
   const selectedDept = columnFilters.find((f) => f.id === "departmentId")
     ?.value as string[] | undefined;
-
   const selectedCondition = columnFilters.find((f) => f.id === "condition")
     ?.value as string[] | undefined;
 
+  // 👇 1. Gunakan State Search Lokal & Debounce
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 500);
+
+  // 👇 2. Kirim debouncedSearch ke API
   const { data, isLoading } = useAssets({
     page: pagination.pageIndex + 1,
     pageSize: pagination.pageSize,
     departmentId: selectedDept,
     condition: selectedCondition,
-    search: searchValue, // ✅ kirim nilai search ke hook
+    search: debouncedSearch, // Kirim teks global ke server
   });
-
   /* =======================
      FILTER CONFIG
   ======================= */
@@ -99,34 +104,37 @@ export default function AssetTable() {
     data: data?.data ?? [],
     columns: assetColumn as any,
     columnResizeMode: "onEnd",
-    // Gunakan data dari server untuk sinkronisasi navigasi
     pageCount: data?.pageCount ?? 0,
     rowCount: data?.total ?? 0,
     manualPagination: true,
+    manualFilter: false,
     pagination,
     onPaginationChange: setPagination,
     columnFilters,
     onColumnFiltersChange: (updater) => {
       setColumnFilters(updater);
-      // 💡 RESET PAGINATION saat user mencari sesuatu
-      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+      // Pagination otomatis di-reset lewat useEffect di bawah
     },
   });
-  // Reset ke halaman 1 (index 0) setiap kali filter berubah
+
+  // Reset ke halaman 1 (index 0) setiap kali filter / pencarian berubah
   useEffect(() => {
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   }, [columnFilters]);
+
   return (
     <div className="p-3 rounded-md border space-y-4">
       <DataTableToolbar
         table={table}
-        searchKey="kode_asset"
-        searchPlaceholder="Cari by Kode Asset / Tag..."
-        filters={filters} // ✅ filter muncul lagi
+        searchPlaceholder="Cari Kode Aset, Merek, Item..."
+        filters={filters}
+        // 👇 3. Gunakan Props Custom Anda di sini
+        searchValue={search}
         onSearchChange={(value) => {
-          setSearch(value);
-          setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+          setSearch(value); // Update state pencarian
+          setPagination((prev) => ({ ...prev, pageIndex: 0 })); // Reset ke hal 1
         }}
+        // ❌ JANGAN gunakan searchKey="kode_asset" lagi
       >
         <div className="flex gap-2">
           {can("asset", ["create"]) && (
@@ -180,7 +188,6 @@ export default function AssetTable() {
                       Export Excel
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
-
                   <DropdownMenuSeparator />
                 </DropdownMenuContent>
               </DropdownMenu>

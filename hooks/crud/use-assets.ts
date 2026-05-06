@@ -21,10 +21,12 @@ export function useAssets({
   pageSize,
   condition,
   departmentId,
+  search,
 }: PaginationState) {
   return useQuery({
-    queryKey: ["assets", page, pageSize, condition, departmentId], // 🔥 TAMBAHKAN INI
-    queryFn: () => getAllAssets({ page, pageSize, condition, departmentId }),
+    queryKey: ["assets", page, pageSize, condition, departmentId, search],
+    queryFn: () =>
+      getAllAssets({ page, pageSize, condition, departmentId, search }),
   });
 }
 interface UseAssetByIdProps {
@@ -71,7 +73,6 @@ export function useLocationsForSelect() {
     queryFn: () => getLocationsForSelect(),
   });
 }
-
 
 // Create asset
 export function useCreateAsset() {

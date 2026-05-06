@@ -5,11 +5,11 @@ type BuildAssetFilterArgs = {
   filterDepartmentId?: string[];
   condition?: string[];
   organizationId: string;
-  search?: string;
+  search?: string; // ✅ Sudah ada di sini
 };
 
 export function isGlobalAccess(role?: string | null) {
-  return role === 'owner' || role === 'admin' || role === 'staff_asset';
+  return role === "owner" || role === "admin" || role === "staff_asset";
 }
 
 export function buildAssetFilter({
@@ -18,25 +18,26 @@ export function buildAssetFilter({
   filterDepartmentId,
   condition,
   organizationId,
-  search, // 👈 Tambahkan parameter ini
-}: BuildAssetFilterArgs & { search?: string }) { // Pastikan type args mendukung search
+  search,
+}: BuildAssetFilterArgs) {
+  // ✅ Tidak perlu ditambah & { search?: string } lagi
   const where: any = {
     organizationId,
   };
 
-  const isGlobal =
-    role === 'owner' || role === 'admin' || role === 'staff_asset';
+  const isGlobal = isGlobalAccess(role); // ✅ Bisa pakai fungsi yang sudah dibuat di atas
 
   // ✅ 1. SEARCH LOGIC (Global Search)
   if (search) {
     where.AND = [
       {
         OR: [
-          { kode_asset: { contains: search, mode: 'insensitive' } },
-          { brand: { contains: search, mode: 'insensitive' } },
-          { model: { contains: search, mode: 'insensitive' } },
+          // 👇 Hapus 'mode: "insensitive"' dari semua baris ini
+          { kode_asset: { contains: search } },
+          { brand: { contains: search } },
+          { model: { contains: search } },
           // Jika ingin search berdasarkan nama item (relasi)
-          { item: { name: { contains: search, mode: 'insensitive' } } },
+          { item: { name: { contains: search } } },
         ],
       },
     ];

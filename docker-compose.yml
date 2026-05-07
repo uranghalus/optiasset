@@ -12,15 +12,5 @@ services:
       - optiasset_db
     restart: always
 
-  optiasset_db:
-    container_name: optiasset_db
-    image: mysql:8.0
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: optiassets_db
-    volumes:
-      - optiasset_mysql_data:/var/lib/mysql
-    restart: always
-
 volumes:
   optiasset_mysql_data:

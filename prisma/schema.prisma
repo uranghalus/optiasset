@@ -456,19 +456,23 @@ model divisi {
 }
 
 model AssetHistory {
-  id             String        @id @default(uuid())
-  assetId        String?
-  asset_info     String?       @db.Text
-  userId         String
-  action         String        @db.VarChar(50)
-  field          String?       @db.VarChar(50)
-  oldValue       String?       @db.Text
-  newValue       String?       @db.Text
-  createdAt      DateTime      @default(now())
-  asset          Asset?        @relation(fields: [assetId, organizationId], references: [id, organizationId])
-  user           User          @relation(fields: [userId], references: [id])
-  organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id               String        @id @default(uuid())
+  assetId          String?
+  asset_info       String?       @db.Text
+  // 👇 TAMBAHKAN 3 KOLOM INI 👇
+  isAcknowledged   Boolean       @default(false)
+  acknowledgedAt   DateTime?
+  acknowledgedById String?
+  userId           String
+  action           String        @db.VarChar(50)
+  field            String?       @db.VarChar(50)
+  oldValue         String?       @db.Text
+  newValue         String?       @db.Text
+  createdAt        DateTime      @default(now())
+  asset            Asset?        @relation(fields: [assetId, organizationId], references: [id, organizationId])
+  user             User          @relation(fields: [userId], references: [id])
+  organizationId   String?
+  organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([assetId, organizationId])
   @@index([userId], map: "asset_history_userId_fkey")

@@ -42,7 +42,7 @@ export default function RootLayout({
       suppressHydrationWarning
       className={cn("h-full", "antialiased", geistSans.variable, geistMono.variable, "font-sans", inter.variable)}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col" suppressHydrationWarning={true}>
         <QueryProvider>
           <ThemeProvider>
             <ColorProvider>

@@ -9,37 +9,38 @@ datasource db {
 }
 
 model User {
-  id                     String          @id
-  name                   String          @db.Text
-  email                  String          @unique
-  emailVerified          Boolean         @default(false)
-  image                  String?         @db.Text
-  createdAt              DateTime        @default(now())
-  updatedAt              DateTime        @updatedAt
-  username               String?         @db.Text
-  displayUsername        String?         @db.Text
-  role                   String?         @db.Text
-  banned                 Boolean?        @default(false)
-  banReason              String?         @db.Text
-  banExpires             DateTime?
-  departmentId           String?
-  divisiId               String?
-  accounts               Account[]
-  assetHistory           AssetHistory[]
-  loansApproved          AssetLoan[]     @relation("approvedBy")
-  loansBorrowed          AssetLoan[]     @relation("borrower")
-  loansRequested         AssetLoan[]     @relation("requestedBy")
-  transfersApproved      AssetTransfer[] @relation("transferApprovedBy")
-  disposalsRequested     AssetDisposal[] @relation("DisposalRequestedBy")
-  disposalsSpvApproved   AssetDisposal[] @relation("DisposalSpvApprovedBy")
-  disposalsStaffApproved AssetDisposal[] @relation("DisposalStaffApprovedBy")
-  auditLogs              AuditLog[]
-  invitations            Invitation[]
-  members                Member[]
-  sessions               Session[]
-  teammember             teamMember[]
-  department             department?     @relation(fields: [departmentId], references: [id_department])
-  divisi                 divisi?         @relation(fields: [divisiId], references: [id_divisi])
+  id                       String          @id
+  name                     String          @db.Text
+  email                    String          @unique
+  emailVerified            Boolean         @default(false)
+  image                    String?         @db.Text
+  createdAt                DateTime        @default(now())
+  updatedAt                DateTime        @updatedAt
+  username                 String?         @db.Text
+  displayUsername          String?         @db.Text
+  role                     String?         @db.Text
+  banned                   Boolean?        @default(false)
+  banReason                String?         @db.Text
+  banExpires               DateTime?
+  departmentId             String?
+  divisiId                 String?
+  accounts                 Account[]
+  assetHistory             AssetHistory[]  @relation("HistoryUser")
+  assetHistoryAcknowledged AssetHistory[]  @relation("HistoryAcknowledgedBy")
+  loansApproved            AssetLoan[]     @relation("approvedBy")
+  loansBorrowed            AssetLoan[]     @relation("borrower")
+  loansRequested           AssetLoan[]     @relation("requestedBy")
+  transfersApproved        AssetTransfer[] @relation("transferApprovedBy")
+  disposalsRequested       AssetDisposal[] @relation("DisposalRequestedBy")
+  disposalsSpvApproved     AssetDisposal[] @relation("DisposalSpvApprovedBy")
+  disposalsStaffApproved   AssetDisposal[] @relation("DisposalStaffApprovedBy")
+  auditLogs                AuditLog[]
+  invitations              Invitation[]
+  members                  Member[]
+  sessions                 Session[]
+  teammember               teamMember[]
+  department               department?     @relation(fields: [departmentId], references: [id_department])
+  divisi                   divisi?         @relation(fields: [divisiId], references: [id_divisi])
 
   @@index([departmentId])
   @@index([divisiId])
@@ -470,7 +471,8 @@ model AssetHistory {
   newValue         String?       @db.Text
   createdAt        DateTime      @default(now())
   asset            Asset?        @relation(fields: [assetId, organizationId], references: [id, organizationId])
-  user             User          @relation(fields: [userId], references: [id])
+  user             User          @relation("HistoryUser", fields: [userId], references: [id])
+  acknowledgedBy   User?         @relation("HistoryAcknowledgedBy", fields: [acknowledgedById], references: [id])
   organizationId   String?
   organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 

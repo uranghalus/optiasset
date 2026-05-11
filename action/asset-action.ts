@@ -176,13 +176,22 @@ export async function getAvailableAssetsForLoanSelect({
   const activeOrgId = session.session?.activeOrganizationId;
   if (!activeOrgId) throw new Error("No active organizationId found");
 
+  // 1. Inisialisasi object where dengan filter wajib
   const where: any = {
     organizationId: activeOrgId,
     status: { in: ["ACTIVE", "GOOD"] },
   };
 
-  if (departmentId) where.departmentId = departmentId;
-  if (divisiId) where.divisiId = divisiId;
+  // 2. Tambahkan departmentId jika ada
+  if (departmentId) {
+    where.departmentId = departmentId;
+  }
+
+  // 3. LOGIKA KRUSIAL: Hanya tambah divisiId jika ada nilainya DAN bukan "ALL"
+  // Pastikan juga field ini memang ada di schema.prisma Anda!
+  if (divisiId && divisiId !== "ALL") {
+    where.divisiId = divisiId;
+  }
 
   return prisma.asset.findMany({
     where,
@@ -1179,7 +1188,21 @@ export async function importAssetExcel(
 ) {
   const file = formData.get("file") as File;
   const targetSubClusterId = formData.get("targetSubClusterId") as string;
+
   if (!file) throw new Error("File tidak ditemukan");
+
+  // --- TAMBAHAN: VALIDASI AWAL TARGET SUB CLUSTER ---
+  // Pastikan ID Sub Cluster yang dikirim dari frontend benar-benar ada di database
+  if (targetSubClusterId && targetSubClusterId !== "") {
+    const checkCluster = await prisma.assetSubCluster.findUnique({
+      where: { id: targetSubClusterId },
+    });
+    if (!checkCluster) {
+      throw new Error(
+        `Sub Cluster ID "${targetSubClusterId}" tidak ditemukan di database. Proses import dibatalkan.`,
+      );
+    }
+  }
 
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
@@ -1202,7 +1225,6 @@ export async function importAssetExcel(
   if (startIdx === -1) throw new Error("Format Excel tidak dikenali");
 
   // 2. SMART HEADER READER (Mengatasi Cell yang Di-Merge)
-  // Kita baca 2 baris header sekaligus dan gabungkan teksnya
   const headerRow1 = rows[startIdx] || [];
   const headerRow2 = rows[startIdx + 1] || [];
   const maxCols = Math.max(headerRow1.length, headerRow2.length);
@@ -1214,10 +1236,10 @@ export async function importAssetExcel(
     const h1 = headerRow1[i] ? String(headerRow1[i]).trim() : "";
     const h2 = headerRow2[i] ? String(headerRow2[i]).trim() : "";
 
-    // Jika h1 ada isinya, simpan sebagai header utama (berguna untuk kolom yang di-merge ke kanan)
+    // Jika h1 ada isinya, simpan sebagai header utama
     if (h1) lastMainHeader = h1;
 
-    // Gabungkan (Contoh: "Keterangan" + "NO. SERI" -> "keterangan no. seri")
+    // Gabungkan
     const combined = `${lastMainHeader} ${h2}`.trim().toLowerCase();
     combinedHeaders.push(combined);
   }
@@ -1321,18 +1343,14 @@ export async function importAssetExcel(
           );
 
           if (existingDept) {
-            // JIKA KETEMU: Hubungkan ke tabel departemen
             finalDepartmentId = existingDept.id_department;
           } else {
-            // JIKA TIDAK KETEMU: Asumsikan ini adalah NAMA ORANG!
-            // Jangan buat departemen baru, simpan saja di kolom PIC bawaan dari Asset
             finalPersonName = rawPicValue;
           }
         }
 
         // --- E. KONDISI (Berdasarkan Kolom Baik/Rusak) ---
         let condition = "BAIK"; // Default
-        // Jika kolom 'rusak' ada isinya (misal dicentang, atau ditulis 'rusak', atau 'v')
         if (
           col.rusak !== -1 &&
           row[col.rusak] &&
@@ -1368,25 +1386,35 @@ export async function importAssetExcel(
             serialNumber:
               col.sn !== -1 ? String(row[col.sn] || "").trim() : null,
             model: modelName,
-
-            departmentId: finalDepartmentId, // Akan terisi jika itu departemen
-            PIC: finalPersonName, // Akan terisi jika itu nama orang
-
+            departmentId: finalDepartmentId,
+            PIC: finalPersonName,
             condition: condition,
             locationId: locationId,
             status: "ACTIVE",
             purchaseDate: purchaseDate,
             notes: finalNotes || null,
-            assetSubClusters: {
-              connect: { id: targetSubClusterId },
-            },
+
+            // --- PERBAIKAN: CONDITIONAL CONNECT ---
+            // Hanya lakukan connect jika targetSubClusterId valid dan ada
+            ...(targetSubClusterId && targetSubClusterId !== ""
+              ? {
+                  assetSubClusters: {
+                    connect: { id: targetSubClusterId },
+                  },
+                }
+              : {}),
           },
         });
       });
       results.success++;
     } catch (err: any) {
       results.failed++;
-      results.errors.push(`Baris gagal diproses: ${err.message}`);
+      // --- PERBAIKAN PADA LOG ERROR ---
+      // Menambahkan nomor baris Excel dan nama unit agar mudah dicari di Excel
+      const excelRowNumber = index + startIdx + 3;
+      results.errors.push(
+        `Baris ${excelRowNumber} (${unitName}): ${err.message}`,
+      );
     }
   }
 

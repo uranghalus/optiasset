@@ -7,6 +7,7 @@ import { useDialog } from "@/context/dialog-provider";
 import { Row } from "@tanstack/react-table";
 import { RefreshCcw, Check, X } from "lucide-react";
 import React from "react";
+import { usePermission } from "@/hooks/use-permission";
 
 interface LoanRowActionsProps<TData> {
   row: Row<TData>;
@@ -18,10 +19,11 @@ export default function LoanRowAction<TData>({
   const loan = row.original as any;
   const { setOpen, setCurrentRow } = useDialog();
   const approveMutation = useApproveLoan();
+  const { can } = usePermission();
 
   if (loan.status === "RETURNED" || loan.status === "REJECTED") return null;
 
-  if (loan.status === "PENDING") {
+  if (loan.status === "PENDING" && can("asset.loan", ["approve", "reject"])) {
     return (
       <ButtonGroup className="justify-end">
         <Button

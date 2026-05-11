@@ -18,7 +18,9 @@ import {
   useSubClustersByCluster,
 } from "@/hooks/crud/use-asset-classification";
 import { useImportAsset } from "@/hooks/crud/use-assets";
+import { useActiveMemberRole } from "@/hooks/use-active-member";
 import { authClient } from "@/lib/auth-client";
+import { getAssetFormAccess } from "@/lib/utils";
 import { ImportForm, ImportFormSchema } from "@/schema/asset-schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FileSpreadsheet, UploadCloud, X } from "lucide-react";
@@ -52,7 +54,8 @@ export default function ImportAssetDialog({ open, onOpenChange }: Props) {
   const { data: categories } = useCategoriesByGroup(selectedGroup);
   const { data: clusters } = useClustersByCategory(selectedCategory);
   const { data: subClusters } = useSubClustersByCluster(selectedCluster);
-
+  const { data: role } = useActiveMemberRole();
+  const { canView, isReadonly } = getAssetFormAccess(role);
   // Efek Chained Select (Reset child jika parent berubah)
   useEffect(() => {
     form.setValue("assetCategoryId", "");
@@ -120,7 +123,7 @@ export default function ImportAssetDialog({ open, onOpenChange }: Props) {
     try {
       const formData = new FormData();
       formData.append("file", values.file);
-      formData.append("targetSubClusterId", values.assetSubClusterId);
+      formData.append("targetSubClusterId", values.assetSubClusterId ?? "");
       if (!session?.session.activeOrganizationId) {
         form.setError("root", {
           message: "Anda tidak memiliki organisasi aktif",
@@ -190,143 +193,147 @@ export default function ImportAssetDialog({ open, onOpenChange }: Props) {
           )}
 
           <div className="space-y-4">
-            <h3 className="font-semibold text-sm border-b pb-1">
-              Tentukan Klasifikasi Global (Wajib)
-            </h3>
+            {canView && (
+              <>
+                <h3 className="font-semibold text-sm border-b pb-1">
+                  Tentukan Klasifikasi Global (Wajib)
+                </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* GOLONGAN */}
-              <Controller
-                name="assetGroupId"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel>Golongan</FieldLabel>
-                    <Combobox
-                      title="Pilih Golongan"
-                      valueKey="id"
-                      value={groups?.find((g) => g.id === field.value)}
-                      searchFn={(search, offset, size) =>
-                        Promise.resolve(
-                          groups
-                            ?.filter((g) =>
-                              g.name
-                                .toLowerCase()
-                                .includes(search.toLowerCase()),
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* GOLONGAN */}
+                  <Controller
+                    name="assetGroupId"
+                    control={form.control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel>Golongan</FieldLabel>
+                        <Combobox
+                          title="Pilih Golongan"
+                          valueKey="id"
+                          value={groups?.find((g) => g.id === field.value)}
+                          searchFn={(search, offset, size) =>
+                            Promise.resolve(
+                              groups
+                                ?.filter((g) =>
+                                  g.name
+                                    .toLowerCase()
+                                    .includes(search.toLowerCase()),
+                                )
+                                .slice(offset, offset + size) || [],
                             )
-                            .slice(offset, offset + size) || [],
-                        )
-                      }
-                      renderText={(item) => `${item.code} - ${item.name}`}
-                      onChange={(item) => field.onChange(item.id)}
-                      disabled={isPending}
-                    />
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
+                          }
+                          renderText={(item) => `${item.code} - ${item.name}`}
+                          onChange={(item) => field.onChange(item.id)}
+                          disabled={isPending}
+                        />
+                        {fieldState.invalid && (
+                          <FieldError errors={[fieldState.error]} />
+                        )}
+                      </Field>
                     )}
-                  </Field>
-                )}
-              />
+                  />
 
-              {/* KATEGORI */}
-              <Controller
-                name="assetCategoryId"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel>Kategori</FieldLabel>
-                    <Combobox
-                      title="Pilih Kategori"
-                      valueKey="id"
-                      value={categories?.find((x) => x.id === field.value)}
-                      searchFn={(search, offset, size) =>
-                        Promise.resolve(
-                          categories
-                            ?.filter((x) =>
-                              x.name
-                                .toLowerCase()
-                                .includes(search.toLowerCase()),
+                  {/* KATEGORI */}
+                  <Controller
+                    name="assetCategoryId"
+                    control={form.control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel>Kategori</FieldLabel>
+                        <Combobox
+                          title="Pilih Kategori"
+                          valueKey="id"
+                          value={categories?.find((x) => x.id === field.value)}
+                          searchFn={(search, offset, size) =>
+                            Promise.resolve(
+                              categories
+                                ?.filter((x) =>
+                                  x.name
+                                    .toLowerCase()
+                                    .includes(search.toLowerCase()),
+                                )
+                                .slice(offset, offset + size) || [],
                             )
-                            .slice(offset, offset + size) || [],
-                        )
-                      }
-                      renderText={(x) => `${x.code} - ${x.name}`}
-                      onChange={(x) => field.onChange(x.id)}
-                      disabled={!selectedGroup || isPending}
-                    />
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
+                          }
+                          renderText={(x) => `${x.code} - ${x.name}`}
+                          onChange={(x) => field.onChange(x.id)}
+                          disabled={!selectedGroup || isPending}
+                        />
+                        {fieldState.invalid && (
+                          <FieldError errors={[fieldState.error]} />
+                        )}
+                      </Field>
                     )}
-                  </Field>
-                )}
-              />
+                  />
 
-              {/* CLUSTER */}
-              <Controller
-                name="assetClusterId"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel>Cluster</FieldLabel>
-                    <Combobox
-                      title="Pilih Cluster"
-                      valueKey="id"
-                      value={clusters?.find((x) => x.id === field.value)}
-                      searchFn={(search, offset, size) =>
-                        Promise.resolve(
-                          clusters
-                            ?.filter((x) =>
-                              x.name
-                                .toLowerCase()
-                                .includes(search.toLowerCase()),
+                  {/* CLUSTER */}
+                  <Controller
+                    name="assetClusterId"
+                    control={form.control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel>Cluster</FieldLabel>
+                        <Combobox
+                          title="Pilih Cluster"
+                          valueKey="id"
+                          value={clusters?.find((x) => x.id === field.value)}
+                          searchFn={(search, offset, size) =>
+                            Promise.resolve(
+                              clusters
+                                ?.filter((x) =>
+                                  x.name
+                                    .toLowerCase()
+                                    .includes(search.toLowerCase()),
+                                )
+                                .slice(offset, offset + size) || [],
                             )
-                            .slice(offset, offset + size) || [],
-                        )
-                      }
-                      renderText={(x) => `${x.code} - ${x.name}`}
-                      onChange={(x) => field.onChange(x.id)}
-                      disabled={!selectedCategory || isPending}
-                    />
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
+                          }
+                          renderText={(x) => `${x.code} - ${x.name}`}
+                          onChange={(x) => field.onChange(x.id)}
+                          disabled={!selectedCategory || isPending}
+                        />
+                        {fieldState.invalid && (
+                          <FieldError errors={[fieldState.error]} />
+                        )}
+                      </Field>
                     )}
-                  </Field>
-                )}
-              />
+                  />
 
-              {/* SUB CLUSTER */}
-              <Controller
-                name="assetSubClusterId"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel>Sub Cluster</FieldLabel>
-                    <Combobox
-                      title="Pilih Sub Cluster"
-                      valueKey="id"
-                      value={subClusters?.find((x) => x.id === field.value)}
-                      searchFn={(search, offset, size) =>
-                        Promise.resolve(
-                          subClusters
-                            ?.filter((x) =>
-                              x.name
-                                .toLowerCase()
-                                .includes(search.toLowerCase()),
+                  {/* SUB CLUSTER */}
+                  <Controller
+                    name="assetSubClusterId"
+                    control={form.control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel>Sub Cluster</FieldLabel>
+                        <Combobox
+                          title="Pilih Sub Cluster"
+                          valueKey="id"
+                          value={subClusters?.find((x) => x.id === field.value)}
+                          searchFn={(search, offset, size) =>
+                            Promise.resolve(
+                              subClusters
+                                ?.filter((x) =>
+                                  x.name
+                                    .toLowerCase()
+                                    .includes(search.toLowerCase()),
+                                )
+                                .slice(offset, offset + size) || [],
                             )
-                            .slice(offset, offset + size) || [],
-                        )
-                      }
-                      renderText={(x) => `${x.code} - ${x.name}`}
-                      onChange={(x) => field.onChange(x.id)}
-                      disabled={!selectedCluster || isPending}
-                    />
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
+                          }
+                          renderText={(x) => `${x.code} - ${x.name}`}
+                          onChange={(x) => field.onChange(x.id)}
+                          disabled={!selectedCluster || isPending}
+                        />
+                        {fieldState.invalid && (
+                          <FieldError errors={[fieldState.error]} />
+                        )}
+                      </Field>
                     )}
-                  </Field>
-                )}
-              />
-            </div>
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           {/* EXCEL UPLOAD SECTION */}

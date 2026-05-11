@@ -162,47 +162,47 @@ export const sidebarData: SidebarData = {
     },
 
     // // ---------- OPERASIONAL ----------
-    // {
-    //   title: 'Operasional',
-    //   items: [
-    //     {
-    //       title: 'Peminjaman Aset',
-    //       url: '/asset-loans',
-    //       icon: Handshake,
-    //       permission: {
-    //         resource: 'asset.loan',
-    //         actions: ['view'],
-    //       },
-    //     },
-    //     {
-    //       title: 'Perawatan Aset',
-    //       url: '/maintenances',
-    //       icon: Wrench,
-    //       permission: {
-    //         resource: 'asset.maintenance',
-    //         actions: ['view'],
-    //       },
-    //     },
-    //     {
-    //       title: 'Jadwal Perawatan',
-    //       url: '/maintenance-schedules',
-    //       icon: Clock,
-    //       permission: {
-    //         resource: 'asset.maintenance',
-    //         actions: ['view'],
-    //       },
-    //     },
-    //     {
-    //       title: 'Persetujuan',
-    //       url: '/approvals',
-    //       icon: CheckSquare,
-    //       permission: {
-    //         resource: 'asset.transfer',
-    //         actions: ['approve'],
-    //       },
-    //     },
-    //   ],
-    // },
+    {
+      title: "Operasional",
+      items: [
+        {
+          title: "Peminjaman Aset",
+          url: "/asset-loans",
+          icon: Handshake,
+          permission: {
+            resource: "asset.loan",
+            actions: ["view"],
+          },
+        },
+        // {
+        //   title: 'Perawatan Aset',
+        //   url: '/maintenances',
+        //   icon: Wrench,
+        //   permission: {
+        //     resource: 'asset.maintenance',
+        //     actions: ['view'],
+        //   },
+        // },
+        // {
+        //   title: 'Jadwal Perawatan',
+        //   url: '/maintenance-schedules',
+        //   icon: Clock,
+        //   permission: {
+        //     resource: 'asset.maintenance',
+        //     actions: ['view'],
+        //   },
+        // },
+        {
+          title: "Persetujuan",
+          url: "/approvals",
+          icon: CheckSquare,
+          permission: {
+            resource: "asset.transfer",
+            actions: ["approve"],
+          },
+        },
+      ],
+    },
 
     // ---------- ORGANISASI ----------
     {

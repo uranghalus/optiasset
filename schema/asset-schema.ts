@@ -1,18 +1,18 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 export const AssetFormSchema = z.object({
-  itemId: z.string().min(1, 'Item is required'),
+  itemId: z.string().min(1, "Item is required"),
   purchaseDate: z.string().optional(),
   purchasePrice: z.string().optional(),
   warrantyExpire: z.string().optional(),
   locationId: z.string().optional(),
   departmentId: z.string().optional(),
   notes: z.string().optional(),
-  brand: z.string().min(1, 'Brand is required'),
-  model: z.string().min(1, 'Model is required'),
-  partNumber: z.string().min(1, 'Part Number is required'),
-  condition: z.string().min(1, 'Condition is required'),
-  serialNumber: z.string().min(1, 'Serial Number is required'),
+  brand: z.string().min(1, "Brand is required"),
+  model: z.string().min(1, "Model is required"),
+  partNumber: z.string().min(1, "Part Number is required"),
+  condition: z.string().min(1, "Condition is required"),
+  serialNumber: z.string().min(1, "Serial Number is required"),
   no_spb: z.string().optional(),
   document_number: z.string().optional(),
   kode_asset: z.string().optional(),
@@ -27,13 +27,13 @@ export const AssetFormSchema = z.object({
 
 export type AssetForm = z.infer<typeof AssetFormSchema>;
 export const ImportFormSchema = z.object({
-  assetGroupId: z.string().min(1, 'Golongan wajib diisi'),
-  assetCategoryId: z.string().min(1, 'Kategori wajib diisi'),
-  assetClusterId: z.string().min(1, 'Cluster wajib diisi'),
-  assetSubClusterId: z.string().min(1, 'Sub Cluster wajib diisi'),
+  assetGroupId: z.string().optional(),
+  assetCategoryId: z.string().optional(),
+  assetClusterId: z.string().optional(),
+  assetSubClusterId: z.string().optional(),
   file: z
     .any()
-    .refine((file) => file instanceof File, 'File Excel wajib diunggah'),
+    .refine((file) => file instanceof File, "File Excel wajib diunggah"),
 });
 
 export type ImportForm = z.infer<typeof ImportFormSchema>;

@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx prisma/seeder/seed.ts",
+    "open:tunnel": "npx localtunnel --port 3000 --subdomain optiasset",
     "prisma:push": "npx prisma db push && npx prisma generate"
   },
   "dependencies": {
@@ -19,6 +20,7 @@
     "@prisma/client": "^7.5.0",
     "@tanstack/react-query": "^5.95.2",
     "@tanstack/react-table": "^8.21.3",
+    "@yudiel/react-qr-scanner": "^2.5.1",
     "better-auth": "^1.5.6",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

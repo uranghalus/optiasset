@@ -38,7 +38,7 @@ export function BarcodeScannerDialog() {
 
       try {
         const url = new URL(decodedText);
-        if (url.pathname.startsWith("/assets/view/")) {
+        if (url.pathname.startsWith("/assets/")) {
           id = url.pathname.split("/").pop()!;
         }
       } catch {
@@ -54,7 +54,7 @@ export function BarcodeScannerDialog() {
       toast.success("Asset ditemukan");
 
       setOpen(null);
-      router.push(`/assets/view/${id}`);
+      router.push(`/assets/${id}`);
     } catch (err: any) {
       toast.error(err.message || "Asset tidak ditemukan");
       setScanned(false);

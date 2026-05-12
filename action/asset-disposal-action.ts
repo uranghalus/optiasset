@@ -100,7 +100,11 @@ export async function createDisposalAction(formData: FormData) {
   return result;
 }
 
-export async function approveDisposalAction(id: string, action: 'APPROVE' | 'REJECT', role: string) {
+export async function approveDisposalAction(
+  id: string,
+  action: 'APPROVE' | 'REJECT',
+  role: string,
+) {
   const session = await getServerSession();
   if (!session) throw new Error('Unauthorized');
   const activeOrgId = session.session?.activeOrganizationId;
@@ -121,7 +125,7 @@ export async function approveDisposalAction(id: string, action: 'APPROVE' | 'REJ
 
   const result = await prisma.$transaction(async (tx) => {
     let newStatus = disposal.status;
-    let dataToUpdate: any = {};
+    const dataToUpdate: any = {};
 
     const isSpv = role.toLowerCase() === 'spv';
     const isStaff = role.toLowerCase() === 'staff aset';
@@ -136,6 +140,19 @@ export async function approveDisposalAction(id: string, action: 'APPROVE' | 'REJ
         dataToUpdate.spvApprovedById = session.user.id;
       } else if (isStaff && disposal.status === 'PENDING_STAFF') {
         newStatus = 'APPROVED';
+        // 👇 TAMBAHKAN INI UNTUK ASSET HISTORY 👇
+        await tx.assetHistory.create({
+          data: {
+            assetId: disposal.assetId,
+            organizationId: activeOrgId,
+            userId: session.user.id,
+            action: 'DISPOSED',
+            field: 'status',
+            oldValue: disposal.asset.status,
+            newValue: 'DISPOSED',
+            asset_info: `[DISPOSAL APPROVED] Aset dihanguskan dengan alasan: ${disposal.reason || 'N/A'}`,
+          },
+        });
         dataToUpdate.staffApprovedById = session.user.id;
       } else {
         throw new Error('Invalid approval state for role');
@@ -159,7 +176,10 @@ export async function approveDisposalAction(id: string, action: 'APPROVE' | 'REJ
       });
 
       // Update Stock if available
-      if (disposal.asset.locationId && disposal.asset.assignedStatus === 'AVAILABLE') {
+      if (
+        disposal.asset.locationId &&
+        disposal.asset.assignedStatus === 'AVAILABLE'
+      ) {
         await tx.stock.updateMany({
           where: {
             itemId: disposal.asset.itemId,

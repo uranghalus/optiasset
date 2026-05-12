@@ -15,29 +15,8 @@ import { buildAssetFilter } from "@/lib/filter";
 import * as XLSX from "xlsx";
 import { getColumnIndex, ASSET_MAPPER } from "@/lib/excel-mapper";
 import { BanUserInput, banUserSchema } from "@/schema/user-schema";
+import { deleteS3File, uploadToS3 } from "@/lib/s3-utils";
 // Helper function to save uploaded file
-async function saveUploadedFile(file: File): Promise<string | null> {
-  if (!file) return null;
-
-  // Generate unique filename
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 8);
-  const extension = path.extname(file.name);
-  const filename = `${timestamp}-${random}${extension}`;
-
-  // Ensure uploads directory exists
-  const uploadsDir = path.join(process.cwd(), "public", "uploads");
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-  }
-
-  // Save file to public/uploads
-  const filePath = path.join(uploadsDir, filename);
-  const buffer = Buffer.from(await file.arrayBuffer());
-  fs.writeFileSync(filePath, buffer);
-
-  return filename;
-}
 
 /* =======================
    TYPES
@@ -181,7 +160,6 @@ export async function getLocationsForSelect() {
   });
 }
 
-
 /* =======================
    GET ASSETS FOR LOAN SELECT
    ======================= */
@@ -198,13 +176,22 @@ export async function getAvailableAssetsForLoanSelect({
   const activeOrgId = session.session?.activeOrganizationId;
   if (!activeOrgId) throw new Error("No active organizationId found");
 
+  // 1. Inisialisasi object where dengan filter wajib
   const where: any = {
     organizationId: activeOrgId,
     status: { in: ["ACTIVE", "GOOD"] },
   };
 
-  if (departmentId) where.departmentId = departmentId;
-  if (divisiId) where.divisiId = divisiId;
+  // 2. Tambahkan departmentId jika ada
+  if (departmentId) {
+    where.departmentId = departmentId;
+  }
+
+  // 3. LOGIKA KRUSIAL: Hanya tambah divisiId jika ada nilainya DAN bukan "ALL"
+  // Pastikan juga field ini memang ada di schema.prisma Anda!
+  if (divisiId && divisiId !== "ALL") {
+    where.divisiId = divisiId;
+  }
 
   return prisma.asset.findMany({
     where,
@@ -220,7 +207,7 @@ export async function getAvailableAssetsForLoanSelect({
 }
 
 /* =======================
-   CREATE ASSET
+  // LINK CREATE ASSET
  ======================= */
 export async function createAsset(formData: FormData) {
   const session = await getServerSession();
@@ -230,9 +217,7 @@ export async function createAsset(formData: FormData) {
     headers: await headers(),
   });
 
-  // Cast role ke string jika tipe bawaannya membuat error perbandingan
   const role = memberRole.role as string;
-
   const sessionDeptId = session.user.departmentId;
   if (!sessionDeptId) throw new Error("User has no department");
 
@@ -252,18 +237,26 @@ export async function createAsset(formData: FormData) {
   const activeOrgId = session.session?.activeOrganizationId;
   if (!activeOrgId) throw new Error("No active organizationId found");
 
-  // Handle file upload
+  // --- INTEGRASI S3 MULAI DI SINI ---
   const photoFile = formData.get("photo") as File | null;
-  const photoUrl = photoFile ? await saveUploadedFile(photoFile) : null;
+  let photoUrl = null;
+
+  // Cek apakah file ada dan ukurannya lebih dari 0 (bukan file kosong)
+  if (photoFile && photoFile.size > 0) {
+    // Kita simpan Key S3 ke variabel photoUrl
+    photoUrl = await uploadToS3(photoFile, "asset-photos");
+  }
+  // --- INTEGRASI S3 SELESAI ---
 
   const formDepartmentId = formData.get("departmentId")?.toString();
+  const isAdminOrOwner = role === "staff_asset" || role === "owner";
+  const finalDepartmentId =
+    isAdminOrOwner && formDepartmentId ? formDepartmentId : sessionDeptId;
 
-  // 👇 PERBAIKAN LOGIKA DEPARTMENT 👇
-  // Pastikan formDepartmentId tidak kosong, jika kosong fallback ke sessionDeptId
-  const isAdminOrOwner = role === 'staff_asset' || role === 'owner';
-  const finalDepartmentId = (isAdminOrOwner && formDepartmentId)
-    ? formDepartmentId
-    : sessionDeptId;
+  const assetSubClusterId = formData
+    .get("assetSubClusterId")
+    ?.toString()
+    .trim();
 
   const asset = await prisma.$transaction(async (tx) => {
     const newAsset = await tx.asset.create({
@@ -273,44 +266,33 @@ export async function createAsset(formData: FormData) {
         purchaseDate: parseDateOrNull("purchaseDate"),
         purchasePrice: parseFloatOrNull("purchasePrice"),
         condition: formData.get("condition")?.toString() || null,
-        warrantyExpire: parseDateOrNull("warrantyExpire"), // Pastikan apakah ini duplikat dengan garansi_exp
+        warrantyExpire: parseDateOrNull("warrantyExpire"),
         locationId: formData.get("locationId")?.toString() || null,
         brand: formData.get("brand")?.toString() || null,
         model: formData.get("model")?.toString() || null,
         partNumber: formData.get("partNumber")?.toString() || null,
-
         serialNumber: formData.get("serialNumber")?.toString() || null,
         document_number: formData.get("document_number")?.toString() || null,
         no_spb: formData.get("no_spb")?.toString() || null,
-
         departmentId: finalDepartmentId,
-
         notes: formData.get("notes")?.toString() || null,
         kode_asset: formData.get("kode_asset")?.toString() || null,
         vendorName: formData.get("vendorName")?.toString() || null,
-        ...(formData.get("assetSubClusterId")?.toString()
-          ? {
-            assetSubClusters: {
-              connect: [
-                { id: formData.get("assetSubClusterId")!.toString() },
-              ],
-            },
-          }
-          : {}),
-        garansi_exp: parseDateOrNull("garansi_exp"), // Cek kembali redundansi ini
-        photoUrl,
+        ...(assetSubClusterId && {
+          assetSubClusters: {
+            connect: [{ id: assetSubClusterId }],
+          },
+        }),
+        garansi_exp: parseDateOrNull("garansi_exp"),
+        photoUrl, // Key S3 disimpan di sini
       },
     });
 
-    // Sync to Stock table if location is provided
     const locationId = formData.get("locationId")?.toString();
     if (locationId) {
       await tx.stock.upsert({
         where: {
-          itemId_locationId: {
-            itemId,
-            locationId,
-          },
+          itemId_locationId: { itemId, locationId },
         },
         create: {
           itemId,
@@ -324,7 +306,6 @@ export async function createAsset(formData: FormData) {
       });
     }
 
-    // Record Audit Log (Pastikan fungsi ini menggunakan parameter tx)
     await createAuditLog({
       userId: session.user.id,
       organizationId: activeOrgId,
@@ -332,9 +313,7 @@ export async function createAsset(formData: FormData) {
       entityType: "ASSET",
       entityId: newAsset.id,
       entityInfo: `${newAsset.kode_asset || "N/A"} - ${newAsset.itemId || "N/A"}`,
-      details: {
-        newData: newAsset,
-      },
+      details: { newData: newAsset },
       tx,
     });
 
@@ -344,9 +323,8 @@ export async function createAsset(formData: FormData) {
   revalidatePath("/assets");
   return asset;
 }
-
 /* =======================
-   UPDATE ASSET
+  //  LINK UPDATE ASSET
  ======================= */
 export async function updateAsset(id: string, formData: FormData) {
   const session = await getServerSession();
@@ -360,20 +338,18 @@ export async function updateAsset(id: string, formData: FormData) {
   });
   if (!asset) throw new Error("Asset not found");
 
-  // 👇 PERBAIKAN: Cek Role untuk Department seperti di fungsi Create 👇
   const memberRole = await auth.api.getActiveMemberRole({
     headers: await headers(),
   });
   const role = memberRole.role as string;
-  const isAdminOrOwner = role === 'staff_asset' || role === 'owner';
+  const isAdminOrOwner = role === "staff_asset" || role === "owner";
 
   const sessionDeptId = session.user.departmentId;
   if (!sessionDeptId) throw new Error("User has no department");
 
   const formDepartmentId = formData.get("departmentId")?.toString();
-  const finalDepartmentId = (isAdminOrOwner && formDepartmentId)
-    ? formDepartmentId
-    : asset.departmentId; // Jika bukan admin, tetapkan ke department asal
+  const finalDepartmentId =
+    isAdminOrOwner && formDepartmentId ? formDepartmentId : asset.departmentId;
 
   const parseDateOrNull = (key: string) => {
     const val = formData.get(key)?.toString();
@@ -385,27 +361,36 @@ export async function updateAsset(id: string, formData: FormData) {
     return val ? parseFloat(val) : null;
   };
 
-  // 👇 PERBAIKAN: Pastikan file benar-benar ada isinya (size > 0) 👇
+  // --- LOGIKA FOTO (HAPUS & UPDATE) ---
   const removePhoto = formData.get("removePhoto") === "true";
   const photoFile = formData.get("photo") as File | null;
   const isPhotoValid = photoFile && photoFile.size > 0;
 
   let finalPhotoUrl = asset.photoUrl;
+
   if (removePhoto) {
+    // 1. Jika user mencentang hapus foto
+    if (asset.photoUrl) await deleteS3File(asset.photoUrl);
     finalPhotoUrl = null;
   } else if (isPhotoValid) {
-    finalPhotoUrl = await saveUploadedFile(photoFile);
+    // 2. Jika user mengunggah foto baru
+    // Hapus foto lama dulu jika ada
+    if (asset.photoUrl) await deleteS3File(asset.photoUrl);
+    // Upload foto baru
+    finalPhotoUrl = await uploadToS3(photoFile, "asset-photos");
   }
+  // ------------------------------------
 
-  // 👇 PERBAIKAN: Handle disconnect jika user mengosongkan Sub Cluster 👇
   const assetSubClusterId = formData.get("assetSubClusterId")?.toString();
   const subClusterUpdateObj = formData.has("assetSubClusterId")
     ? {
-      assetSubClusters: {
-        set: [], // Hapus semua relasi lama
-        ...(assetSubClusterId ? { connect: [{ id: assetSubClusterId }] } : {}), // Connect jika ada nilai baru
-      },
-    }
+        assetSubClusters: {
+          set: [],
+          ...(assetSubClusterId
+            ? { connect: [{ id: assetSubClusterId }] }
+            : {}),
+        },
+      }
     : {};
 
   const updated = await prisma.$transaction(async (tx) => {
@@ -415,32 +400,53 @@ export async function updateAsset(id: string, formData: FormData) {
     const result = await tx.asset.update({
       where: { id },
       data: {
-        // Gunakan nullable/empty string dengan benar. Jika di form ada key-nya, gunakan itu, jika tidak fallback ke aset lama.
         itemId: formData.get("itemId")?.toString() ?? asset.itemId,
-        purchaseDate: formData.has("purchaseDate") ? parseDateOrNull("purchaseDate") : asset.purchaseDate,
-        purchasePrice: formData.has("purchasePrice") ? parseFloatOrNull("purchasePrice") : asset.purchasePrice,
-
-        condition: formData.has("condition") ? formData.get("condition")?.toString() || null : asset.condition,
-        warrantyExpire: formData.has("warrantyExpire") ? parseDateOrNull("warrantyExpire") : asset.warrantyExpire,
-        brand: formData.has("brand") ? formData.get("brand")?.toString() || null : asset.brand,
-        model: formData.has("model") ? formData.get("model")?.toString() || null : asset.model,
-        partNumber: formData.has("partNumber") ? formData.get("partNumber")?.toString() || null : asset.partNumber,
-
-        serialNumber: formData.has("serialNumber") ? formData.get("serialNumber")?.toString() || null : asset.serialNumber,
-        document_number: formData.has("document_number") ? formData.get("document_number")?.toString() || null : asset.document_number,
-        no_spb: formData.has("no_spb") ? formData.get("no_spb")?.toString() || null : asset.no_spb,
-
+        purchaseDate: formData.has("purchaseDate")
+          ? parseDateOrNull("purchaseDate")
+          : asset.purchaseDate,
+        purchasePrice: formData.has("purchasePrice")
+          ? parseFloatOrNull("purchasePrice")
+          : asset.purchasePrice,
+        condition: formData.has("condition")
+          ? formData.get("condition")?.toString() || null
+          : asset.condition,
+        warrantyExpire: formData.has("warrantyExpire")
+          ? parseDateOrNull("warrantyExpire")
+          : asset.warrantyExpire,
+        brand: formData.has("brand")
+          ? formData.get("brand")?.toString() || null
+          : asset.brand,
+        model: formData.has("model")
+          ? formData.get("model")?.toString() || null
+          : asset.model,
+        partNumber: formData.has("partNumber")
+          ? formData.get("partNumber")?.toString() || null
+          : asset.partNumber,
+        serialNumber: formData.has("serialNumber")
+          ? formData.get("serialNumber")?.toString() || null
+          : asset.serialNumber,
+        document_number: formData.has("document_number")
+          ? formData.get("document_number")?.toString() || null
+          : asset.document_number,
+        no_spb: formData.has("no_spb")
+          ? formData.get("no_spb")?.toString() || null
+          : asset.no_spb,
         locationId: newLocationId || asset.locationId,
         departmentId: finalDepartmentId,
-
-        notes: formData.has("notes") ? formData.get("notes")?.toString() || null : asset.notes,
-        kode_asset: formData.has("kode_asset") ? formData.get("kode_asset")?.toString() || null : asset.kode_asset,
-        vendorName: formData.has("vendorName") ? formData.get("vendorName")?.toString() || null : asset.vendorName,
-        garansi_exp: formData.has("garansi_exp") ? parseDateOrNull("garansi_exp") : asset.garansi_exp,
-
-        photoUrl: finalPhotoUrl,
+        notes: formData.has("notes")
+          ? formData.get("notes")?.toString() || null
+          : asset.notes,
+        kode_asset: formData.has("kode_asset")
+          ? formData.get("kode_asset")?.toString() || null
+          : asset.kode_asset,
+        vendorName: formData.has("vendorName")
+          ? formData.get("vendorName")?.toString() || null
+          : asset.vendorName,
+        garansi_exp: formData.has("garansi_exp")
+          ? parseDateOrNull("garansi_exp")
+          : asset.garansi_exp,
+        photoUrl: finalPhotoUrl, // Simpan key baru atau null
         updatedAt: new Date(),
-
         ...subClusterUpdateObj,
       },
     });
@@ -456,7 +462,18 @@ export async function updateAsset(id: string, formData: FormData) {
           data: { quantity: { decrement: 1 } },
         });
       }
-
+      await tx.assetHistory.create({
+        data: {
+          assetId: id,
+          organizationId: activeOrgId,
+          userId: session.user.id,
+          action: "TRANSFER_LOCATION", // Penanda pergerakan
+          field: "locationId",
+          oldValue: oldLocationId || "N/A",
+          newValue: newLocationId,
+          asset_info: `${asset.kode_asset || id} - ${asset.itemId}`,
+        },
+      });
       await tx.stock.upsert({
         where: {
           itemId_locationId: {
@@ -509,7 +526,79 @@ export async function updateAsset(id: string, formData: FormData) {
   revalidatePath("/assets");
   return updated;
 }
+/* =======================
+  // LINK DELETE ASSET
+ ======================= */
+export async function deleteAsset(id: string) {
+  const session = await getServerSession();
+  if (!session) throw new Error("Unauthorized");
 
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error("No active organizationId found");
+
+  const asset = await prisma.$transaction(async (tx) => {
+    // 1. Cek apakah aset ada
+    const existing = await tx.asset.findFirst({
+      where: { id, organizationId: activeOrgId },
+      include: { item: true },
+    });
+    if (!existing) throw new Error("Asset not found");
+
+    // 2. HAPUS FOTO DARI S3
+    // Kita lakukan ini sebelum menghapus record di database
+    if (existing.photoUrl) {
+      await deleteS3File(existing.photoUrl);
+    }
+
+    // 3. Catat Asset History (assetId diset null agar tidak hilang saat didelete)
+    await tx.assetHistory.create({
+      data: {
+        assetId: null,
+        organizationId: activeOrgId,
+        userId: session.user.id,
+        action: "DISPOSED",
+        field: "status",
+        oldValue: existing.status,
+        newValue: "DELETED",
+        asset_info: `[DIHAPUS] ${existing.kode_asset || "N/A"} - ${existing.item?.name || "N/A"}`,
+      },
+    });
+
+    // 4. Hapus Aset dari Database
+    const deleted = await tx.asset.delete({ where: { id } });
+
+    // 5. Sync ke Stock (Kurangi stok karena barang dihapus)
+    if (existing.locationId && existing.assignedStatus === "AVAILABLE") {
+      await tx.stock.updateMany({
+        where: {
+          itemId: existing.itemId,
+          locationId: existing.locationId,
+          organizationId: activeOrgId,
+        },
+        data: { quantity: { decrement: 1 } },
+      });
+    }
+
+    // 6. Record Audit Log
+    await createAuditLog({
+      userId: session.user.id,
+      organizationId: activeOrgId,
+      action: "DELETE",
+      entityType: "ASSET",
+      entityId: deleted.id,
+      entityInfo: `${deleted.kode_asset || "N/A"} - ${deleted.itemId || "N/A"}`,
+      details: {
+        deletedData: deleted,
+      },
+      tx,
+    });
+
+    return deleted;
+  });
+
+  revalidatePath("/assets");
+  return asset;
+}
 /* =======================
    GET ASSETS BY MANY IDS
  ======================= */
@@ -608,75 +697,6 @@ export async function getAssetById(id: string) {
     console.error(error);
     throw new Error("Failed to fetch asset");
   }
-}
-
-/* =======================
-   DELETE ASSET
- ======================= */
-export async function deleteAsset(id: string) {
-  const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
-
-  const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
-
-  const asset = await prisma.$transaction(async (tx) => {
-    // Check if asset exists in this organization
-    const existing = await tx.asset.findFirst({
-      where: { id, organizationId: activeOrgId },
-    });
-    if (!existing) throw new Error("Asset not found");
-
-    // Delete photo file from server
-    if (existing.photoUrl) {
-      const photoPath = path.join(
-        process.cwd(),
-        "public",
-        "uploads",
-        existing.photoUrl,
-      );
-      if (fs.existsSync(photoPath)) {
-        fs.unlinkSync(photoPath);
-      }
-    }
-
-    const deleted = await tx.asset.delete({ where: { id } });
-
-    // Sync to Stock
-    if (existing.locationId && existing.assignedStatus === "AVAILABLE") {
-      await tx.stock.updateMany({
-        where: {
-          itemId: existing.itemId,
-          locationId: existing.locationId,
-          organizationId: activeOrgId,
-        },
-        data: { quantity: { decrement: 1 } },
-      });
-    }
-
-    // Record History (Note: the asset is about to be deleted, so we record it before or use a non-cascade approach)
-    // But since we are in a transaction and deletion is happening, we can still record history if it doesn't violate FK
-    // However, the history table HAS onDelete: Cascade, so it will be deleted too!
-    // If the user wants to KEEP history even after asset is deleted, we should change schema.
-    // For now, let's keep it consistent with Cascade.
-
-    await createAuditLog({
-      userId: session.user.id,
-      organizationId: activeOrgId,
-      action: "DELETE",
-      entityType: "ASSET",
-      entityId: deleted.id,
-      entityInfo: `${deleted.kode_asset || "N/A"} - ${deleted.itemId || "N/A"}`,
-      details: {
-        deletedData: deleted,
-      },
-      tx,
-    });
-
-    return deleted;
-  });
-  revalidatePath("/assets");
-  return asset;
 }
 
 /* =======================
@@ -1116,8 +1136,8 @@ export async function generateAssetCode(
 
   const subCluster = subClusterId
     ? await prisma.assetSubCluster.findUnique({
-      where: { id: subClusterId },
-    })
+        where: { id: subClusterId },
+      })
     : null;
 
   if (!group || !category || !cluster) {
@@ -1168,7 +1188,21 @@ export async function importAssetExcel(
 ) {
   const file = formData.get("file") as File;
   const targetSubClusterId = formData.get("targetSubClusterId") as string;
+
   if (!file) throw new Error("File tidak ditemukan");
+
+  // --- TAMBAHAN: VALIDASI AWAL TARGET SUB CLUSTER ---
+  // Pastikan ID Sub Cluster yang dikirim dari frontend benar-benar ada di database
+  if (targetSubClusterId && targetSubClusterId !== "") {
+    const checkCluster = await prisma.assetSubCluster.findUnique({
+      where: { id: targetSubClusterId },
+    });
+    if (!checkCluster) {
+      throw new Error(
+        `Sub Cluster ID "${targetSubClusterId}" tidak ditemukan di database. Proses import dibatalkan.`,
+      );
+    }
+  }
 
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
@@ -1191,7 +1225,6 @@ export async function importAssetExcel(
   if (startIdx === -1) throw new Error("Format Excel tidak dikenali");
 
   // 2. SMART HEADER READER (Mengatasi Cell yang Di-Merge)
-  // Kita baca 2 baris header sekaligus dan gabungkan teksnya
   const headerRow1 = rows[startIdx] || [];
   const headerRow2 = rows[startIdx + 1] || [];
   const maxCols = Math.max(headerRow1.length, headerRow2.length);
@@ -1203,10 +1236,10 @@ export async function importAssetExcel(
     const h1 = headerRow1[i] ? String(headerRow1[i]).trim() : "";
     const h2 = headerRow2[i] ? String(headerRow2[i]).trim() : "";
 
-    // Jika h1 ada isinya, simpan sebagai header utama (berguna untuk kolom yang di-merge ke kanan)
+    // Jika h1 ada isinya, simpan sebagai header utama
     if (h1) lastMainHeader = h1;
 
-    // Gabungkan (Contoh: "Keterangan" + "NO. SERI" -> "keterangan no. seri")
+    // Gabungkan
     const combined = `${lastMainHeader} ${h2}`.trim().toLowerCase();
     combinedHeaders.push(combined);
   }
@@ -1310,18 +1343,14 @@ export async function importAssetExcel(
           );
 
           if (existingDept) {
-            // JIKA KETEMU: Hubungkan ke tabel departemen
             finalDepartmentId = existingDept.id_department;
           } else {
-            // JIKA TIDAK KETEMU: Asumsikan ini adalah NAMA ORANG!
-            // Jangan buat departemen baru, simpan saja di kolom PIC bawaan dari Asset
             finalPersonName = rawPicValue;
           }
         }
 
         // --- E. KONDISI (Berdasarkan Kolom Baik/Rusak) ---
         let condition = "BAIK"; // Default
-        // Jika kolom 'rusak' ada isinya (misal dicentang, atau ditulis 'rusak', atau 'v')
         if (
           col.rusak !== -1 &&
           row[col.rusak] &&
@@ -1357,25 +1386,35 @@ export async function importAssetExcel(
             serialNumber:
               col.sn !== -1 ? String(row[col.sn] || "").trim() : null,
             model: modelName,
-
-            departmentId: finalDepartmentId, // Akan terisi jika itu departemen
-            PIC: finalPersonName, // Akan terisi jika itu nama orang
-
+            departmentId: finalDepartmentId,
+            PIC: finalPersonName,
             condition: condition,
             locationId: locationId,
             status: "ACTIVE",
             purchaseDate: purchaseDate,
             notes: finalNotes || null,
-            assetSubClusters: {
-              connect: { id: targetSubClusterId },
-            },
+
+            // --- PERBAIKAN: CONDITIONAL CONNECT ---
+            // Hanya lakukan connect jika targetSubClusterId valid dan ada
+            ...(targetSubClusterId && targetSubClusterId !== ""
+              ? {
+                  assetSubClusters: {
+                    connect: { id: targetSubClusterId },
+                  },
+                }
+              : {}),
           },
         });
       });
       results.success++;
     } catch (err: any) {
       results.failed++;
-      results.errors.push(`Baris gagal diproses: ${err.message}`);
+      // --- PERBAIKAN PADA LOG ERROR ---
+      // Menambahkan nomor baris Excel dan nama unit agar mudah dicari di Excel
+      const excelRowNumber = index + startIdx + 3;
+      results.errors.push(
+        `Baris ${excelRowNumber} (${unitName}): ${err.message}`,
+      );
     }
   }
 

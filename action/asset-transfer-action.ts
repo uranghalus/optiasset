@@ -123,7 +123,10 @@ export async function transferAssetAction(formData: FormData) {
 /* =======================
    APPROVE/REJECT TRANSFER
    ======================= */
-export async function approveAssetTransferAction(id: string, status: 'APPROVED' | 'REJECTED') {
+export async function approveAssetTransferAction(
+  id: string,
+  status: 'APPROVED' | 'REJECTED',
+) {
   const session = await getServerSession();
   if (!session) throw new Error('Unauthorized');
   const activeOrgId = session.session?.activeOrganizationId;
@@ -161,7 +164,10 @@ export async function approveAssetTransferAction(id: string, status: 'APPROVED' 
         },
       });
 
-      if (transfer.toLocationId && transfer.toLocationId !== transfer.fromLocationId) {
+      if (
+        transfer.toLocationId &&
+        transfer.toLocationId !== transfer.fromLocationId
+      ) {
         if (transfer.fromLocationId) {
           await tx.stock.updateMany({
             where: {
@@ -172,7 +178,18 @@ export async function approveAssetTransferAction(id: string, status: 'APPROVED' 
             data: { quantity: { decrement: 1 } },
           });
         }
-
+        await tx.assetHistory.create({
+          data: {
+            assetId: transfer.assetId,
+            organizationId: activeOrgId,
+            userId: session.user.id, // User yang menyetujui transfer
+            action: 'TRANSFER',
+            field: 'location/department',
+            oldValue: `Loc: ${transfer.fromLocationId || '-'} | Dept: ${transfer.fromDeptId || '-'}`,
+            newValue: `Loc: ${transfer.toLocationId || '-'} | Dept: ${transfer.toDeptId || '-'}`,
+            asset_info: `Transfer Disetujui. Alasan: ${transfer.reason || 'N/A'}`,
+          },
+        });
         await tx.stock.upsert({
           where: {
             itemId_locationId: {

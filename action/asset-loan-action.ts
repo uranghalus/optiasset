@@ -168,7 +168,18 @@ export async function approveLoanAction(loanId: string) {
         loanDate: new Date(),
       },
     });
-
+    await tx.assetHistory.create({
+      data: {
+        assetId: loan.assetId,
+        organizationId: activeOrgId,
+        userId: session.user.id, // Admin yang menyetujui
+        action: 'BORROWED',
+        field: 'status',
+        oldValue: loan.asset.status,
+        newValue: 'LOANED',
+        asset_info: `Peminjaman disetujui. Dipinjam oleh: ${loan.borrowerId}`,
+      },
+    });
     // 3. Record Audit Log
     await createAuditLog({
       userId: session.user.id,
@@ -283,7 +294,18 @@ export async function returnAssetAction(loanId: string, formData: FormData) {
         status: 'RETURNED',
       },
     });
-
+    await tx.assetHistory.create({
+      data: {
+        assetId: loan.assetId,
+        organizationId: activeOrgId,
+        userId: session.user.id, // Admin yang memproses pengembalian
+        action: 'RETURNED',
+        field: 'status',
+        oldValue: loan.asset.status,
+        newValue: 'ACTIVE',
+        asset_info: `Aset dikembalikan. Kondisi: ${conditionOnReturn || 'Tidak ada catatan'}`,
+      },
+    });
     // 3. Record Audit Log
     await createAuditLog({
       userId: session.user.id,

@@ -28,7 +28,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useCreateUser, useUpdateUser } from "@/hooks/crud/use-users";
 import { UserForm, UserFormSchema } from "@/schema/user-schema";
 import { useRoles } from "@/hooks/crud/use-organization-roles";
-import { useDepartments } from "@/hooks/crud/use-department";
+import { useDepartments, useSelectDepartment } from "@/hooks/crud/use-department";
 import { useDivisi } from "@/hooks/crud/use-divisi";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -46,16 +46,13 @@ export function UserActionDialog({ open, onOpenChange, currentRow }: Props) {
 
   // Fetch roles with a large limit string
   const { data: rolesData, isLoading: isLoadingRoles } = useRoles(1, 100);
-  const { data: deptData, isLoading: isLoadingDept } = useDepartments({
-    page: 1,
-    pageSize: 100,
-  });
+  const { data: deptData, isLoading: isLoadingDept } = useSelectDepartment();
   const { data: divData, isLoading: isLoadingDiv } = useDivisi({
     page: 1,
     pageSize: 100,
   });
 
-  const depts = deptData?.data || [];
+  const depts = deptData || [];
   const divisis = divData?.data || [];
   const orgRoles = rolesData?.data || [];
 
@@ -64,7 +61,6 @@ export function UserActionDialog({ open, onOpenChange, currentRow }: Props) {
     defaultValues: {
       name: "",
       email: "",
-      password: "",
       departmentId: "",
       divisiId: "",
       role: [],
@@ -82,15 +78,13 @@ export function UserActionDialog({ open, onOpenChange, currentRow }: Props) {
         email: currentRow.email || "",
         departmentId: currentRow.departmentId || "",
         divisiId: currentRow.divisiId || "",
-        password: "", // Don't populate password on edit
-
         role: userRoles,
       });
     } else {
       form.reset({
         name: "",
         email: "",
-        password: "",
+
         departmentId: "",
         divisiId: "",
         role: [],
@@ -104,7 +98,6 @@ export function UserActionDialog({ open, onOpenChange, currentRow }: Props) {
     const formData = new FormData();
     formData.append("name", values.name);
     if (values.email) formData.append("email", values.email);
-    if (values.password) formData.append("password", values.password);
     if (values.role && values.role.length > 0) {
       formData.append("role", values.role.join(","));
     }
@@ -182,6 +175,21 @@ export function UserActionDialog({ open, onOpenChange, currentRow }: Props) {
                     {...field}
                     placeholder="John Doe"
                     aria-invalid={fieldState.invalid}
+                    onChange={(e) => {
+                      // Tetap jalankan onChange bawaan form
+                      field.onChange(e);
+
+                      // Auto-generate email saat mode tambah user
+                      if (!isEdit) {
+                        const nameValue = e.target.value;
+                        if (nameValue) {
+                          const formattedName = nameValue.toLowerCase().replace(/[^a-z0-9]/g, "");
+                          form.setValue("email", `${formattedName}@appdutamall.com`, { shouldValidate: true });
+                        } else {
+                          form.setValue("email", "");
+                        }
+                      }
+                    }}
                   />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
@@ -344,30 +352,6 @@ export function UserActionDialog({ open, onOpenChange, currentRow }: Props) {
                 </Field>
               )}
             />
-            {!isEdit && (
-              <>
-                {/* PASSWORD */}
-                <Controller
-                  name="password"
-                  control={form.control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel>Password</FieldLabel>
-                      <Input
-                        {...field}
-                        type="password"
-                        placeholder="******"
-                        aria-invalid={fieldState.invalid}
-                      />
-                      {fieldState.invalid && (
-                        <FieldError errors={[fieldState.error]} />
-                      )}
-                    </Field>
-                  )}
-                />
-
-              </>
-            )}
           </FieldGroup>
 
           <DialogFooter>

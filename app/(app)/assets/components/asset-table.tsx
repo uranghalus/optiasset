@@ -156,17 +156,8 @@ export default function AssetTable() {
                 Scan QR <ScanLine className="size-4" />
               </Button>
             )}
-            {can("asset", ["import"]) && (
-              <Button
-                onClick={() => {
-                  setOpen("import");
-                }}
-              >
-                <UploadCloud className="h-4 w-4 me-2" />
-                Import Asset
-              </Button>
-            )}
-            {can("asset", ["export"]) && (
+
+            {can("asset", ["export", "import"]) && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="icon">
@@ -175,6 +166,19 @@ export default function AssetTable() {
                 </DropdownMenuTrigger>
 
                 <DropdownMenuContent align="end" className="w-40">
+                  {can("asset", ["import"]) && (
+                    <DropdownMenuGroup>
+                      <DropdownMenuLabel>Import Data</DropdownMenuLabel>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setOpen("import");
+                        }}
+                      >
+                        <UploadCloud className="h-4 w-4 me-2" />
+                        Import Asset
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                  )}
                   <DropdownMenuGroup>
                     <DropdownMenuLabel>Export Data</DropdownMenuLabel>
 

@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-"use server";
+'use server';
 
-import { auth } from "@/lib/auth";
-import { getServerSession } from "@/lib/get-session";
-import { prisma } from "@/lib/prisma";
-import { BanUserInput, banUserSchema } from "@/schema/user-schema";
-import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
+import { auth } from '@/lib/auth';
+import { getServerSession } from '@/lib/get-session';
+import { prisma } from '@/lib/prisma';
+import { BanUserInput, banUserSchema } from '@/schema/user-schema';
+import { revalidatePath } from 'next/cache';
+import { headers } from 'next/headers';
 
 type GetUsersParams = {
   page?: number;
@@ -23,7 +23,7 @@ export async function getAllUsers({
     headers: await headers(),
   });
 
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const offset = (page - 1) * limit;
 
@@ -34,12 +34,12 @@ export async function getAllUsers({
 
       ...(search && {
         searchValue: search,
-        searchField: "name",
-        searchOperator: "contains",
+        searchField: 'name',
+        searchOperator: 'contains',
       }),
 
-      sortBy: "name",
-      sortDirection: "asc",
+      sortBy: 'name',
+      sortDirection: 'asc',
     },
     headers: await headers(),
   });
@@ -53,8 +53,8 @@ export async function getAllUsers({
 
   // ✅ pastikan total aman
   const total =
-    typeof users?.total === "number" ? users.total : userList.length;
-  console.log("RAW USERS RESPONSE:", users);
+    typeof users?.total === 'number' ? users.total : userList.length;
+  console.log('RAW USERS RESPONSE:', users);
   return {
     data: userList,
     pagination: {
@@ -74,11 +74,11 @@ export async function getUsersForSelect() {
     headers: await headers(),
   });
 
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const users = await prisma.user.findMany({
     select: { id: true, name: true, email: true },
-    orderBy: { name: "asc" },
+    orderBy: { name: 'asc' },
   });
 
   return users;
@@ -89,21 +89,21 @@ export async function createUserAction(formData: FormData) {
     headers: await headers(),
   });
 
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  const name = formData.get("name") as string;
-  const role = formData.get("role") as any;
-  const departmentId = formData.get("departmentId") as string;
-  const divisiId = formData.get("divisiId") as string;
+  const email = formData.get('email') as string;
+  const name = formData.get('name') as string;
+  const password = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const role = formData.get('role') as any;
+  const departmentId = formData.get('departmentId') as string;
+  const divisiId = formData.get('divisiId') as string;
 
   const data = await auth.api.createUser({
     body: {
       email,
       password,
       name,
-      role: "user",
+      role: 'user',
       data: {
         departmentId,
         divisiId,
@@ -117,7 +117,7 @@ export async function createUserAction(formData: FormData) {
       organizationId: session.session.activeOrganizationId ?? undefined,
     },
   });
-  revalidatePath("/users");
+  revalidatePath('/users');
   return {
     data,
     addMember,
@@ -129,12 +129,12 @@ export async function updateUserAction(id: string, formData: FormData) {
     headers: await headers(),
   });
 
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
-  const name = formData.get("name") as string;
-  const role = formData.get("role") as any;
-  const departmentId = formData.get("departmentId") as string;
-  const divisiId = formData.get("divisiId") as string;
+  const name = formData.get('name') as string;
+  const role = formData.get('role') as any;
+  const departmentId = formData.get('departmentId') as string;
+  const divisiId = formData.get('divisiId') as string;
   const data = await auth.api.adminUpdateUser({
     body: {
       userId: id,
@@ -148,7 +148,7 @@ export async function updateUserAction(id: string, formData: FormData) {
     headers: await headers(),
   });
 
-  revalidatePath("/users");
+  revalidatePath('/users');
   return data;
 }
 // LINK remove user
@@ -157,7 +157,7 @@ export async function deleteUserAction(id: string) {
     headers: await headers(),
   });
 
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const data = await auth.api.removeUser({
     body: {
@@ -166,7 +166,7 @@ export async function deleteUserAction(id: string) {
     headers: await headers(),
   });
 
-  revalidatePath("/users");
+  revalidatePath('/users');
   return data;
 }
 /* =======================
@@ -178,7 +178,7 @@ export async function getUsersByDepartmentForSelect(departmentId: string) {
   });
 
   if (!session) {
-    throw new Error("Unauthorized");
+    throw new Error('Unauthorized');
   }
 
   if (!departmentId) return [];
@@ -199,7 +199,7 @@ export async function getUsersByDepartmentForSelect(departmentId: string) {
       email: true,
     },
     orderBy: {
-      name: "asc",
+      name: 'asc',
     },
   });
 
@@ -212,7 +212,7 @@ export async function getUsersByDepartmentForSelect(departmentId: string) {
 // LINK Multi Delet User
 export async function deleteManyUser(ids: string[]) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
   const deletePromises = ids.map(
     async (id) =>
       await auth.api.removeUser({
@@ -223,13 +223,13 @@ export async function deleteManyUser(ids: string[]) {
 
   const results = await Promise.all(deletePromises);
 
-  revalidatePath("/users");
+  revalidatePath('/users');
   return results;
 }
 // LINK Multi Ban User
 export async function banManyUser(ids: string[]) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
   const banPromises = ids.map(
     async (id) =>
       await auth.api.banUser({
@@ -240,13 +240,13 @@ export async function banManyUser(ids: string[]) {
 
   const results = await Promise.all(banPromises);
 
-  revalidatePath("/users");
+  revalidatePath('/users');
   return results;
 }
 // LINK Multi Unban User
 export async function unbanManyUser(ids: string[]) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
   const unbanPromises = ids.map(
     async (id) =>
       await auth.api.unbanUser({
@@ -257,7 +257,7 @@ export async function unbanManyUser(ids: string[]) {
 
   const results = await Promise.all(unbanPromises);
 
-  revalidatePath("/users");
+  revalidatePath('/users');
   return results;
 }
 // LINK Banned User
@@ -265,11 +265,11 @@ export async function bannedUser(id: string, data: BanUserInput) {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
   const parsedData = banUserSchema.safeParse(data);
   if (!parsedData.success) {
     return {
-      error: "Data tidak valid",
+      error: 'Data tidak valid',
       details: parsedData.error,
     };
   }
@@ -289,11 +289,11 @@ export async function bannedUser(id: string, data: BanUserInput) {
       headers: await headers(),
     });
     revalidatePath(`/users`);
-    return { success: true, message: "User berhasil dibanned." };
+    return { success: true, message: 'User berhasil dibanned.' };
   } catch (error: any) {
-    console.error("Ban User Error:", error);
+    console.error('Ban User Error:', error);
     return {
-      error: error?.message || "Terjadi kesalahan saat mem-banned user.",
+      error: error?.message || 'Terjadi kesalahan saat mem-banned user.',
     };
   }
 }
@@ -307,11 +307,11 @@ export async function unbanUser(id: string) {
       headers: await headers(),
     });
     revalidatePath(`/users`);
-    return { success: true, message: "User berhasil di-unbanned." };
+    return { success: true, message: 'User berhasil di-unbanned.' };
   } catch (error: any) {
-    console.error("Unban User Error:", error);
+    console.error('Unban User Error:', error);
     return {
-      error: error?.message || "Terjadi kesalahan saat meng-unbanned user.",
+      error: error?.message || 'Terjadi kesalahan saat meng-unbanned user.',
     };
   }
 }

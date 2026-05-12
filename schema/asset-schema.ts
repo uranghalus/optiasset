@@ -18,19 +18,19 @@ export const AssetFormSchema = z.object({
   kode_asset: z.string().optional(),
   vendorName: z.string().optional(),
   garansi_exp: z.string().optional(),
-  assetGroupId: z.string().min(1, "Golongan wajib dipilih"),
-  assetCategoryId: z.string().min(1),
-  assetClusterId: z.string().min(1),
-  assetSubClusterId: z.string().min(1),
+  assetGroupId: z.string().optional(),
+  assetCategoryId: z.string().optional(),
+  assetClusterId: z.string().optional(),
+  assetSubClusterId: z.string().optional(),
   photo: z.instanceof(File).optional().nullable(),
 });
 
 export type AssetForm = z.infer<typeof AssetFormSchema>;
 export const ImportFormSchema = z.object({
-  assetGroupId: z.string().min(1, "Golongan wajib diisi"),
-  assetCategoryId: z.string().min(1, "Kategori wajib diisi"),
-  assetClusterId: z.string().min(1, "Cluster wajib diisi"),
-  assetSubClusterId: z.string().min(1, "Sub Cluster wajib diisi"),
+  assetGroupId: z.string().optional(),
+  assetCategoryId: z.string().optional(),
+  assetClusterId: z.string().optional(),
+  assetSubClusterId: z.string().optional(),
   file: z
     .any()
     .refine((file) => file instanceof File, "File Excel wajib diunggah"),

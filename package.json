@@ -9,6 +9,7 @@
     "lint": "eslint",
     "seed": "tsx prisma/seeder/seed.ts",
     "prisma:push": "npx prisma db push && npx prisma generate",
+    "next:install":"npx prisma generate && next build && next start",
     "postinstall": "prisma generate"
   },
   "dependencies": {

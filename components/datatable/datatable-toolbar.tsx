@@ -1,15 +1,11 @@
 "use client";
 
 import * as React from "react";
-
 import { type Table } from "@tanstack/react-table";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DataTableFacetedFilter } from "./datatable-faceted-filter";
 import { SlidersHorizontal, X } from "lucide-react";
 import { DataTableViewOptions } from "./datatable-view-options";
-
 import { PopoverTrigger, PopoverContent, Popover } from "../ui/popover";
 import { DataTableFacetedFilterContent } from "./datatable-faceted-content";
 
@@ -17,11 +13,8 @@ type DataTableToolbarProps<TData> = {
   table: Table<TData>;
   searchPlaceholder?: string;
   searchKey?: string;
-
-  // ✅ TAMBAHAN
   onSearchChange?: (value: string) => void;
   searchValue?: string;
-
   filters?: {
     columnId: string;
     title: string;
@@ -48,36 +41,15 @@ export function DataTableToolbar<TData>({
     Boolean(table.getState().globalFilter);
 
   return (
-    <div className="flex items-center w-full">
-      {/* LEFT (children optional) */}
-      {children && <div>{children}</div>}
+    // 1. Container Utama: flex-col di mobile, flex-row di desktop
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between w-full gap-4">
+      {/* LEFT SIDE (Actions/Buttons) */}
+      {children && <div className="w-full sm:w-auto">{children}</div>}
 
-      {/* RIGHT (selalu ke kanan) */}
-      <div className="ml-auto flex items-center gap-6 shrink-0">
-        {/* FILTER + RESET */}
-        <div className="flex items-center gap-2 flex-wrap">
-
-
-          {isFiltered && (
-            <Button
-              variant="ghost"
-              onClick={() => {
-                table.resetColumnFilters();
-                table.setGlobalFilter("");
-
-                // ✅ reset server search
-                onSearchChange?.("");
-              }}
-              className="h-8 px-2"
-            >
-              Reset
-              <X className="ms-2 h-4 w-4" />
-            </Button>
-          )}
-        </div>
-
-        {/* SEARCH + VIEW */}
-        <div className="flex items-center gap-4">
+      {/* RIGHT SIDE (Search, Filters, View Options) */}
+      <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+        {/* Search Input - w-full di mobile agar mudah diketik */}
+        <div className="relative w-full sm:w-auto">
           <Input
             placeholder={searchPlaceholder}
             value={
@@ -90,40 +62,47 @@ export function DataTableToolbar<TData>({
             }
             onChange={(event) => {
               const value = event.target.value;
-
-              // ✅ SERVER SIDE SEARCH
               if (onSearchChange) {
                 onSearchChange(value);
                 return;
               }
-
-              // ✅ CLIENT SIDE (fallback)
               if (searchKey) {
                 table.getColumn(searchKey)?.setFilterValue(value);
               } else {
                 table.setGlobalFilter(value);
               }
             }}
-            className="h-8 w-[150px] lg:w-[250px]"
+            className="h-8 w-full sm:w-[200px] lg:w-[300px]"
           />
+          {/* Tombol Reset kecil di dalam search jika ada filter (opsional/estetika) */}
+        </div>
+
+        {/* Filters & View Options Group */}
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           {filters.length > 0 && (
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 flex-1 sm:flex-none"
+                >
                   <SlidersHorizontal className="mr-2 h-4 w-4" />
                   Filter
+                  {isFiltered && (
+                    <span className="ml-2 rounded-full bg-primary w-2 h-2" />
+                  )}
                 </Button>
               </PopoverTrigger>
 
-              <PopoverContent className="w-[250px] p-2 space-y-2" align="end">
+              <PopoverContent className="w-[280px] p-3 space-y-3" align="end">
                 {filters.map((filter) => {
                   const column = table.getColumn(filter.columnId);
                   if (!column) return null;
 
                   return (
                     <div key={filter.columnId} className="space-y-2">
-                      <p className="text-xs font-medium">{filter.title}</p>
-
+                      <p className="text-sm font-semibold">{filter.title}</p>
                       <DataTableFacetedFilterContent
                         column={column}
                         options={filter.options}
@@ -133,28 +112,43 @@ export function DataTableToolbar<TData>({
                 })}
 
                 {isFiltered && (
-                  <>
-                    <div className="border-t pt-2 mt-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => {
-                          table.resetColumnFilters();
-                          table.setGlobalFilter("");
-                          onSearchChange?.("");
-                        }}
-                      >
-                        Reset Filters
-                      </Button>
-                    </div>
-                  </>
+                  <div className="border-t pt-2 mt-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-destructive hover:text-destructive"
+                      onClick={() => {
+                        table.resetColumnFilters();
+                        table.setGlobalFilter("");
+                        onSearchChange?.("");
+                      }}
+                    >
+                      <X className="mr-2 h-4 w-4" />
+                      Reset Semua Filter
+                    </Button>
+                  </div>
                 )}
               </PopoverContent>
             </Popover>
           )}
+
           <DataTableViewOptions table={table} />
 
+          {/* Reset button versi Mobile (Hanya muncul jika di filter & di layar desktop) */}
+          {isFiltered && (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                table.resetColumnFilters();
+                table.setGlobalFilter("");
+                onSearchChange?.("");
+              }}
+              className="h-8 px-2 hidden lg:flex"
+            >
+              Reset
+              <X className="ms-2 h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
     </div>

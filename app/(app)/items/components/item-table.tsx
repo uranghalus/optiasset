@@ -54,15 +54,18 @@ export default function ItemTable() {
     ];
   }, [role]);
   return (
-    <div className="p-3 rounded-md border space-y-4">
+    <div className="p-3 rounded-md border space-y-4 w-full overflow-hidden">
       <DataTableToolbar
         table={table}
         searchKey="name"
         searchPlaceholder="Search item..."
         filters={filters}
       >
-        <div className="flex gap-2">
-          <Button onClick={() => setOpen("add")} className="gap-2">
+        <div className="flex flex-wrap items-center gap-2 mt-2 sm:mt-0 w-full sm:w-auto">
+          <Button
+            onClick={() => setOpen("add")}
+            className="gap-2 w-full sm:w-auto"
+          >
             <Plus className="size-4" />
             Add Item
           </Button>

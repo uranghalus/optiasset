@@ -9,8 +9,9 @@ import {
 import { useDialog } from "@/context/dialog-provider";
 import { Asset } from "@/generated/prisma";
 import { Table } from "@tanstack/react-table";
-import { Trash2 } from "lucide-react";
+import { Download, Trash2 } from "lucide-react";
 import { AssetMultiDeleteDialog } from "./asset-multi-delete-dialog";
+import AssetExportBarcodeDialog from "./asset-export-barcode-dialog";
 
 interface AssetBulkActionProps<TData> {
   table: Table<TData>;
@@ -26,6 +27,10 @@ export function AssetBulkAction<TData>({ table }: AssetBulkActionProps<TData>) {
     if (selectedAssets.length === 0) return;
     setOpen("delete-assets");
   };
+  const handleOpenExport = () => {
+    if (selectedAssets.length === 0) return;
+    setOpen("export-assets-barcode");
+  }
   return (
     <>
       <DataTableBulkActions table={table} entityName="asset">
@@ -43,10 +48,29 @@ export function AssetBulkAction<TData>({ table }: AssetBulkActionProps<TData>) {
           </TooltipTrigger>
           <TooltipContent>Delete selected assets</TooltipContent>
         </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="default"
+              size="icon"
+              className="size-8"
+              onClick={handleOpenExport}
+              aria-label="Export aset yg dipilih ke PDF barcode"
+            >
+              <Download />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Export aset yg dipilih ke PDF barcode</TooltipContent>
+        </Tooltip>
       </DataTableBulkActions>
       <AssetMultiDeleteDialog
         open={open === "delete-assets"}
         onOpenChange={(value) => setOpen("delete-assets")}
+        table={table}
+      />
+      <AssetExportBarcodeDialog
+        open={open === "export-assets-barcode"}
+        onOpenChange={(value) => setOpen("export-assets-barcode")}
         table={table}
       />
     </>

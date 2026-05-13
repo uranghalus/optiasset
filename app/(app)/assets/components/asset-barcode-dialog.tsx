@@ -1,6 +1,6 @@
 "use client";
 
-import { AssetQRCode } from "@/components/assets/asset-qr-code";
+
 import { Asset } from "@/generated/prisma/client";
 import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
@@ -11,15 +11,10 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { AssetBarcode } from "@/components/assets/asset-barcode";
+import { AssetWithItem } from "./asset-column";
 
-type AssetWithItem = Asset & {
-  item: {
-    name: string;
-    brand?: string | null;
-    model?: string | null;
-    serialNumber?: string | null;
-  };
-};
+
 
 interface AssetQRDialogProps {
   asset: AssetWithItem | null;
@@ -27,14 +22,14 @@ interface AssetQRDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function AssetQRDialog({
+export function AssetBarcodeDialog({
   asset,
   open,
   onOpenChange,
 }: AssetQRDialogProps) {
   if (!asset) return null;
 
-  const qrValue = `${window.location.origin}/assets/view/${asset.id}`;
+  const qrValue = asset;
 
   const handlePrint = () => {
     const printWindow = window.open("", "_blank");
@@ -66,8 +61,8 @@ export function AssetQRDialog({
         </head>
         <body>
           <div class="label-container">
-            <div class="asset-name">${asset.item.brand || ""} ${asset.item.model || ""}</div>
-            <div class="asset-code">${asset.kode_asset || asset.item.serialNumber || asset.id}</div>
+            <div class="asset-name">${asset.item.code || ""} ${asset.item.name || ""}</div>
+            <div class="asset-code">${asset.kode_asset || asset.serialNumber || asset.id}</div>
             <div id="qr-container"></div>
           </div>
           <script>
@@ -93,16 +88,20 @@ export function AssetQRDialog({
         <DialogHeader>
           <DialogTitle>Asset QR Code</DialogTitle>
         </DialogHeader>
-        <div className="flex flex-col items-center justify-center space-y-4 py-4">
-          <div id="asset-qr-canvas">
-            <AssetQRCode assetId={asset.id} value={qrValue} size={200} />
-          </div>
-          <div className="text-center">
-            <p className="font-bold text-lg">
-              {asset.item.brand} {asset.item.model}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {asset.kode_asset || asset.item.serialNumber}
+        <div className="flex flex-col items-center justify-center space-y-3 py-4">
+
+          <div id="asset-qr-canvas" >
+            <div className="flex items-center justify-between w-full">
+              <p className="text-sm text-muted-foreground">
+                {asset.PIC || asset.department?.nama_department}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {asset.kode_asset}
+              </p>
+            </div>
+            <AssetBarcode value={asset.kode_asset} />
+            <p className="font-bold text-sm text-center">
+              {asset.item.name}
             </p>
           </div>
         </div>

@@ -41,9 +41,6 @@ export default function AssetTable() {
   const { data: role } = useActiveMemberRole();
   const { data: departments = [] } = useSelectDepartment();
 
-  // ❌ HAPUS const [search, setSearch] = useState("");
-  // Karena kita sudah mengandalkan columnFilters dari useDataTable
-
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10,
@@ -51,8 +48,6 @@ export default function AssetTable() {
 
   const [columnFilters, setColumnFilters] = useState<any[]>([]);
 
-  // ✅ Ambil nilai search langsung dari filter Datatable
-  // PENTING: Pastikan "kode_asset" benar-benar ada di asset-column.tsx
   const searchValue = columnFilters.find((f) => f.id === "kode_asset")
     ?.value as string;
   const selectedDept = columnFilters.find((f) => f.id === "departmentId")
@@ -60,18 +55,17 @@ export default function AssetTable() {
   const selectedCondition = columnFilters.find((f) => f.id === "condition")
     ?.value as string[] | undefined;
 
-  // 👇 1. Gunakan State Search Lokal & Debounce
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 500);
 
-  // 👇 2. Kirim debouncedSearch ke API
   const { data, isLoading } = useAssets({
     page: pagination.pageIndex + 1,
     pageSize: pagination.pageSize,
     departmentId: selectedDept,
     condition: selectedCondition,
-    search: debouncedSearch, // Kirim teks global ke server
+    search: debouncedSearch,
   });
+
   /* =======================
      FILTER CONFIG
   ======================= */
@@ -113,55 +107,59 @@ export default function AssetTable() {
     columnFilters,
     onColumnFiltersChange: (updater) => {
       setColumnFilters(updater);
-      // Pagination otomatis di-reset lewat useEffect di bawah
     },
   });
 
-  // Reset ke halaman 1 (index 0) setiap kali filter / pencarian berubah
   useEffect(() => {
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   }, [columnFilters]);
 
   return (
-    <div className="p-3 rounded-md border space-y-4">
+    // Tambahkan overflow-hidden pada wrapper utama untuk mencegah horizontal scroll di body
+    <div className="p-3 rounded-md border space-y-4 w-full overflow-hidden">
       <DataTableToolbar
         table={table}
-        searchPlaceholder="Cari Kode Aset, Merek, Item..."
+        searchPlaceholder="Cari Kode Aset..."
         filters={filters}
-        // 👇 3. Gunakan Props Custom Anda di sini
         searchValue={search}
         onSearchChange={(value) => {
-          setSearch(value); // Update state pencarian
-          setPagination((prev) => ({ ...prev, pageIndex: 0 })); // Reset ke hal 1
+          setSearch(value);
+          setPagination((prev) => ({ ...prev, pageIndex: 0 }));
         }}
-        // ❌ JANGAN gunakan searchKey="kode_asset" lagi
       >
-        <div className="flex gap-2">
+        {/* PERBAIKAN STACK BERSUSUN DI MOBILE */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mt-3 sm:mt-0 w-full sm:w-auto">
           {can("asset", ["create"]) && (
-            <Button className="gap-2" asChild>
+            <Button className="gap-2 w-full sm:w-auto justify-center" asChild>
               <Link href="/assets/create">
-                <Plus className="size-4" />
+                <Plus className="size-4 shrink-0" />
                 Tambah Aset
               </Link>
             </Button>
           )}
 
-          <ButtonGroup>
+          {/* ButtonGroup dibuat full width di mobile, tapi tetap proporsional */}
+          <ButtonGroup className="flex w-full sm:w-auto">
             {can("asset", ["scan-code"]) && (
               <Button
                 onClick={() => setOpen("scan")}
-                className="gap-2"
+                className="gap-2 flex-1 sm:flex-none justify-center"
                 variant="outline"
               >
-                Scan QR <ScanLine className="size-4" />
+                <ScanLine className="size-4 shrink-0" />
+                Scan QR
               </Button>
             )}
 
             {can("asset", ["export", "import"]) && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon">
-                    <MoreHorizontalIcon />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="shrink-0 sm:w-10 w-12"
+                  >
+                    <MoreHorizontalIcon className="size-4" />
                   </Button>
                 </DropdownMenuTrigger>
 
@@ -169,11 +167,7 @@ export default function AssetTable() {
                   {can("asset", ["import"]) && (
                     <DropdownMenuGroup>
                       <DropdownMenuLabel>Import Data</DropdownMenuLabel>
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setOpen("import");
-                        }}
-                      >
+                      <DropdownMenuItem onClick={() => setOpen("import")}>
                         <UploadCloud className="h-4 w-4 me-2" />
                         Import Asset
                       </DropdownMenuItem>
@@ -181,14 +175,12 @@ export default function AssetTable() {
                   )}
                   <DropdownMenuGroup>
                     <DropdownMenuLabel>Export Data</DropdownMenuLabel>
-
                     <DropdownMenuItem onClick={() => setOpen("print-pdf")}>
-                      <Printer />
+                      <Printer className="h-4 w-4 me-2" />
                       Cetak PDF
                     </DropdownMenuItem>
-
                     <DropdownMenuItem>
-                      <FileDown />
+                      <FileDown className="h-4 w-4 me-2" />
                       Export Excel
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
@@ -200,6 +192,7 @@ export default function AssetTable() {
         </div>
       </DataTableToolbar>
 
+      {/* Pastikan DataTable di dalamnya dibungkus overflow-x-auto */}
       <DataTable table={table} loading={isLoading} />
       <AssetBulkAction table={table} />
       <DataTablePagination table={table} pageCount={data?.pageCount ?? 0} />

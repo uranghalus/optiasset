@@ -4,7 +4,7 @@ import React from "react";
 
 import { Asset } from "@/generated/prisma/client";
 import { AssetDeleteDialog } from "./asset-delete-dialog";
-import { AssetQRDialog } from "./asset-qr-dialog";
+
 import { AssetTransferDialog } from "./asset-transfer-dialog";
 import { AssetPrintDialog } from "./asset-print-dialog";
 import { BarcodeScannerDialog } from "@/components/assets/barcode-scanner-dialog";
@@ -12,6 +12,7 @@ import { AssetLoanDialog } from "./asset-loan-dialog";
 import { AssetWithItem } from "./asset-column";
 import AssetAssignDialog from "./asset-assign-dialog";
 import ImportAssetDialog from "./import-asset-dialog";
+import { AssetBarcodeDialog } from "./asset-barcode-dialog";
 
 export default function AssetDialogs() {
   const { currentRow, open, setCurrentRow, setOpen } = useDialog();
@@ -36,7 +37,7 @@ export default function AssetDialogs() {
             }}
           />
           <AssetDeleteDialog key={`asset-delete-${(currentRow as Asset).id}`} />
-          <AssetQRDialog
+          <AssetBarcodeDialog
             key={`asset-qr-${(currentRow as Asset).id}`}
             asset={currentRow as AssetWithItem}
             open={open === "view-qr"}

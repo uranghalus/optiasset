@@ -33,13 +33,14 @@ import {
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import S3Image from "@/components/s3-image";
 
 interface AssetWithRelations extends Asset {
     item: Item;
     location: Location | null;
     department: department | null;
-    assignedUser?: { 
-        name: string; 
+    assignedUser?: {
+        name: string;
         email: string;
         department?: { nama_department: string } | null;
     } | null;
@@ -158,11 +159,10 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
                             {asset.photoUrl && !imageError ? (
                                 <div className="relative w-full max-w-md mx-auto">
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img
-                                        src={`/uploads/${asset.photoUrl}`}
-                                        alt={`Foto ${asset.item.name}`}
-                                        className="w-full h-64 object-cover rounded-lg border"
-                                        onError={() => setImageError(true)}
+                                    <S3Image
+                                        imageKey={asset.photoUrl || null}
+                                        alt={`Foto ${asset.item?.name || 'Aset'}`}
+                                        className="max-h-[300px] object-contain shadow-sm border border-gray-100"
                                     />
                                 </div>
                             ) : (

@@ -1,13 +1,13 @@
-import { prisma } from "./prisma";
-import { prismaAdapter } from "better-auth/adapters/prisma";
-import { betterAuth } from "better-auth";
-import { nextCookies } from "better-auth/next-js";
+import { prisma } from './prisma';
+import { prismaAdapter } from 'better-auth/adapters/prisma';
+import { betterAuth } from 'better-auth';
+import { nextCookies } from 'better-auth/next-js';
 
-import { admin as adminPg, organization, username } from "better-auth/plugins";
-import { ac, owner, admin } from "./auth-permission";
+import { admin as adminPg, organization, username } from 'better-auth/plugins';
+import { ac, owner, admin } from './auth-permission';
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
-    provider: "mysql", // or "mysql", "postgresql", ...etc
+    provider: 'mysql', // or "mysql", "postgresql", ...etc
   }),
 
   //...
@@ -16,8 +16,9 @@ export const auth = betterAuth({
   trustedOrigins: [
     process.env.BETTER_AUTH_URL!,
     process.env.NEXT_PUBLIC_BASE_URL!,
-    "10.223.232.47",
-    "172.17.87.55"
+    '10.223.232.47',
+    '172.17.87.55',
+    'optiasset.loca.lt',
   ],
   emailAndPassword: {
     enabled: true,
@@ -35,19 +36,19 @@ export const auth = betterAuth({
     },
     additionalFields: {
       role: {
-        type: "string",
+        type: 'string',
         input: false,
       },
       username: {
-        type: "string",
+        type: 'string',
         input: true,
       },
       departmentId: {
-        type: "string",
+        type: 'string',
         input: true,
       },
       divisiId: {
-        type: "string",
+        type: 'string',
         input: true,
       },
     },

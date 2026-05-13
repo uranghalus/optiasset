@@ -629,7 +629,7 @@ export async function getAssetsByManyIds(ids: string[]) {
 }
 
 /* =======================
-   GET ASSET BY ID (for detail page)
+  // LINK GET ASSET BY ID (for detail page)
  ======================= */
 export async function getAssetById(id: string) {
   const session = await getServerSession();
@@ -700,7 +700,45 @@ export async function getAssetById(id: string) {
     throw new Error('Failed to fetch asset');
   }
 }
+// LINK Get Asset By Kode Asset
+export async function scanAssetCode(scannedCode: string) {
+  try {
+    const session = await getServerSession();
+    if (!session) return { success: false, message: 'Unauthorized' };
 
+    const activeOrgId = session.session?.activeOrganizationId;
+    if (!activeOrgId)
+      return { success: false, message: 'No active organizationId found' };
+
+    if (!scannedCode) return { success: false, message: 'Kode barcode kosong' };
+
+    // Cari asset berdasarkan kode_asset ATAU potongan awal UUID
+    const asset = await prisma.asset.findFirst({
+      where: {
+        organizationId: activeOrgId, // 🔐 PENTING: Sama seperti getAssetById Anda
+        OR: [
+          { kode_asset: { equals: scannedCode } },
+          { id: { startsWith: scannedCode.toLowerCase() } },
+        ],
+      },
+      select: {
+        id: true, // Kita HANYA butuh Full ID untuk redirect
+      },
+    });
+
+    if (!asset) {
+      return {
+        success: false,
+        message: 'Asset tidak ditemukan dalam database.',
+      };
+    }
+
+    return { success: true, data: asset };
+  } catch (error: any) {
+    console.error('Scan Error:', error);
+    return { success: false, message: 'Terjadi kesalahan saat mencari asset' };
+  }
+}
 /* =======================
    GET ASSETS FOR PRINT
  ======================= */
@@ -1447,85 +1485,113 @@ export async function deleteManyAsset(ids: string[]) {
 export async function exportBarcodeToPDF(assets: AssetWithItem[]) {
   try {
     const session = await getServerSession();
-    if (!assets || assets.length === 0)
+
+    if (!assets || assets.length === 0) {
       throw new Error('Tidak ada asset yang dipilih');
-    if (!session) return { success: false, message: 'Unauthorized' };
-    const organizationId = session.session.activeOrganizationId;
-    if (!organizationId) return { success: false, message: 'Unauthorized' };
+    }
+    if (!session || !session.session?.activeOrganizationId) {
+      return { success: false, message: 'Unauthorized' };
+    }
+
     const pdfBuffer = await new Promise<Buffer>(async (resolve, reject) => {
       try {
-        // Mengurangi margin agar lebih banyak muat di kertas A4
-        const doc = new PDFDocument({ size: 'A4', margin: 25 });
-        const buffers: Buffer[] = [];
+        // 1. Tentukan path absolut ke file TTF
+        const fontRegular = path.join(
+          process.cwd(),
+          'public',
+          'fonts',
+          'Roboto-Regular.ttf',
+        );
+        const fontBold = path.join(
+          process.cwd(),
+          'public',
+          'fonts',
+          'Roboto-Bold.ttf',
+        );
 
+        // 2. Lakukan pengecekan ketat. Jika file tidak ada, lemparkan error deskriptif
+        if (!fs.existsSync(fontRegular)) {
+          throw new Error(
+            `Font Regular tidak ditemukan di path: ${fontRegular}. Pastikan folder public ter-copy di Docker.`,
+          );
+        }
+        if (!fs.existsSync(fontBold)) {
+          throw new Error(
+            `Font Bold tidak ditemukan di path: ${fontBold}. Pastikan folder public ter-copy di Docker.`,
+          );
+        }
+
+        // 3. Inisialisasi dokumen langsung menggunakan font TTF
+        const doc = new PDFDocument({
+          size: 'A4',
+          margin: 40,
+          font: fontRegular, // Set default font ke Roboto-Regular
+        });
+
+        const buffers: Buffer[] = [];
         doc.on('data', buffers.push.bind(buffers));
         doc.on('end', () => resolve(Buffer.concat(buffers)));
 
         // Konfigurasi Grid Label
-        const startX = 25; // Margin Kiri
-        let startY = 30; // Margin Atas
+        const startX = 25;
+        const startY = 30;
 
-        const maxCols = 3; // 3 Barcode menyamping
-        const colWidth = 180; // Lebar per kolom
-        const rowHeight = 90; // Tinggi per baris
+        const maxCols = 3;
+        const colWidth = 180;
+        const rowHeight = 90;
 
-        // Dimensi asli kotak (border)
         const boxWidth = 170;
         const boxHeight = 75;
 
+        let currentItemOnPage = 0;
+
         for (let i = 0; i < assets.length; i++) {
           const asset = assets[i];
-          const col = i % maxCols;
-          let row = Math.floor(i / maxCols);
 
-          const x = startX + col * colWidth;
+          let col = currentItemOnPage % maxCols;
+          let row = Math.floor(currentItemOnPage / maxCols);
+
+          let x = startX + col * colWidth;
           let y = startY + row * rowHeight;
 
-          // Auto Pindah Halaman (Pagination)
+          // Pagination
           if (y + rowHeight > doc.page.height - 25) {
             doc.addPage();
-            startY = 30;
+            currentItemOnPage = 0;
+
+            col = 0;
             row = 0;
+            x = startX;
             y = startY;
           }
 
-          // ---------------- DATA PERSIAPAN ----------------
           const assetCode =
             asset.kode_asset || asset.id.split('-')[0].toUpperCase();
           const itemName = asset.item?.name || 'Unknown Item';
-          // Jika ada relasi departemen, gunakan singkatan. Jika tidak fallback ke 'Eng' atau string kosong
           const deptName =
             (asset as any).department?.name?.substring(0, 3) || 'Eng';
 
-          // ---------------- MENGGAMBAR BORDER (Garis Potong) ----------------
+          // Border
           doc
             .lineWidth(0.5)
-            .strokeColor('#a1a1aa') // Warna abu-abu terang
-            .dash(3, { space: 3 }) // Garis putus-putus untuk digunting
+            .strokeColor('#a1a1aa')
+            .dash(3, { space: 3 })
             .rect(x, y, boxWidth, boxHeight)
             .stroke()
-            .undash(); // Reset agar elemen lain tidak ikut putus-putus
+            .undash();
 
-          // ---------------- MENGGAMBAR TEKS ATAS (Kiri & Kanan) ----------------
-          doc.fillColor('#64748b'); // Text abu-abu kebiruan persis di gambar
-
-          // Kiri Atas (Departemen)
+          // Teks Atas (menggunakan Roboto-Regular secara default)
+          doc.fillColor('#64748b');
           doc
             .fontSize(9)
-            .font('Helvetica')
             .text(deptName, x + 5, y + 5, { width: 50, align: 'left' });
 
-          // Kanan Atas (Kode Asset)
-          doc
-            .fontSize(9)
-            .font('Helvetica')
-            .text(assetCode, x + boxWidth - 105, y + 5, {
-              width: 100,
-              align: 'right',
-            });
+          doc.text(assetCode, x + boxWidth - 105, y + 5, {
+            width: 100,
+            align: 'right',
+          });
 
-          // ---------------- MENGGAMBAR BARCODE ----------------
-          // Render barcode gambar yang tajam
+          // Barcode
           const barcodeBuffer = await bwipjs.toBuffer({
             bcid: 'code128',
             text: assetCode,
@@ -1534,22 +1600,26 @@ export async function exportBarcodeToPDF(assets: AssetWithItem[]) {
             includetext: false,
           });
 
-          // Posisikan barcode memanjang dari ujung kiri ke ujung kanan (padding 5)
           doc.image(barcodeBuffer, x + 5, y + 18, {
             width: boxWidth - 10,
             height: 35,
           });
 
-          // ---------------- MENGGAMBAR TEKS BAWAH (Nama Item) ----------------
-          doc.fillColor('#1f2937'); // Reset text ke Hitam gelap
+          // Teks Bawah (Pindah ke Roboto-Bold)
+          doc.fillColor('#1f2937');
           doc
+            .font(fontBold) // Ganti font ke Bold
             .fontSize(10)
-            .font('Helvetica-Bold')
             .text(itemName, x + 5, y + 58, {
               width: boxWidth - 10,
               align: 'center',
-              lineBreak: false, // Cegah turun baris agar tetap rapi
+              lineBreak: false,
             });
+
+          // Kembalikan font ke Regular untuk iterasi berikutnya (opsional tapi disarankan)
+          doc.font(fontRegular);
+
+          currentItemOnPage++;
         }
 
         doc.end();

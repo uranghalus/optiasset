@@ -33,34 +33,46 @@ export function BarcodeScannerDialog() {
     setScanned(true);
     setProcessing(true);
 
+    let id: string | null = null;
+
     try {
-      let id: string | null = null;
-
-      try {
-        const url = new URL(decodedText);
-        if (url.pathname.startsWith("/assets/")) {
-          id = url.pathname.split("/").pop()!;
-        }
-      } catch {
-        id = decodedText.trim();
+      const url = new URL(decodedText);
+      if (url.pathname.startsWith("/assets/")) {
+        id = url.pathname.split("/").pop()!;
       }
-
-      if (!id) throw new Error("Format barcode tidak valid");
-
-      toast.loading("Memvalidasi asset...");
-
-      await mutateAsync(id);
-
-      toast.success("Asset ditemukan");
-
-      setOpen(null);
-      router.push(`/assets/${id}`);
-    } catch (err: any) {
-      toast.error(err.message || "Asset tidak ditemukan");
-      setScanned(false);
-    } finally {
-      setProcessing(false);
+    } catch {
+      id = decodedText.trim();
     }
+
+    if (!id) {
+      toast.error("Format barcode tidak valid");
+      setScanned(false);
+      setProcessing(false);
+      return;
+    }
+
+    // 1. Buat promise chain untuk mutateAsync
+    const validationPromise = mutateAsync(id)
+      .then((validAssetId) => {
+        // validAssetId adalah hasil return dari hook (Full UUID)
+        setOpen(null);
+        router.push(`/assets/${validAssetId}`);
+        return validAssetId;
+      })
+      .catch((err) => {
+        setScanned(false);
+        throw err;
+      })
+      .finally(() => {
+        setProcessing(false);
+      });
+
+    // 2. Berikan promise tersebut ke toast.promise
+    toast.promise(validationPromise, {
+      loading: "Memvalidasi asset...",
+      success: "Asset ditemukan",
+      error: (err: any) => err.message || "Asset tidak ditemukan",
+    });
   };
 
   return (

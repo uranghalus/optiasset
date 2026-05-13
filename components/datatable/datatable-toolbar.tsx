@@ -72,7 +72,7 @@ export function DataTableToolbar<TData>({
                 table.setGlobalFilter(value);
               }
             }}
-            className="h-9 w-full sm:w-[200px] lg:w-[300px]"
+            className="h-8 w-full sm:w-[200px] lg:w-[300px]"
           />
           {/* Tombol Reset kecil di dalam search jika ada filter (opsional/estetika) */}
         </div>
@@ -85,7 +85,7 @@ export function DataTableToolbar<TData>({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-9 flex-1 sm:flex-none"
+                  className="h-8 flex-1 sm:flex-none"
                 >
                   <SlidersHorizontal className="mr-2 h-4 w-4" />
                   Filter
@@ -143,7 +143,7 @@ export function DataTableToolbar<TData>({
                 table.setGlobalFilter("");
                 onSearchChange?.("");
               }}
-              className="h-9 px-2 hidden lg:flex"
+              className="h-8 px-2 hidden lg:flex"
             >
               Reset
               <X className="ms-2 h-4 w-4" />

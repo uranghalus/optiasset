@@ -142,12 +142,14 @@ export default function AssetTable() {
           <ButtonGroup className="flex w-full sm:w-auto">
             {can("asset", ["scan-code"]) && (
               <Button
-                onClick={() => setOpen("scan")}
+                asChild
                 className="gap-2 flex-1 sm:flex-none justify-center"
                 variant="outline"
               >
-                <ScanLine className="size-4 shrink-0" />
-                Scan QR
+                <Link href="/assets/scan">
+                  <ScanLine className="size-4 shrink-0" />
+                  Scan Aset
+                </Link>
               </Button>
             )}
 

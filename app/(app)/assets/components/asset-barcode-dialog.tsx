@@ -89,20 +89,21 @@ export function AssetBarcodeDialog({
           <DialogTitle>Asset QR Code</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col items-center justify-center space-y-3 py-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              {asset.PIC || asset.department?.nama_department}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {asset.kode_asset}
-            </p>
-          </div>
+
           <div id="asset-qr-canvas" >
+            <div className="flex items-center justify-between w-full">
+              <p className="text-sm text-muted-foreground">
+                {asset.PIC || asset.department?.nama_department}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {asset.kode_asset}
+              </p>
+            </div>
             <AssetBarcode value={asset.kode_asset} />
+            <p className="font-bold text-sm text-center">
+              {asset.item.name}
+            </p>
           </div>
-          <p className="font-bold text-sm text-center">
-            {asset.item.name}
-          </p>
         </div>
         <DialogFooter className="flex sm:justify-center gap-2">
           <Button variant="outline" onClick={handlePrint} className="gap-2">

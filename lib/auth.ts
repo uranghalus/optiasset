@@ -17,6 +17,7 @@ export const auth = betterAuth({
     process.env.BETTER_AUTH_URL!,
     process.env.NEXT_PUBLIC_BASE_URL!,
     "10.223.232.47",
+    "172.17.87.55"
   ],
   emailAndPassword: {
     enabled: true,

@@ -1,21 +1,23 @@
 /* eslint-disable prefer-const */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-"use server";
-import PDFDocument from "pdfkit";
-import { getServerSession } from "@/lib/get-session";
-import { prisma } from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
-import { createAuditLog } from "@/lib/logger";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import fs from "fs";
-import path, { parse } from "path";
-import ExcelJS from "exceljs";
-import { buildAssetFilter } from "@/lib/filter";
-import * as XLSX from "xlsx";
-import { getColumnIndex, ASSET_MAPPER } from "@/lib/excel-mapper";
-import { BanUserInput, banUserSchema } from "@/schema/user-schema";
-import { deleteS3File, uploadToS3 } from "@/lib/s3-utils";
+'use server';
+import PDFDocument from 'pdfkit';
+import { getServerSession } from '@/lib/get-session';
+import { prisma } from '@/lib/prisma';
+import { revalidatePath } from 'next/cache';
+import { createAuditLog } from '@/lib/logger';
+import { auth } from '@/lib/auth';
+import { headers } from 'next/headers';
+import fs from 'fs';
+import path, { parse } from 'path';
+import ExcelJS from 'exceljs';
+import { buildAssetFilter } from '@/lib/filter';
+import * as XLSX from 'xlsx';
+import { getColumnIndex, ASSET_MAPPER } from '@/lib/excel-mapper';
+import bwipjs from 'bwip-js';
+import { deleteS3File, uploadToS3 } from '@/lib/s3-utils';
+import { Asset } from '@/generated/prisma';
+import { AssetWithItem } from '@/app/(app)/assets/components/asset-column';
 // Helper function to save uploaded file
 
 /* =======================
@@ -42,7 +44,7 @@ export async function getAllAssets({
   search,
 }: AssetArgs) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const roleRes = await auth.api.getActiveMemberRole({
     headers: await headers(),
@@ -51,7 +53,7 @@ export async function getAllAssets({
   const role = roleRes?.role;
 
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
+  if (!activeOrgId) throw new Error('No active organizationId found');
 
   const where = buildAssetFilter({
     role,
@@ -70,7 +72,7 @@ export async function getAllAssets({
       where,
       skip: (safePage - 1) * safePageSize,
       take: safePageSize,
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
 
       select: {
         id: true,
@@ -132,14 +134,14 @@ export async function getAllAssets({
  ======================= */
 export async function getItemsForSelect() {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
   const activeOrgId = session.session?.activeOrganizationId;
   if (!activeOrgId) return [];
 
   return prisma.item.findMany({
     where: { organizationId: activeOrgId },
     select: { id: true, name: true, code: true, assetType: true },
-    orderBy: { name: "asc" },
+    orderBy: { name: 'asc' },
   });
 }
 
@@ -148,7 +150,7 @@ export async function getItemsForSelect() {
  ======================= */
 export async function getLocationsForSelect() {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
   const activeOrgId = session.session?.activeOrganizationId;
 
   if (!activeOrgId) return [];
@@ -156,7 +158,7 @@ export async function getLocationsForSelect() {
   return prisma.location.findMany({
     where: { organizationId: activeOrgId },
     select: { id: true, name: true },
-    orderBy: { name: "asc" },
+    orderBy: { name: 'asc' },
   });
 }
 
@@ -171,15 +173,15 @@ export async function getAvailableAssetsForLoanSelect({
   divisiId?: string;
 }) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
+  if (!activeOrgId) throw new Error('No active organizationId found');
 
   // 1. Inisialisasi object where dengan filter wajib
   const where: any = {
     organizationId: activeOrgId,
-    status: { in: ["ACTIVE", "GOOD"] },
+    status: { in: ['ACTIVE', 'GOOD'] },
   };
 
   // 2. Tambahkan departmentId jika ada
@@ -189,7 +191,7 @@ export async function getAvailableAssetsForLoanSelect({
 
   // 3. LOGIKA KRUSIAL: Hanya tambah divisiId jika ada nilainya DAN bukan "ALL"
   // Pastikan juga field ini memang ada di schema.prisma Anda!
-  if (divisiId && divisiId !== "ALL") {
+  if (divisiId && divisiId !== 'ALL') {
     where.divisiId = divisiId;
   }
 
@@ -202,7 +204,7 @@ export async function getAvailableAssetsForLoanSelect({
         select: { name: true },
       },
     },
-    orderBy: { item: { name: "asc" } },
+    orderBy: { item: { name: 'asc' } },
   });
 }
 
@@ -211,7 +213,7 @@ export async function getAvailableAssetsForLoanSelect({
  ======================= */
 export async function createAsset(formData: FormData) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const memberRole = await auth.api.getActiveMemberRole({
     headers: await headers(),
@@ -219,10 +221,10 @@ export async function createAsset(formData: FormData) {
 
   const role = memberRole.role as string;
   const sessionDeptId = session.user.departmentId;
-  if (!sessionDeptId) throw new Error("User has no department");
+  if (!sessionDeptId) throw new Error('User has no department');
 
-  const itemId = formData.get("itemId")?.toString();
-  if (!itemId) throw new Error("Item is required");
+  const itemId = formData.get('itemId')?.toString();
+  if (!itemId) throw new Error('Item is required');
 
   const parseDateOrNull = (key: string) => {
     const val = formData.get(key)?.toString();
@@ -235,26 +237,26 @@ export async function createAsset(formData: FormData) {
   };
 
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
+  if (!activeOrgId) throw new Error('No active organizationId found');
 
   // --- INTEGRASI S3 MULAI DI SINI ---
-  const photoFile = formData.get("photo") as File | null;
+  const photoFile = formData.get('photo') as File | null;
   let photoUrl = null;
 
   // Cek apakah file ada dan ukurannya lebih dari 0 (bukan file kosong)
   if (photoFile && photoFile.size > 0) {
     // Kita simpan Key S3 ke variabel photoUrl
-    photoUrl = await uploadToS3(photoFile, "asset-photos");
+    photoUrl = await uploadToS3(photoFile, 'asset-photos');
   }
   // --- INTEGRASI S3 SELESAI ---
 
-  const formDepartmentId = formData.get("departmentId")?.toString();
-  const isAdminOrOwner = role === "staff_asset" || role === "owner";
+  const formDepartmentId = formData.get('departmentId')?.toString();
+  const isAdminOrOwner = role === 'staff_asset' || role === 'owner';
   const finalDepartmentId =
     isAdminOrOwner && formDepartmentId ? formDepartmentId : sessionDeptId;
 
   const assetSubClusterId = formData
-    .get("assetSubClusterId")
+    .get('assetSubClusterId')
     ?.toString()
     .trim();
 
@@ -263,32 +265,32 @@ export async function createAsset(formData: FormData) {
       data: {
         itemId,
         organizationId: activeOrgId,
-        purchaseDate: parseDateOrNull("purchaseDate"),
-        purchasePrice: parseFloatOrNull("purchasePrice"),
-        condition: formData.get("condition")?.toString() || null,
-        warrantyExpire: parseDateOrNull("warrantyExpire"),
-        locationId: formData.get("locationId")?.toString() || null,
-        brand: formData.get("brand")?.toString() || null,
-        model: formData.get("model")?.toString() || null,
-        partNumber: formData.get("partNumber")?.toString() || null,
-        serialNumber: formData.get("serialNumber")?.toString() || null,
-        document_number: formData.get("document_number")?.toString() || null,
-        no_spb: formData.get("no_spb")?.toString() || null,
+        purchaseDate: parseDateOrNull('purchaseDate'),
+        purchasePrice: parseFloatOrNull('purchasePrice'),
+        condition: formData.get('condition')?.toString() || null,
+        warrantyExpire: parseDateOrNull('warrantyExpire'),
+        locationId: formData.get('locationId')?.toString() || null,
+        brand: formData.get('brand')?.toString() || null,
+        model: formData.get('model')?.toString() || null,
+        partNumber: formData.get('partNumber')?.toString() || null,
+        serialNumber: formData.get('serialNumber')?.toString() || null,
+        document_number: formData.get('document_number')?.toString() || null,
+        no_spb: formData.get('no_spb')?.toString() || null,
         departmentId: finalDepartmentId,
-        notes: formData.get("notes")?.toString() || null,
-        kode_asset: formData.get("kode_asset")?.toString() || null,
-        vendorName: formData.get("vendorName")?.toString() || null,
+        notes: formData.get('notes')?.toString() || null,
+        kode_asset: formData.get('kode_asset')?.toString() || null,
+        vendorName: formData.get('vendorName')?.toString() || null,
         ...(assetSubClusterId && {
           assetSubClusters: {
             connect: [{ id: assetSubClusterId }],
           },
         }),
-        garansi_exp: parseDateOrNull("garansi_exp"),
+        garansi_exp: parseDateOrNull('garansi_exp'),
         photoUrl, // Key S3 disimpan di sini
       },
     });
 
-    const locationId = formData.get("locationId")?.toString();
+    const locationId = formData.get('locationId')?.toString();
     if (locationId) {
       await tx.stock.upsert({
         where: {
@@ -309,10 +311,10 @@ export async function createAsset(formData: FormData) {
     await createAuditLog({
       userId: session.user.id,
       organizationId: activeOrgId,
-      action: "CREATE",
-      entityType: "ASSET",
+      action: 'CREATE',
+      entityType: 'ASSET',
       entityId: newAsset.id,
-      entityInfo: `${newAsset.kode_asset || "N/A"} - ${newAsset.itemId || "N/A"}`,
+      entityInfo: `${newAsset.kode_asset || 'N/A'} - ${newAsset.itemId || 'N/A'}`,
       details: { newData: newAsset },
       tx,
     });
@@ -320,7 +322,7 @@ export async function createAsset(formData: FormData) {
     return newAsset;
   });
 
-  revalidatePath("/assets");
+  revalidatePath('/assets');
   return asset;
 }
 /* =======================
@@ -328,26 +330,26 @@ export async function createAsset(formData: FormData) {
  ======================= */
 export async function updateAsset(id: string, formData: FormData) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
+  if (!activeOrgId) throw new Error('No active organizationId found');
 
   const asset = await prisma.asset.findFirst({
     where: { id, organizationId: activeOrgId },
   });
-  if (!asset) throw new Error("Asset not found");
+  if (!asset) throw new Error('Asset not found');
 
   const memberRole = await auth.api.getActiveMemberRole({
     headers: await headers(),
   });
   const role = memberRole.role as string;
-  const isAdminOrOwner = role === "staff_asset" || role === "owner";
+  const isAdminOrOwner = role === 'staff_asset' || role === 'owner';
 
   const sessionDeptId = session.user.departmentId;
-  if (!sessionDeptId) throw new Error("User has no department");
+  if (!sessionDeptId) throw new Error('User has no department');
 
-  const formDepartmentId = formData.get("departmentId")?.toString();
+  const formDepartmentId = formData.get('departmentId')?.toString();
   const finalDepartmentId =
     isAdminOrOwner && formDepartmentId ? formDepartmentId : asset.departmentId;
 
@@ -362,8 +364,8 @@ export async function updateAsset(id: string, formData: FormData) {
   };
 
   // --- LOGIKA FOTO (HAPUS & UPDATE) ---
-  const removePhoto = formData.get("removePhoto") === "true";
-  const photoFile = formData.get("photo") as File | null;
+  const removePhoto = formData.get('removePhoto') === 'true';
+  const photoFile = formData.get('photo') as File | null;
   const isPhotoValid = photoFile && photoFile.size > 0;
 
   let finalPhotoUrl = asset.photoUrl;
@@ -377,12 +379,12 @@ export async function updateAsset(id: string, formData: FormData) {
     // Hapus foto lama dulu jika ada
     if (asset.photoUrl) await deleteS3File(asset.photoUrl);
     // Upload foto baru
-    finalPhotoUrl = await uploadToS3(photoFile, "asset-photos");
+    finalPhotoUrl = await uploadToS3(photoFile, 'asset-photos');
   }
   // ------------------------------------
 
-  const assetSubClusterId = formData.get("assetSubClusterId")?.toString();
-  const subClusterUpdateObj = formData.has("assetSubClusterId")
+  const assetSubClusterId = formData.get('assetSubClusterId')?.toString();
+  const subClusterUpdateObj = formData.has('assetSubClusterId')
     ? {
         assetSubClusters: {
           set: [],
@@ -394,56 +396,56 @@ export async function updateAsset(id: string, formData: FormData) {
     : {};
 
   const updated = await prisma.$transaction(async (tx) => {
-    const newLocationId = formData.get("locationId")?.toString();
+    const newLocationId = formData.get('locationId')?.toString();
     const oldLocationId = asset.locationId;
 
     const result = await tx.asset.update({
       where: { id },
       data: {
-        itemId: formData.get("itemId")?.toString() ?? asset.itemId,
-        purchaseDate: formData.has("purchaseDate")
-          ? parseDateOrNull("purchaseDate")
+        itemId: formData.get('itemId')?.toString() ?? asset.itemId,
+        purchaseDate: formData.has('purchaseDate')
+          ? parseDateOrNull('purchaseDate')
           : asset.purchaseDate,
-        purchasePrice: formData.has("purchasePrice")
-          ? parseFloatOrNull("purchasePrice")
+        purchasePrice: formData.has('purchasePrice')
+          ? parseFloatOrNull('purchasePrice')
           : asset.purchasePrice,
-        condition: formData.has("condition")
-          ? formData.get("condition")?.toString() || null
+        condition: formData.has('condition')
+          ? formData.get('condition')?.toString() || null
           : asset.condition,
-        warrantyExpire: formData.has("warrantyExpire")
-          ? parseDateOrNull("warrantyExpire")
+        warrantyExpire: formData.has('warrantyExpire')
+          ? parseDateOrNull('warrantyExpire')
           : asset.warrantyExpire,
-        brand: formData.has("brand")
-          ? formData.get("brand")?.toString() || null
+        brand: formData.has('brand')
+          ? formData.get('brand')?.toString() || null
           : asset.brand,
-        model: formData.has("model")
-          ? formData.get("model")?.toString() || null
+        model: formData.has('model')
+          ? formData.get('model')?.toString() || null
           : asset.model,
-        partNumber: formData.has("partNumber")
-          ? formData.get("partNumber")?.toString() || null
+        partNumber: formData.has('partNumber')
+          ? formData.get('partNumber')?.toString() || null
           : asset.partNumber,
-        serialNumber: formData.has("serialNumber")
-          ? formData.get("serialNumber")?.toString() || null
+        serialNumber: formData.has('serialNumber')
+          ? formData.get('serialNumber')?.toString() || null
           : asset.serialNumber,
-        document_number: formData.has("document_number")
-          ? formData.get("document_number")?.toString() || null
+        document_number: formData.has('document_number')
+          ? formData.get('document_number')?.toString() || null
           : asset.document_number,
-        no_spb: formData.has("no_spb")
-          ? formData.get("no_spb")?.toString() || null
+        no_spb: formData.has('no_spb')
+          ? formData.get('no_spb')?.toString() || null
           : asset.no_spb,
         locationId: newLocationId || asset.locationId,
         departmentId: finalDepartmentId,
-        notes: formData.has("notes")
-          ? formData.get("notes")?.toString() || null
+        notes: formData.has('notes')
+          ? formData.get('notes')?.toString() || null
           : asset.notes,
-        kode_asset: formData.has("kode_asset")
-          ? formData.get("kode_asset")?.toString() || null
+        kode_asset: formData.has('kode_asset')
+          ? formData.get('kode_asset')?.toString() || null
           : asset.kode_asset,
-        vendorName: formData.has("vendorName")
-          ? formData.get("vendorName")?.toString() || null
+        vendorName: formData.has('vendorName')
+          ? formData.get('vendorName')?.toString() || null
           : asset.vendorName,
-        garansi_exp: formData.has("garansi_exp")
-          ? parseDateOrNull("garansi_exp")
+        garansi_exp: formData.has('garansi_exp')
+          ? parseDateOrNull('garansi_exp')
           : asset.garansi_exp,
         photoUrl: finalPhotoUrl, // Simpan key baru atau null
         updatedAt: new Date(),
@@ -467,9 +469,9 @@ export async function updateAsset(id: string, formData: FormData) {
           assetId: id,
           organizationId: activeOrgId,
           userId: session.user.id,
-          action: "TRANSFER_LOCATION", // Penanda pergerakan
-          field: "locationId",
-          oldValue: oldLocationId || "N/A",
+          action: 'TRANSFER_LOCATION', // Penanda pergerakan
+          field: 'locationId',
+          oldValue: oldLocationId || 'N/A',
           newValue: newLocationId,
           asset_info: `${asset.kode_asset || id} - ${asset.itemId}`,
         },
@@ -496,12 +498,12 @@ export async function updateAsset(id: string, formData: FormData) {
       await createAuditLog({
         userId: session.user.id,
         organizationId: activeOrgId,
-        action: "TRANSFER",
-        entityType: "ASSET",
+        action: 'TRANSFER',
+        entityType: 'ASSET',
         entityId: id,
         details: {
-          field: "locationId",
-          oldValue: oldLocationId || "N/A",
+          field: 'locationId',
+          oldValue: oldLocationId || 'N/A',
           newValue: newLocationId,
         },
         tx,
@@ -511,11 +513,11 @@ export async function updateAsset(id: string, formData: FormData) {
     await createAuditLog({
       userId: session.user.id,
       organizationId: activeOrgId,
-      action: "UPDATE",
-      entityType: "ASSET",
+      action: 'UPDATE',
+      entityType: 'ASSET',
       entityId: id,
       details: {
-        message: "Asset updated",
+        message: 'Asset updated',
       },
       tx,
     });
@@ -523,7 +525,7 @@ export async function updateAsset(id: string, formData: FormData) {
     return result;
   });
 
-  revalidatePath("/assets");
+  revalidatePath('/assets');
   return updated;
 }
 /* =======================
@@ -531,10 +533,10 @@ export async function updateAsset(id: string, formData: FormData) {
  ======================= */
 export async function deleteAsset(id: string) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
+  if (!activeOrgId) throw new Error('No active organizationId found');
 
   const asset = await prisma.$transaction(async (tx) => {
     // 1. Cek apakah aset ada
@@ -542,7 +544,7 @@ export async function deleteAsset(id: string) {
       where: { id, organizationId: activeOrgId },
       include: { item: true },
     });
-    if (!existing) throw new Error("Asset not found");
+    if (!existing) throw new Error('Asset not found');
 
     // 2. HAPUS FOTO DARI S3
     // Kita lakukan ini sebelum menghapus record di database
@@ -556,11 +558,11 @@ export async function deleteAsset(id: string) {
         assetId: null,
         organizationId: activeOrgId,
         userId: session.user.id,
-        action: "DISPOSED",
-        field: "status",
+        action: 'DISPOSED',
+        field: 'status',
         oldValue: existing.status,
-        newValue: "DELETED",
-        asset_info: `[DIHAPUS] ${existing.kode_asset || "N/A"} - ${existing.item?.name || "N/A"}`,
+        newValue: 'DELETED',
+        asset_info: `[DIHAPUS] ${existing.kode_asset || 'N/A'} - ${existing.item?.name || 'N/A'}`,
       },
     });
 
@@ -568,7 +570,7 @@ export async function deleteAsset(id: string) {
     const deleted = await tx.asset.delete({ where: { id } });
 
     // 5. Sync ke Stock (Kurangi stok karena barang dihapus)
-    if (existing.locationId && existing.assignedStatus === "AVAILABLE") {
+    if (existing.locationId && existing.assignedStatus === 'AVAILABLE') {
       await tx.stock.updateMany({
         where: {
           itemId: existing.itemId,
@@ -583,10 +585,10 @@ export async function deleteAsset(id: string) {
     await createAuditLog({
       userId: session.user.id,
       organizationId: activeOrgId,
-      action: "DELETE",
-      entityType: "ASSET",
+      action: 'DELETE',
+      entityType: 'ASSET',
       entityId: deleted.id,
-      entityInfo: `${deleted.kode_asset || "N/A"} - ${deleted.itemId || "N/A"}`,
+      entityInfo: `${deleted.kode_asset || 'N/A'} - ${deleted.itemId || 'N/A'}`,
       details: {
         deletedData: deleted,
       },
@@ -596,7 +598,7 @@ export async function deleteAsset(id: string) {
     return deleted;
   });
 
-  revalidatePath("/assets");
+  revalidatePath('/assets');
   return asset;
 }
 /* =======================
@@ -604,10 +606,10 @@ export async function deleteAsset(id: string) {
  ======================= */
 export async function getAssetsByManyIds(ids: string[]) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
+  if (!activeOrgId) throw new Error('No active organizationId found');
 
   const assets = await prisma.asset.findMany({
     where: {
@@ -631,10 +633,10 @@ export async function getAssetsByManyIds(ids: string[]) {
  ======================= */
 export async function getAssetById(id: string) {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new Error('Unauthorized');
 
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
+  if (!activeOrgId) throw new Error('No active organizationId found');
 
   try {
     const asset = await prisma.asset.findFirst({
@@ -695,7 +697,7 @@ export async function getAssetById(id: string) {
     };
   } catch (error) {
     console.error(error);
-    throw new Error("Failed to fetch asset");
+    throw new Error('Failed to fetch asset');
   }
 }
 
@@ -709,14 +711,14 @@ export async function exportAssetPDF({
   dateTo,
   organizationId,
 }: {
-  type: "all" | "latest" | "range";
+  type: 'all' | 'latest' | 'range';
   dateFrom?: string;
   dateTo?: string;
   organizationId: string;
 }) {
   let where: any = { organizationId };
 
-  if (type === "range" && dateFrom && dateTo) {
+  if (type === 'range' && dateFrom && dateTo) {
     const from = new Date(dateFrom);
     const to = new Date(dateTo);
 
@@ -731,8 +733,8 @@ export async function exportAssetPDF({
 
   const assets = await prisma.asset.findMany({
     where,
-    orderBy: { createdAt: "desc" },
-    take: type === "latest" ? 20 : undefined,
+    orderBy: { createdAt: 'desc' },
+    take: type === 'latest' ? 20 : undefined,
     include: {
       item: true,
     },
@@ -740,27 +742,27 @@ export async function exportAssetPDF({
 
   const fontRegular = path.join(
     process.cwd(),
-    "public/fonts/Roboto-Regular.ttf",
+    'public/fonts/Roboto-Regular.ttf',
   );
-  const fontBold = path.join(process.cwd(), "public/fonts/Roboto-Bold.ttf");
+  const fontBold = path.join(process.cwd(), 'public/fonts/Roboto-Bold.ttf');
 
   const doc = new PDFDocument({
     font: fontRegular,
-    size: "A4",
+    size: 'A4',
     margin: 40,
   });
   const chunks: Uint8Array[] = [];
-  doc.on("data", (c) => chunks.push(c));
+  doc.on('data', (c) => chunks.push(c));
 
   return new Promise<string>((resolve) => {
-    doc.on("end", () => {
+    doc.on('end', () => {
       const buffer = Buffer.concat(chunks);
-      resolve(buffer.toString("base64"));
+      resolve(buffer.toString('base64'));
     });
 
     // ================= HEADER =================
-    doc.font(fontBold).fontSize(16).text("LAPORAN DATA ASET", {
-      align: "center",
+    doc.font(fontBold).fontSize(16).text('LAPORAN DATA ASET', {
+      align: 'center',
     });
 
     doc.moveDown(0.5);
@@ -768,16 +770,16 @@ export async function exportAssetPDF({
     doc
       .font(fontRegular)
       .fontSize(10)
-      .text(`Tanggal Cetak: ${new Date().toLocaleDateString("id-ID")}`, {
-        align: "center",
+      .text(`Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}`, {
+        align: 'center',
       });
 
     if (dateFrom && dateTo) {
       doc.text(
         `Periode: ${new Date(dateFrom).toLocaleDateString(
-          "id-ID",
-        )} - ${new Date(dateTo).toLocaleDateString("id-ID")}`,
-        { align: "center" },
+          'id-ID',
+        )} - ${new Date(dateTo).toLocaleDateString('id-ID')}`,
+        { align: 'center' },
       );
     }
 
@@ -800,12 +802,12 @@ export async function exportAssetPDF({
     // HEADER TABLE
     doc.font(fontBold).fontSize(10);
 
-    doc.text("No", col.no, tableTop);
-    doc.text("Item", col.item, tableTop);
-    doc.text("Brand", col.brand, tableTop);
-    doc.text("Model", col.model, tableTop);
-    doc.text("Serial", col.serial, tableTop);
-    doc.text("Status", col.status, tableTop);
+    doc.text('No', col.no, tableTop);
+    doc.text('Item', col.item, tableTop);
+    doc.text('Brand', col.brand, tableTop);
+    doc.text('Model', col.model, tableTop);
+    doc.text('Serial', col.serial, tableTop);
+    doc.text('Status', col.status, tableTop);
 
     // garis bawah header
     doc
@@ -825,11 +827,11 @@ export async function exportAssetPDF({
       }
 
       doc.text(String(i + 1), col.no, y);
-      doc.text(a.item?.name ?? "-", col.item, y, { width: 120 });
-      doc.text(a.brand ?? "-", col.brand, y, { width: 90 });
-      doc.text(a.model ?? "-", col.model, y, { width: 90 });
-      doc.text(a.serialNumber ?? "-", col.serial, y, { width: 90 });
-      doc.text(a.status ?? "-", col.status, y, { width: 60 });
+      doc.text(a.item?.name ?? '-', col.item, y, { width: 120 });
+      doc.text(a.brand ?? '-', col.brand, y, { width: 90 });
+      doc.text(a.model ?? '-', col.model, y, { width: 90 });
+      doc.text(a.serialNumber ?? '-', col.serial, y, { width: 90 });
+      doc.text(a.status ?? '-', col.status, y, { width: 60 });
 
       // garis row
       doc
@@ -845,14 +847,14 @@ export async function exportAssetPDF({
     // ================= FOOTER =================
     doc.moveDown(2);
 
-    doc.fontSize(10).text("Mengetahui,", { align: "right" });
+    doc.fontSize(10).text('Mengetahui,', { align: 'right' });
     doc.moveDown(3);
-    doc.text("(_____________________)", { align: "right" });
+    doc.text('(_____________________)', { align: 'right' });
 
     doc.end();
   });
 }
-type ExportType = "all" | "latest" | "monthly";
+type ExportType = 'all' | 'latest' | 'monthly';
 // LINK export excel
 export async function exportAssetExcel({
   type,
@@ -870,13 +872,13 @@ export async function exportAssetExcel({
   };
 
   // ✅ FILTER LOGIC
-  if (type === "latest") {
+  if (type === 'latest') {
     where.createdAt = {
       gte: new Date(new Date().setDate(new Date().getDate() - 7)), // 7 hari terakhir
     };
   }
 
-  if (type === "monthly" && dateFrom && dateTo) {
+  if (type === 'monthly' && dateFrom && dateTo) {
     where.purchaseDate = {
       gte: dateFrom,
       lte: dateTo,
@@ -891,40 +893,40 @@ export async function exportAssetExcel({
       department: true,
     },
     orderBy: {
-      createdAt: "desc",
+      createdAt: 'desc',
     },
   });
 
   // ✅ CREATE EXCEL
   const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet("Assets");
+  const worksheet = workbook.addWorksheet('Assets');
 
   // HEADER
   worksheet.columns = [
-    { header: "No", key: "no", width: 5 },
-    { header: "Item Name", key: "item", width: 25 },
-    { header: "Brand", key: "brand", width: 20 },
-    { header: "Model", key: "model", width: 20 },
-    { header: "Part Number", key: "partNumber", width: 20 },
-    { header: "Serial Number", key: "serialNumber", width: 25 },
-    { header: "Condition", key: "condition", width: 15 },
-    { header: "Purchase Date", key: "purchaseDate", width: 20 },
-    { header: "Price", key: "price", width: 15 },
-    { header: "Location", key: "location", width: 20 },
-    { header: "Department", key: "department", width: 20 },
-    { header: "Status", key: "status", width: 15 },
-    { header: "Vendor", key: "vendor", width: 20 },
+    { header: 'No', key: 'no', width: 5 },
+    { header: 'Item Name', key: 'item', width: 25 },
+    { header: 'Brand', key: 'brand', width: 20 },
+    { header: 'Model', key: 'model', width: 20 },
+    { header: 'Part Number', key: 'partNumber', width: 20 },
+    { header: 'Serial Number', key: 'serialNumber', width: 25 },
+    { header: 'Condition', key: 'condition', width: 15 },
+    { header: 'Purchase Date', key: 'purchaseDate', width: 20 },
+    { header: 'Price', key: 'price', width: 15 },
+    { header: 'Location', key: 'location', width: 20 },
+    { header: 'Department', key: 'department', width: 20 },
+    { header: 'Status', key: 'status', width: 15 },
+    { header: 'Vendor', key: 'vendor', width: 20 },
   ];
 
   // STYLE HEADER
   worksheet.getRow(1).eachCell((cell) => {
     cell.font = { bold: true };
-    cell.alignment = { vertical: "middle", horizontal: "center" };
+    cell.alignment = { vertical: 'middle', horizontal: 'center' };
     cell.border = {
-      top: { style: "thin" },
-      bottom: { style: "thin" },
-      left: { style: "thin" },
-      right: { style: "thin" },
+      top: { style: 'thin' },
+      bottom: { style: 'thin' },
+      left: { style: 'thin' },
+      right: { style: 'thin' },
     };
   });
 
@@ -932,20 +934,20 @@ export async function exportAssetExcel({
   assets.forEach((asset, index) => {
     worksheet.addRow({
       no: index + 1,
-      item: asset.item?.name || "-",
-      brand: asset.brand || "-",
-      model: asset.model || "-",
-      partNumber: asset.partNumber || "-",
-      serialNumber: asset.serialNumber || "-",
-      condition: asset.condition || "-",
+      item: asset.item?.name || '-',
+      brand: asset.brand || '-',
+      model: asset.model || '-',
+      partNumber: asset.partNumber || '-',
+      serialNumber: asset.serialNumber || '-',
+      condition: asset.condition || '-',
       purchaseDate: asset.purchaseDate
         ? new Date(asset.purchaseDate).toLocaleDateString()
-        : "-",
+        : '-',
       price: asset.purchasePrice || 0,
-      location: asset.location?.name || "-",
-      department: asset.department?.nama_department || "-",
+      location: asset.location?.name || '-',
+      department: asset.department?.nama_department || '-',
       status: asset.status,
-      vendor: asset.vendorName || "-",
+      vendor: asset.vendorName || '-',
     });
   });
 
@@ -955,10 +957,10 @@ export async function exportAssetExcel({
 
     row.eachCell((cell) => {
       cell.border = {
-        top: { style: "thin" },
-        bottom: { style: "thin" },
-        left: { style: "thin" },
-        right: { style: "thin" },
+        top: { style: 'thin' },
+        bottom: { style: 'thin' },
+        left: { style: 'thin' },
+        right: { style: 'thin' },
       };
     });
   });
@@ -979,13 +981,13 @@ export async function assignAssetAction(payload: AssignAssetInput) {
   const session = await getServerSession();
 
   if (!session) {
-    throw new Error("Unauthorized");
+    throw new Error('Unauthorized');
   }
 
   const orgId = session.session?.activeOrganizationId;
 
   if (!orgId) {
-    throw new Error("No organization");
+    throw new Error('No organization');
   }
 
   const asset = await prisma.asset.findFirst({
@@ -1000,11 +1002,11 @@ export async function assignAssetAction(payload: AssignAssetInput) {
   });
 
   if (!asset) {
-    throw new Error("Asset not found");
+    throw new Error('Asset not found');
   }
 
-  if (asset.assignedStatus === "ASSIGNED") {
-    throw new Error("Asset already assigned");
+  if (asset.assignedStatus === 'ASSIGNED') {
+    throw new Error('Asset already assigned');
   }
 
   const oldAssignedUser = asset.assignedUserId;
@@ -1027,7 +1029,7 @@ export async function assignAssetAction(payload: AssignAssetInput) {
           },
         },
 
-        assignedStatus: "ASSIGNED",
+        assignedStatus: 'ASSIGNED',
 
         updatedAt: new Date(),
       },
@@ -1042,9 +1044,9 @@ export async function assignAssetAction(payload: AssignAssetInput) {
 
         userId: session.user.id,
 
-        action: "ASSIGN",
+        action: 'ASSIGN',
 
-        field: "assignedUserId",
+        field: 'assignedUserId',
 
         oldValue: oldAssignedUser,
 
@@ -1063,13 +1065,13 @@ export async function assignAssetAction(payload: AssignAssetInput) {
 
         userId: session.user.id,
 
-        action: "STATUS_CHANGE",
+        action: 'STATUS_CHANGE',
 
-        field: "assignedStatus",
+        field: 'assignedStatus',
 
-        oldValue: "AVAILABLE",
+        oldValue: 'AVAILABLE',
 
-        newValue: "ASSIGNED",
+        newValue: 'ASSIGNED',
 
         asset_info: `${asset.id} - ${asset.item.name}`,
       },
@@ -1084,9 +1086,9 @@ export async function assignAssetAction(payload: AssignAssetInput) {
 
         userId: session.user.id,
 
-        action: "TRANSFER",
+        action: 'TRANSFER',
 
-        field: "department",
+        field: 'department',
 
         oldValue: oldDepartment,
 
@@ -1102,8 +1104,8 @@ export async function assignAssetAction(payload: AssignAssetInput) {
   await createAuditLog({
     userId: session.user.id,
     organizationId: orgId,
-    action: "ASSIGN",
-    entityType: "ASSET",
+    action: 'ASSIGN',
+    entityType: 'ASSET',
     entityId: asset.id,
     entityInfo: `${asset.id}`,
     details: {
@@ -1111,8 +1113,8 @@ export async function assignAssetAction(payload: AssignAssetInput) {
     },
   });
 
-  revalidatePath("/assets");
-  revalidatePath("/assets/items");
+  revalidatePath('/assets');
+  revalidatePath('/assets/items');
 
   return result;
 }
@@ -1141,12 +1143,12 @@ export async function generateAssetCode(
     : null;
 
   if (!group || !category || !cluster) {
-    throw new Error("Klasifikasi tidak lengkap");
+    throw new Error('Klasifikasi tidak lengkap');
   }
 
   const prefix = [group.code, category.code, cluster.code, subCluster?.code]
     .filter(Boolean)
-    .join(".");
+    .join('.');
 
   /**
    * cari kode terakhir hanya untuk prefix ini
@@ -1157,18 +1159,18 @@ export async function generateAssetCode(
   const lastAsset = await prisma.asset.findFirst({
     where: {
       kode_asset: {
-        startsWith: prefix + ".",
+        startsWith: prefix + '.',
       },
     },
     orderBy: {
-      kode_asset: "desc",
+      kode_asset: 'desc',
     },
   });
 
   let nextSequence = 1;
 
   if (lastAsset?.kode_asset) {
-    const parts = lastAsset.kode_asset.split(".");
+    const parts = lastAsset.kode_asset.split('.');
     const lastSeq = Number(parts[parts.length - 1]);
 
     if (!isNaN(lastSeq)) {
@@ -1176,7 +1178,7 @@ export async function generateAssetCode(
     }
   }
 
-  const seq = String(nextSequence).padStart(4, "0");
+  const seq = String(nextSequence).padStart(4, '0');
 
   return `${prefix}.${seq}`;
 }
@@ -1186,14 +1188,14 @@ export async function importAssetExcel(
   formData: FormData,
   organizationId: string,
 ) {
-  const file = formData.get("file") as File;
-  const targetSubClusterId = formData.get("targetSubClusterId") as string;
+  const file = formData.get('file') as File;
+  const targetSubClusterId = formData.get('targetSubClusterId') as string;
 
-  if (!file) throw new Error("File tidak ditemukan");
+  if (!file) throw new Error('File tidak ditemukan');
 
   // --- TAMBAHAN: VALIDASI AWAL TARGET SUB CLUSTER ---
   // Pastikan ID Sub Cluster yang dikirim dari frontend benar-benar ada di database
-  if (targetSubClusterId && targetSubClusterId !== "") {
+  if (targetSubClusterId && targetSubClusterId !== '') {
     const checkCluster = await prisma.assetSubCluster.findUnique({
       where: { id: targetSubClusterId },
     });
@@ -1207,7 +1209,7 @@ export async function importAssetExcel(
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
 
-  const workbook = XLSX.read(buffer, { type: "buffer", cellDates: true });
+  const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(sheet, {
     header: 1,
@@ -1218,11 +1220,11 @@ export async function importAssetExcel(
   const startIdx = rows.findIndex((r) =>
     r.some(
       (cell) =>
-        String(cell).toLowerCase().includes("unit") ||
-        String(cell).toLowerCase().includes("kode asset"),
+        String(cell).toLowerCase().includes('unit') ||
+        String(cell).toLowerCase().includes('kode asset'),
     ),
   );
-  if (startIdx === -1) throw new Error("Format Excel tidak dikenali");
+  if (startIdx === -1) throw new Error('Format Excel tidak dikenali');
 
   // 2. SMART HEADER READER (Mengatasi Cell yang Di-Merge)
   const headerRow1 = rows[startIdx] || [];
@@ -1230,11 +1232,11 @@ export async function importAssetExcel(
   const maxCols = Math.max(headerRow1.length, headerRow2.length);
 
   const combinedHeaders: string[] = [];
-  let lastMainHeader = "";
+  let lastMainHeader = '';
 
   for (let i = 0; i < maxCols; i++) {
-    const h1 = headerRow1[i] ? String(headerRow1[i]).trim() : "";
-    const h2 = headerRow2[i] ? String(headerRow2[i]).trim() : "";
+    const h1 = headerRow1[i] ? String(headerRow1[i]).trim() : '';
+    const h2 = headerRow2[i] ? String(headerRow2[i]).trim() : '';
 
     // Jika h1 ada isinya, simpan sebagai header utama
     if (h1) lastMainHeader = h1;
@@ -1286,7 +1288,7 @@ export async function importAssetExcel(
         if (col.tgl !== -1 && row[col.tgl]) {
           const tglValue = row[col.tgl];
           if (tglValue instanceof Date) purchaseDate = tglValue;
-          else if (typeof tglValue === "number")
+          else if (typeof tglValue === 'number')
             purchaseDate = new Date(
               Math.round((tglValue - 25569) * 86400 * 1000),
             );
@@ -1305,7 +1307,7 @@ export async function importAssetExcel(
           locationParts.push(String(row[col.area]).trim());
 
         if (locationParts.length > 0) {
-          const locName = locationParts.join(" - ");
+          const locName = locationParts.join(' - ');
           let existingLoc = await tx.location.findFirst({
             where: { name: locName, organizationId },
           });
@@ -1321,7 +1323,7 @@ export async function importAssetExcel(
         }
 
         // --- C. KEPEMILIKAN ---
-        let finalNotes = "";
+        let finalNotes = '';
         if (col.kepemilikan !== -1 && row[col.kepemilikan]) {
           finalNotes = `Kepemilikan: ${String(row[col.kepemilikan]).trim()}`;
         }
@@ -1350,18 +1352,18 @@ export async function importAssetExcel(
         }
 
         // --- E. KONDISI (Berdasarkan Kolom Baik/Rusak) ---
-        let condition = "BAIK"; // Default
+        let condition = 'BAIK'; // Default
         if (
           col.rusak !== -1 &&
           row[col.rusak] &&
-          String(row[col.rusak]).trim() !== ""
+          String(row[col.rusak]).trim() !== ''
         ) {
-          condition = "RUSAK";
+          condition = 'RUSAK';
         }
 
         // --- F. PARENT ITEM ---
         const modelName =
-          col.model !== -1 ? String(row[col.model] || "").trim() : "";
+          col.model !== -1 ? String(row[col.model] || '').trim() : '';
         let item = await tx.item.findFirst({
           where: { name: String(unitName), organizationId },
         });
@@ -1371,7 +1373,7 @@ export async function importAssetExcel(
             data: {
               name: String(unitName),
               code: `ITM-${Math.random().toString(36).substring(7).toUpperCase()}`,
-              assetType: "FIXED",
+              assetType: 'FIXED',
               organizationId,
             },
           });
@@ -1382,21 +1384,21 @@ export async function importAssetExcel(
           data: {
             itemId: item.id,
             organizationId,
-            kode_asset: col.kode !== -1 ? String(row[col.kode] || "") : null,
+            kode_asset: col.kode !== -1 ? String(row[col.kode] || '') : null,
             serialNumber:
-              col.sn !== -1 ? String(row[col.sn] || "").trim() : null,
+              col.sn !== -1 ? String(row[col.sn] || '').trim() : null,
             model: modelName,
             departmentId: finalDepartmentId,
             PIC: finalPersonName,
             condition: condition,
             locationId: locationId,
-            status: "ACTIVE",
+            status: 'ACTIVE',
             purchaseDate: purchaseDate,
             notes: finalNotes || null,
 
             // --- PERBAIKAN: CONDITIONAL CONNECT ---
             // Hanya lakukan connect jika targetSubClusterId valid dan ada
-            ...(targetSubClusterId && targetSubClusterId !== ""
+            ...(targetSubClusterId && targetSubClusterId !== ''
               ? {
                   assetSubClusters: {
                     connect: { id: targetSubClusterId },
@@ -1423,9 +1425,9 @@ export async function importAssetExcel(
 // LINK Multi Delete Asset
 export async function deleteManyAsset(ids: string[]) {
   const session = await getServerSession();
-  if (!session) return { success: false, message: "Unauthorized" };
+  if (!session) return { success: false, message: 'Unauthorized' };
   const organizationId = session.session.activeOrganizationId;
-  if (!organizationId) return { success: false, message: "Unauthorized" };
+  if (!organizationId) return { success: false, message: 'Unauthorized' };
 
   try {
     const deletedAsset = await prisma.asset.deleteMany({
@@ -1434,10 +1436,134 @@ export async function deleteManyAsset(ids: string[]) {
         organizationId: organizationId,
       },
     });
-    revalidatePath("/assets");
+    revalidatePath('/assets');
     return deletedAsset;
   } catch (error) {
-    console.error("Error deleting assets:", error);
-    return { success: false, message: "Failed to delete assets" };
+    console.error('Error deleting assets:', error);
+    return { success: false, message: 'Failed to delete assets' };
+  }
+}
+// LINK Export Barcode Aset
+export async function exportBarcodeToPDF(assets: AssetWithItem[]) {
+  try {
+    const session = await getServerSession();
+    if (!assets || assets.length === 0)
+      throw new Error('Tidak ada asset yang dipilih');
+    if (!session) return { success: false, message: 'Unauthorized' };
+    const organizationId = session.session.activeOrganizationId;
+    if (!organizationId) return { success: false, message: 'Unauthorized' };
+    const pdfBuffer = await new Promise<Buffer>(async (resolve, reject) => {
+      try {
+        // Mengurangi margin agar lebih banyak muat di kertas A4
+        const doc = new PDFDocument({ size: 'A4', margin: 25 });
+        const buffers: Buffer[] = [];
+
+        doc.on('data', buffers.push.bind(buffers));
+        doc.on('end', () => resolve(Buffer.concat(buffers)));
+
+        // Konfigurasi Grid Label
+        const startX = 25; // Margin Kiri
+        let startY = 30; // Margin Atas
+
+        const maxCols = 3; // 3 Barcode menyamping
+        const colWidth = 180; // Lebar per kolom
+        const rowHeight = 90; // Tinggi per baris
+
+        // Dimensi asli kotak (border)
+        const boxWidth = 170;
+        const boxHeight = 75;
+
+        for (let i = 0; i < assets.length; i++) {
+          const asset = assets[i];
+          const col = i % maxCols;
+          let row = Math.floor(i / maxCols);
+
+          const x = startX + col * colWidth;
+          let y = startY + row * rowHeight;
+
+          // Auto Pindah Halaman (Pagination)
+          if (y + rowHeight > doc.page.height - 25) {
+            doc.addPage();
+            startY = 30;
+            row = 0;
+            y = startY;
+          }
+
+          // ---------------- DATA PERSIAPAN ----------------
+          const assetCode =
+            asset.kode_asset || asset.id.split('-')[0].toUpperCase();
+          const itemName = asset.item?.name || 'Unknown Item';
+          // Jika ada relasi departemen, gunakan singkatan. Jika tidak fallback ke 'Eng' atau string kosong
+          const deptName =
+            (asset as any).department?.name?.substring(0, 3) || 'Eng';
+
+          // ---------------- MENGGAMBAR BORDER (Garis Potong) ----------------
+          doc
+            .lineWidth(0.5)
+            .strokeColor('#a1a1aa') // Warna abu-abu terang
+            .dash(3, { space: 3 }) // Garis putus-putus untuk digunting
+            .rect(x, y, boxWidth, boxHeight)
+            .stroke()
+            .undash(); // Reset agar elemen lain tidak ikut putus-putus
+
+          // ---------------- MENGGAMBAR TEKS ATAS (Kiri & Kanan) ----------------
+          doc.fillColor('#64748b'); // Text abu-abu kebiruan persis di gambar
+
+          // Kiri Atas (Departemen)
+          doc
+            .fontSize(9)
+            .font('Helvetica')
+            .text(deptName, x + 5, y + 5, { width: 50, align: 'left' });
+
+          // Kanan Atas (Kode Asset)
+          doc
+            .fontSize(9)
+            .font('Helvetica')
+            .text(assetCode, x + boxWidth - 105, y + 5, {
+              width: 100,
+              align: 'right',
+            });
+
+          // ---------------- MENGGAMBAR BARCODE ----------------
+          // Render barcode gambar yang tajam
+          const barcodeBuffer = await bwipjs.toBuffer({
+            bcid: 'code128',
+            text: assetCode,
+            scale: 3,
+            height: 15,
+            includetext: false,
+          });
+
+          // Posisikan barcode memanjang dari ujung kiri ke ujung kanan (padding 5)
+          doc.image(barcodeBuffer, x + 5, y + 18, {
+            width: boxWidth - 10,
+            height: 35,
+          });
+
+          // ---------------- MENGGAMBAR TEKS BAWAH (Nama Item) ----------------
+          doc.fillColor('#1f2937'); // Reset text ke Hitam gelap
+          doc
+            .fontSize(10)
+            .font('Helvetica-Bold')
+            .text(itemName, x + 5, y + 58, {
+              width: boxWidth - 10,
+              align: 'center',
+              lineBreak: false, // Cegah turun baris agar tetap rapi
+            });
+        }
+
+        doc.end();
+      } catch (err) {
+        reject(err);
+      }
+    });
+
+    return {
+      success: true,
+      data: pdfBuffer.toString('base64'),
+    };
+  } catch (error: any) {
+    console.error('PDF Generation Error:', error);
+    return { success: false, error: error.message || 'Gagal membuat PDF' };
   }
 }

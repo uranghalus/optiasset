@@ -26,7 +26,7 @@ export function BarcodeScannerDialog() {
 
   const [processing, setProcessing] = useState(false);
   const [scanned, setScanned] = useState(false);
-
+  const [showScanner, setShowScanner] = useState(false);
   const handleScanSuccess = async (decodedText: string) => {
     if (scanned) return;
 
@@ -82,6 +82,10 @@ export function BarcodeScannerDialog() {
         if (!val) {
           setOpen(null);
           setScanned(false);
+          setShowScanner(false); // Reset
+        } else {
+          // Kasih delay sedikit untuk animasi dialog
+          setTimeout(() => setShowScanner(true), 300);
         }
       }}
     >
@@ -92,9 +96,9 @@ export function BarcodeScannerDialog() {
         </DialogHeader>
 
         <div className="relative">
-          {open === "scan" && (
+          {open === "scan" && showScanner && (
             <BarcodeScanner
-              key={open} // 🔥 penting untuk reset
+              key="scanner"
               onScanSuccess={handleScanSuccess}
             />
           )}

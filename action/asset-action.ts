@@ -1418,13 +1418,19 @@ export async function importAssetExcel(
         }
 
         // --- G. CREATE ASSET ---
-        await tx.asset.create({
+       await tx.asset.create({
           data: {
             itemId: item.id,
             organizationId,
-            kode_asset: col.kode !== -1 ? String(row[col.kode] || '') : null,
-            serialNumber:
-              col.sn !== -1 ? String(row[col.sn] || '').trim() : null,
+            
+            // PERBAIKAN: Jika hasil trim adalah string kosong "", ubah menjadi null
+            kode_asset: col.kode !== -1 && row[col.kode] 
+              ? String(row[col.kode]).trim() || null 
+              : null,
+            serialNumber: col.sn !== -1 && row[col.sn] 
+              ? String(row[col.sn]).trim() || null 
+              : null,
+            
             model: modelName,
             departmentId: finalDepartmentId,
             PIC: finalPersonName,

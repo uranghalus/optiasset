@@ -9,38 +9,40 @@ datasource db {
 }
 
 model User {
-  id                       String          @id
-  name                     String          @db.Text
-  email                    String          @unique
-  emailVerified            Boolean         @default(false)
-  image                    String?         @db.Text
-  createdAt                DateTime        @default(now())
-  updatedAt                DateTime        @updatedAt
-  username                 String?         @db.Text
-  displayUsername          String?         @db.Text
-  role                     String?         @db.Text
-  banned                   Boolean?        @default(false)
-  banReason                String?         @db.Text
+  id                       String              @id
+  name                     String              @db.Text
+  email                    String              @unique
+  emailVerified            Boolean             @default(false)
+  image                    String?             @db.Text
+  createdAt                DateTime            @default(now())
+  updatedAt                DateTime            @updatedAt
+  username                 String?             @db.Text
+  displayUsername          String?             @db.Text
+  role                     String?             @db.Text
+  banned                   Boolean?            @default(false)
+  banReason                String?             @db.Text
   banExpires               DateTime?
   departmentId             String?
   divisiId                 String?
   accounts                 Account[]
-  assetHistory             AssetHistory[]  @relation("HistoryUser")
-  assetHistoryAcknowledged AssetHistory[]  @relation("HistoryAcknowledgedBy")
-  loansApproved            AssetLoan[]     @relation("approvedBy")
-  loansBorrowed            AssetLoan[]     @relation("borrower")
-  loansRequested           AssetLoan[]     @relation("requestedBy")
-  transfersApproved        AssetTransfer[] @relation("transferApprovedBy")
-  disposalsRequested       AssetDisposal[] @relation("DisposalRequestedBy")
-  disposalsSpvApproved     AssetDisposal[] @relation("DisposalSpvApprovedBy")
-  disposalsStaffApproved   AssetDisposal[] @relation("DisposalStaffApprovedBy")
+  assetHistory             AssetHistory[]      @relation("HistoryUser")
+  assetHistoryAcknowledged AssetHistory[]      @relation("HistoryAcknowledgedBy")
+  loansApproved            AssetLoan[]         @relation("approvedBy")
+  loansBorrowed            AssetLoan[]         @relation("borrower")
+  loansRequested           AssetLoan[]         @relation("requestedBy")
+  transfersApproved        AssetTransfer[]     @relation("transferApprovedBy")
+  disposalsRequested       AssetDisposal[]     @relation("DisposalRequestedBy")
+  disposalsSpvApproved     AssetDisposal[]     @relation("DisposalSpvApprovedBy")
+  disposalsStaffApproved   AssetDisposal[]     @relation("DisposalStaffApprovedBy")
   auditLogs                AuditLog[]
   invitations              Invitation[]
   members                  Member[]
   sessions                 Session[]
   teammember               teamMember[]
-  department               department?     @relation(fields: [departmentId], references: [id_department])
-  divisi                   divisi?         @relation(fields: [divisiId], references: [id_divisi])
+  department               department?         @relation(fields: [departmentId], references: [id_department])
+  divisi                   divisi?             @relation(fields: [divisiId], references: [id_divisi])
+  aparInspections          AparInspection[]    @relation("UserAparInspections")
+  hydrantInspections       HydrantInspection[] @relation("UserHydrantInspections")
 
   @@index([departmentId])
   @@index([divisiId])
@@ -98,29 +100,33 @@ model Verification {
 }
 
 model Organization {
-  id               String             @id
-  name             String             @db.Text
-  slug             String             @unique
-  logo             String?            @db.Text
-  createdAt        DateTime
-  metadata         String?            @db.Text
-  department       department[]
-  divisi           divisi[]
-  invitations      Invitation[]
-  members          Member[]
-  organizationrole organizationRole[]
-  teams            Team[]
-  items            Item[]
-  assets           Asset[]
-  categories       Category[]
-  locations        Location[]
-  stocks           Stock[]
-  assetLoans       AssetLoan[]
-  assetTransfers   AssetTransfer[]
-  auditLogs        AuditLog[]
-  assetHistory     AssetHistory[]
-  assetDisposals   AssetDisposal[]
-  assetGroups      AssetGroup[]
+  id                 String              @id
+  name               String              @db.Text
+  slug               String              @unique
+  logo               String?             @db.Text
+  createdAt          DateTime
+  metadata           String?             @db.Text
+  department         department[]
+  divisi             divisi[]
+  invitations        Invitation[]
+  members            Member[]
+  organizationrole   organizationRole[]
+  teams              Team[]
+  items              Item[]
+  assets             Asset[]
+  categories         Category[]
+  locations          Location[]
+  stocks             Stock[]
+  assetLoans         AssetLoan[]
+  assetTransfers     AssetTransfer[]
+  auditLogs          AuditLog[]
+  assetHistory       AssetHistory[]
+  assetDisposals     AssetDisposal[]
+  assetGroups        AssetGroup[]
+  aparDetails        AparDetail[]
+  hydrantDetails     HydrantDetail[]
+  aparInspections    AparInspection[]
+  hydrantInspections HydrantInspection[]
 
   @@map("organization")
 }
@@ -238,36 +244,40 @@ model Asset {
   inComeDate    DateTime?
   brokenDate    DateTime?
 
-  warrantyExpire   DateTime?
-  locationId       String?
-  departmentId     String?
-  assignedUserId   String?
-  assignedStatus   AssetAssignmentStatus @default(AVAILABLE)
-  brand            String?               @db.Char(100)
-  model            String?               @db.Char(100)
-  partNumber       String?               @db.Char(100)
-  serialNumber     String?               @db.Char(100)
-  no_spb           String?               @db.Char(100)
-  document_number  String?               @db.Char(100)
-  PIC              String?               @db.Char(100)
-  notes            String?
-  photoUrl         String?               @db.Text
-  createdAt        DateTime              @default(now())
-  updatedAt        DateTime?
-  kode_asset       String?               @db.Char(100)
-  garansi_exp      DateTime?
-  status           String                @default("ACTIVE") @db.VarChar(50)
-  vendorName       String?               @db.Char(100)
-  history          AssetHistory[]
-  loans            AssetLoan[]
-  item             Item                  @relation(fields: [itemId, organizationId], references: [id, organizationId], onDelete: Cascade)
-  location         Location?             @relation(fields: [locationId, organizationId], references: [id, organizationId])
-  department       department?           @relation(fields: [departmentId], references: [id_department])
-  transfers        AssetTransfer[]       @relation("AssetTransfers")
-  disposals        AssetDisposal[]       @relation("AssetDisposals")
-  organizationId   String
-  organization     Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  assetSubClusters AssetSubCluster[]     @relation("AssetSubClusters")
+  warrantyExpire     DateTime?
+  locationId         String?
+  departmentId       String?
+  assignedUserId     String?
+  assignedStatus     AssetAssignmentStatus @default(AVAILABLE)
+  brand              String?               @db.Char(100)
+  model              String?               @db.Char(100)
+  partNumber         String?               @db.Char(100)
+  serialNumber       String?               @db.Char(100)
+  no_spb             String?               @db.Char(100)
+  document_number    String?               @db.Char(100)
+  PIC                String?               @db.Char(100)
+  notes              String?
+  photoUrl           String?               @db.Text
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime?
+  kode_asset         String?               @db.Char(100)
+  garansi_exp        DateTime?
+  status             String                @default("ACTIVE") @db.VarChar(50)
+  vendorName         String?               @db.Char(100)
+  history            AssetHistory[]
+  loans              AssetLoan[]
+  item               Item                  @relation(fields: [itemId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  location           Location?             @relation(fields: [locationId, organizationId], references: [id, organizationId])
+  department         department?           @relation(fields: [departmentId], references: [id_department])
+  transfers          AssetTransfer[]       @relation("AssetTransfers")
+  disposals          AssetDisposal[]       @relation("AssetDisposals")
+  organizationId     String
+  organization       Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assetSubClusters   AssetSubCluster[]     @relation("AssetSubClusters")
+  aparDetails        AparDetail[]
+  hydrantDetails     HydrantDetail[]
+  aparInspections    AparInspection[]      @relation("AparInspections")
+  hydrantInspections HydrantInspection[]   @relation("HydrantInspections")
 
   @@unique([id, organizationId])
   @@unique([kode_asset, organizationId])
@@ -388,13 +398,24 @@ model AssetSubCluster {
   @@map("asset_sub_clusters")
 }
 
+enum ClassificationLevel {
+  GROUP
+  CATEGORY
+  CLUSTER
+  SUBCLUSTER
+}
+
 // Kategory untuk item
 model Category {
-  id             String       @id @default(uuid())
-  name           String
-  organizationId String
-  items          Item[]
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id                 String               @id @default(uuid())
+  name               String
+  organizationId     String
+  code               String?              @db.VarChar(20) // contoh: 01, 01.02, 01.02.03, dst
+  items              Item[]
+  // Link ke ID level terakhir yang dipilih (bisa ID Cluster, atau SubCluster)
+  classificationId   String?
+  classificationType ClassificationLevel? // Enum: GROUP, CATEGORY, CLUSTER, SUBCLUSTER
+  organization       Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([id, organizationId])
   @@index([organizationId])
@@ -608,4 +629,106 @@ enum TransactionType {
 enum AssetType {
   FIXED
   SUPPLY
+}
+
+// LINK INSPEKSI APAR
+
+// -------------------------------------------------------------
+// EXTENSION UNTUK APAR & HYDRANT
+// -------------------------------------------------------------
+enum ReguInspeksi {
+  PAGI
+  SIANG
+  MALAM
+  MIDDLE
+}
+
+enum JenisApar {
+  CO2
+  Powder
+  Foam
+  Air
+}
+
+model AparDetail {
+  id             String    @id @default(uuid())
+  assetId        String    @unique
+  organizationId String
+  jenis          JenisApar
+  size           Decimal   @db.Decimal(4, 1) // 2.0, 4.0, 9.0
+
+  asset        Asset        @relation(fields: [assetId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("apar_details")
+}
+
+model HydrantDetail {
+  id             String @id @default(uuid())
+  assetId        String @unique
+  organizationId String
+  ukuran         String @db.VarChar(50)
+
+  asset        Asset        @relation(fields: [assetId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("hydrant_details")
+}
+
+// -------------------------------------------------------------
+// TABEL INSPEKSI APAR & HYDRANT
+// -------------------------------------------------------------
+
+model AparInspection {
+  id                 String       @id @default(uuid())
+  assetId            String
+  organizationId     String
+  userId             String? // ID User/Inspektur (dari tabel User)
+  nama_petugas       String?      @db.VarChar(150)
+  regu               ReguInspeksi @default(PAGI)
+  tanggal_kadaluarsa DateTime?    @db.Date
+  tanggal_refill     DateTime?    @db.Date
+  kondisi            String?      @db.VarChar(150)
+  catatan            String?      @db.Text
+  foto_apar          String?      @db.Text
+  tanggal_inspeksi   DateTime     @default(now())
+
+  asset        Asset        @relation("AparInspections", fields: [assetId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  user         User?        @relation("UserAparInspections", fields: [userId], references: [id], onDelete: SetNull)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, organizationId])
+  @@index([userId])
+  @@index([organizationId])
+  @@map("apar_inspections")
+}
+
+model HydrantInspection {
+  id                         String       @id @default(uuid())
+  assetId                    String
+  organizationId             String
+  userId                     String?
+  nama_petugas               String?      @db.VarChar(150)
+  regu                       ReguInspeksi @default(PAGI)
+  valve_machino_coupling     String?      @db.VarChar(150)
+  fire_hose_machino_coupling String?      @db.VarChar(150)
+  selang_hydrant             String?      @db.VarChar(150)
+  noozle_hydrant             String?      @db.VarChar(150)
+  kaca_box_hydrant           String?      @db.VarChar(150)
+  kunci_box_hydrant          String?      @db.VarChar(150)
+  box_hydrant                String?      @db.VarChar(150)
+  alarm                      String?      @db.VarChar(150)
+  foto_hydrant               String?      @db.Text
+  tanggal_inspeksi           DateTime     @default(now())
+
+  asset        Asset        @relation("HydrantInspections", fields: [assetId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  user         User?        @relation("UserHydrantInspections", fields: [userId], references: [id], onDelete: SetNull)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, organizationId])
+  @@index([userId])
+  @@index([organizationId])
+  @@map("hydrant_inspections")
 }

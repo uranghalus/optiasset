@@ -7,18 +7,11 @@ import {
   useItemsForSelect,
   useLocationsForSelect,
 } from "@/hooks/crud/use-assets";
-import {
-  useAssetGroupsForSelect,
-  useCategoriesByGroup,
-  useClustersByCategory,
-  useSubClustersByCluster,
-} from "@/hooks/crud/use-asset-classification";
 import { getAssetFormAccess, isValidImageFile } from "@/lib/utils";
 import { AssetForm, AssetFormSchema } from "@/schema/asset-schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -32,14 +25,14 @@ import {
 import { Field, FieldLabel, FieldError } from "@/components/ui/field";
 import { Combobox } from "@/components/ui/combobox";
 import { AssetType } from "@/generated/prisma/client";
-import { Camera, X } from "lucide-react";
+import { Camera, X, Info } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSelectDepartment } from "@/hooks/crud/use-department";
 
 export default function AssetAddForm() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
-  const router = useRouter(); //
+  const router = useRouter();
   const createMutation = useCreateAsset();
   const { data: role } = useActiveMemberRole();
   const { canView, isReadonly } = getAssetFormAccess(role);
@@ -47,8 +40,8 @@ export default function AssetAddForm() {
   const { data: locations } = useLocationsForSelect();
   const { data: dept } = useSelectDepartment();
 
-  // LINK Inisialisasi Form
-  const form = useForm<AssetForm>({
+  // Inisialisasi Form
+  const form = useForm<AssetForm>(({
     resolver: zodResolver(AssetFormSchema),
     defaultValues: {
       itemId: "",
@@ -71,21 +64,43 @@ export default function AssetAddForm() {
       model: "",
       partNumber: "",
       serialNumber: "",
-      document_number: "", // Sudah ditambahkan di state
-      no_spb: "", // Sudah ditambahkan di state
+      document_number: "",
+      no_spb: "",
     },
-  });
+  }) as any);
 
-  // LINK Klasifikasi Asset
+  // Pantau perubahan Master Item yang dipilih
+  const selectedItemId = form.watch("itemId");
+
+  // Mengambil state silsilah untuk mentrigger auto-generate kode asset
   const selectedGroup = form.watch("assetGroupId");
   const selectedCategory = form.watch("assetCategoryId");
   const selectedCluster = form.watch("assetClusterId");
   const selectedSubCluster = form.watch("assetSubClusterId");
-  const { data: groups } = useAssetGroupsForSelect();
-  const { data: categories } = useCategoriesByGroup(selectedGroup);
-  const { data: clusters } = useClustersByCategory(selectedCategory);
-  const { data: subClusters } = useSubClustersByCluster(selectedCluster);
 
+  // 👇 1. EFFECT AUTO-FILL SILSIALAH KLASIFIKASI BERDASARKAN MASTER ITEM SELECTED 👇
+  useEffect(() => {
+    if (!selectedItemId || !items) return;
+
+    // Cari item yang dipilih dari daftar item select
+    const currentItem = items.find((item) => item.id === selectedItemId);
+
+    // Asumsi: Anda sudah melakukan include relasi silsilah dari model `Item` di hooks `useItemsForSelect`
+    if (currentItem && (currentItem as any).category) {
+      const cat = (currentItem as any).category;
+
+      // Suntik silsilah langsung ke form values secara otomatis
+      form.setValue("assetGroupId", cat.assetGroupId || "");
+      form.setValue("assetCategoryId", cat.assetCategoryId || "");
+      form.setValue("assetClusterId", cat.assetClusterId || "");
+      form.setValue("assetSubClusterId", cat.assetSubClusterId || "");
+
+      // Kosongkan kode asset lama agar ditrigger ulang oleh hook generate
+      form.setValue("kode_asset", "");
+    }
+  }, [selectedItemId, items, form]);
+
+  // Hook generate nomor urut berkelanjutan dari Server Action asset-action
   const { data: generatedCode } = useGenerateAssetCode(
     selectedGroup,
     selectedCategory,
@@ -95,46 +110,10 @@ export default function AssetAddForm() {
 
   useEffect(() => {
     if (!generatedCode) return;
+    form.setValue("kode_asset", generatedCode, { shouldDirty: true });
+  }, [generatedCode, form]);
 
-    if (form.getValues("kode_asset")) return;
-
-    form.setValue("kode_asset", generatedCode, {
-      shouldDirty: true,
-    });
-  }, [generatedCode]);
-
-  useEffect(() => {
-    if (!selectedGroup) return;
-
-    form.setValue("assetCategoryId", "");
-    form.setValue("assetClusterId", "");
-    form.setValue("assetSubClusterId", "");
-  }, [selectedGroup]);
-
-  useEffect(() => {
-    if (!selectedCategory) return;
-
-    form.setValue("assetClusterId", "");
-    form.setValue("assetSubClusterId", "");
-  }, [selectedCategory]);
-
-  useEffect(() => {
-    if (!selectedCluster) return;
-
-    form.setValue("assetSubClusterId", "");
-  }, [selectedCluster]);
-
-  const [debouncedCluster, setDebouncedCluster] = useState(selectedCluster);
-
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setDebouncedCluster(selectedCluster);
-    }, 300);
-
-    return () => clearTimeout(t);
-  }, [selectedCluster]);
-
-  // LINK Handle Image
+  // Handle Image
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     setImageError(null);
@@ -165,18 +144,16 @@ export default function AssetAddForm() {
     setImagePreview(null);
     setImageError(null);
     form.setValue("photo", null);
-    const fileInput = document.getElementById(
-      "photo-input",
-    ) as HTMLInputElement;
+    const fileInput = document.getElementById("photo-input") as HTMLInputElement;
     if (fileInput) fileInput.value = "";
   };
 
-  // LINK Submit Data
+  // Submit Data
   const onSubmit = async (values: AssetForm) => {
     const formData = new FormData();
 
     for (const [key, value] of Object.entries(values)) {
-      if (value) {
+      if (value !== undefined && value !== null) {
         if (key === "photo" && value instanceof File) {
           formData.append(key, value);
         } else {
@@ -186,26 +163,24 @@ export default function AssetAddForm() {
     }
 
     try {
-      await createMutation
-        .mutateAsync(formData)
-        .then(() => (form.reset(), setImagePreview(null), setImageError(null)))
-        .catch((error: any) => {
-          console.error(error);
-          form.setError("root", {
-            type: "server",
-            message: error?.message ?? "Terjadi kesalahan saat menyimpan data",
-          });
-        });
+      await createMutation.mutateAsync(formData);
+      form.reset();
+      setImagePreview(null);
+      setImageError(null);
+      router.push("/assets"); // Alihkan langsung ke daftar aset jika sukses
     } catch (error: any) {
       console.error(error);
       form.setError("root", {
         type: "server",
-        message: error?.message ?? "Terjadi kesalahan saat menyimpan data",
+        message: error?.message || "Terjadi kesalahan saat menyimpan data",
       });
     }
   };
 
   const isPending = createMutation.isPending;
+
+  // Temukan nama klasifikasi lengkap saat ini untuk ditampilkan sebagai Preview teks ke Admin
+  const activeItemDetails = items?.find((item) => item.id === selectedItemId);
 
   return (
     <div className="p-4 border border-gray-100 rounded-lg">
@@ -221,26 +196,26 @@ export default function AssetAddForm() {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* KIRI: Informasi Utama */}
+          {/* KIRI: Informasi Utama & Klasifikasi Terkunci */}
           <div className="space-y-4">
             <h3 className="font-semibold text-sm border-b pb-1">
-              Informasi Asset
+              Informasi Asset Utama
             </h3>
 
-            {/*LINK itemId */}
+            {/* itemId */}
             <Controller
               name="itemId"
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Master Item</FieldLabel>
+                  <FieldLabel>Pilih Master Item (Katalog)</FieldLabel>
                   <Combobox<{
                     name: string;
                     id: string;
                     code: string;
                     assetType: AssetType;
                   }>
-                    title="Cari Item"
+                    title="Cari katalog barang..."
                     valueKey="id"
                     value={items?.find((item) => item.id === field.value)}
                     searchFn={(search: string, offset: number, size: number) =>
@@ -254,7 +229,7 @@ export default function AssetAddForm() {
                           .slice(offset, offset + size) || [],
                       )
                     }
-                    renderText={(item) => item.name}
+                    renderText={(item) => `[${item.assetType}] ${item.name}`}
                     onChange={(item) => field.onChange(item.id)}
                   />
                   {fieldState.invalid && (
@@ -264,149 +239,51 @@ export default function AssetAddForm() {
               )}
             />
 
-            {canView && (
-              <>
-                <Controller
-                  name="assetGroupId"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel>Golongan</FieldLabel>
-                      <Combobox
-                        title="Pilih Golongan"
-                        valueKey="id"
-                        value={groups?.find((g) => g.id === field.value)}
-                        searchFn={(search, offset, size) =>
-                          Promise.resolve(
-                            groups
-                              ?.filter((g) =>
-                                g.name
-                                  .toLowerCase()
-                                  .includes(search.toLowerCase()),
-                              )
-                              .slice(offset, offset + size) || [],
-                          )
-                        }
-                        renderText={(item) => `${item.code} - ${item.name}`}
-                        onChange={(item) => field.onChange(item.id)}
-                      />
-                    </Field>
-                  )}
-                />
-                <Controller
-                  name="assetCategoryId"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel>Kategori</FieldLabel>
-                      <Combobox
-                        title="Pilih Kategori"
-                        valueKey="id"
-                        value={categories?.find((x) => x.id === field.value)}
-                        searchFn={(search, offset, size) =>
-                          Promise.resolve(
-                            categories
-                              ?.filter((x) =>
-                                x.name
-                                  .toLowerCase()
-                                  .includes(search.toLowerCase()),
-                              )
-                              .slice(offset, offset + size) || [],
-                          )
-                        }
-                        renderText={(x) => `${x.code} - ${x.name}`}
-                        onChange={(x) => field.onChange(x.id)}
-                        disabled={!selectedGroup}
-                      />
-                    </Field>
-                  )}
-                />
-                <Controller
-                  name="assetClusterId"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel>Cluster</FieldLabel>
-                      <Combobox
-                        title="Pilih Cluster"
-                        valueKey="id"
-                        value={clusters?.find((x) => x.id === field.value)}
-                        searchFn={(search, offset, size) =>
-                          Promise.resolve(
-                            clusters
-                              ?.filter((x) =>
-                                x.name
-                                  .toLowerCase()
-                                  .includes(search.toLowerCase()),
-                              )
-                              .slice(offset, offset + size) || [],
-                          )
-                        }
-                        renderText={(x) => `${x.code} - ${x.name}`}
-                        onChange={(x) => field.onChange(x.id)}
-                        disabled={!selectedCategory}
-                      />
-                    </Field>
-                  )}
-                />
-                <Controller
-                  name="assetSubClusterId"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel>Sub Cluster</FieldLabel>
-                      <Combobox
-                        title="Pilih Sub Cluster"
-                        valueKey="id"
-                        value={subClusters?.find((x) => x.id === field.value)}
-                        searchFn={(search, offset, size) =>
-                          Promise.resolve(
-                            subClusters
-                              ?.filter((x) =>
-                                x.name
-                                  .toLowerCase()
-                                  .includes(search.toLowerCase()),
-                              )
-                              .slice(offset, offset + size) || [],
-                          )
-                        }
-                        renderText={(x) => `${x.code} - ${x.name}`}
-                        onChange={(x) => field.onChange(x.id)}
-                        disabled={!selectedCluster}
-                      />
-                    </Field>
-                  )}
-                />
-                <Controller
-                  name="kode_asset"
-                  control={form.control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel>Kode Asset</FieldLabel>
-                      <Input
-                        {...field}
-                        readOnly
-                        placeholder="Auto generated from classification"
-                        className="font-mono"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Kode otomatis terbentuk dari Golongan → Kategori →
-                        Cluster → Sub Cluster
-                      </p>
-                      {fieldState.invalid && (
-                        <FieldError errors={[fieldState.error]} />
-                      )}
-                    </Field>
-                  )}
-                />
-              </>
+            {/* 🔍 👇 PANEL INFO AUTOMATISASI KELOMPOK ASSET 👇 */}
+            {selectedItemId && activeItemDetails && (
+              <div className="p-3 bg-slate-50 border rounded-lg space-y-2 text-xs">
+                <div className="flex items-center gap-1.5 font-medium text-slate-700">
+                  <Info className="h-3.5 w-3.5 text-primary" />
+                  <span>Klasifikasi Terbaca Otomatis:</span>
+                </div>
+                <div className="grid grid-cols-3 text-slate-500 gap-y-1 pl-5">
+                  <span className="col-span-1">Kategori Master:</span>
+                  <span className="col-span-2 font-mono text-slate-800">{(activeItemDetails as any).category?.name || "-"}</span>
+
+                  <span className="col-span-1">Kode Silsilah:</span>
+                  <span className="col-span-2 font-mono font-bold text-primary">{(activeItemDetails as any).category?.code || "00.00.00"}</span>
+                </div>
+              </div>
             )}
+
+            {/* KODE ASSET (READ ONLY - GENERATED BY SERVER) */}
+            <Controller
+              name="kode_asset"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel>Kode Inventaris Tergenerate</FieldLabel>
+                  <Input
+                    {...field}
+                    readOnly
+                    placeholder="Menunggu pemilihan master item..."
+                    className="font-mono bg-slate-50 border-slate-200 font-bold text-primary text-base"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Nomor inventaris urut berkelanjutan dikalkulasi otomatis oleh sistem berdasarkan rumpun kategori.
+                  </p>
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
+            />
           </div>
 
-          {/* TENGAH: Detail Asset */}
+          {/* TENGAH: Detail Spesifikasi Fisik */}
           <div className="space-y-4">
             <h3 className="font-semibold text-sm border-b pb-1">
-              Detail Asset
+              Spesifikasi Fisik Unit
             </h3>
 
             <Controller
@@ -414,16 +291,8 @@ export default function AssetAddForm() {
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Brand</FieldLabel>
-                  <Input
-                    {...field}
-                    placeholder="Lenovo"
-                    aria-invalid={fieldState.invalid}
-                    readOnly={isReadonly}
-                  />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
+                  <FieldLabel>Brand / Merk</FieldLabel>
+                  <Input {...field} placeholder="Lenovo / Yamato" readOnly={isReadonly} />
                 </Field>
               )}
             />
@@ -432,16 +301,8 @@ export default function AssetAddForm() {
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Model</FieldLabel>
-                  <Input
-                    {...field}
-                    placeholder="ThinkPad X1 Carbon"
-                    aria-invalid={fieldState.invalid}
-                    readOnly={isReadonly}
-                  />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
+                  <FieldLabel>Model / Tipe</FieldLabel>
+                  <Input {...field} placeholder="ThinkPad / Powder 4.5Kg" readOnly={isReadonly} />
                 </Field>
               )}
             />
@@ -451,15 +312,7 @@ export default function AssetAddForm() {
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>Part Number</FieldLabel>
-                  <Input
-                    {...field}
-                    placeholder="TP-X1C-2024"
-                    aria-invalid={fieldState.invalid}
-                    readOnly={isReadonly}
-                  />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
+                  <Input {...field} placeholder="P/N Code" readOnly={isReadonly} />
                 </Field>
               )}
             />
@@ -468,16 +321,8 @@ export default function AssetAddForm() {
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Serial Number</FieldLabel>
-                  <Input
-                    {...field}
-                    placeholder="SN123456789"
-                    aria-invalid={fieldState.invalid}
-                    readOnly={isReadonly}
-                  />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
+                  <FieldLabel>Serial Number (S/N)</FieldLabel>
+                  <Input {...field} placeholder="Nomor Seri Unik Pabrik" readOnly={isReadonly} />
                 </Field>
               )}
             />
@@ -486,15 +331,9 @@ export default function AssetAddForm() {
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Kondisi</FieldLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    disabled={isReadonly}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                  <FieldLabel>Kondisi Awal</FieldLabel>
+                  <Select value={field.value} onValueChange={field.onChange} disabled={isReadonly}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="GOOD">Bagus (Good)</SelectItem>
                       <SelectItem value="REPAIR">Dalam Perbaikan</SelectItem>
@@ -502,18 +341,15 @@ export default function AssetAddForm() {
                       <SelectItem value="LOST">Hilang</SelectItem>
                     </SelectContent>
                   </Select>
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
                 </Field>
               )}
             />
           </div>
 
-          {/* KANAN: Penempatan & Pembelian */}
+          {/* KANAN: Penempatan Logistik & Legalitas Dokumen */}
           <div className="space-y-4">
             <h3 className="font-semibold text-sm border-b pb-1">
-              Penempatan & Pembelian
+              Logistik & Legalitas
             </h3>
 
             <Controller
@@ -521,23 +357,14 @@ export default function AssetAddForm() {
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Lokasi</FieldLabel>
-                  <Combobox<{
-                    id: string;
-                    name: string;
-                  }>
-                    title="Cari Lokasi"
+                  <FieldLabel>Penempatan Lokasi</FieldLabel>
+                  <Combobox<{ id: string; name: string; }>
+                    title="Pilih Area Gedung..."
                     valueKey="id"
                     value={locations?.find((loc) => loc.id === field.value)}
                     searchFn={(search: string, offset: number, size: number) =>
                       Promise.resolve(
-                        locations
-                          ?.filter((loc) =>
-                            loc.name
-                              .toLowerCase()
-                              .includes(search.toLowerCase()),
-                          )
-                          .slice(offset, offset + size) || [],
+                        locations?.filter((loc) => loc.name.toLowerCase().includes(search.toLowerCase())).slice(offset, offset + size) || [],
                       )
                     }
                     renderText={(loc) => loc.name}
@@ -554,30 +381,15 @@ export default function AssetAddForm() {
                 control={form.control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel>Departemen</FieldLabel>
-                    <Combobox<{
-                      id_department: string;
-                      nama_department: string;
-                    }>
+                    <FieldLabel>Departemen Penanggung Jawab</FieldLabel>
+                    <Combobox<{ id_department: string; nama_department: string; }>
                       key={`dept-combo-${dept?.length || 0}`}
-                      title="Cari Departemen"
+                      title="Cari Departemen..."
                       valueKey="id_department"
-                      value={dept?.find(
-                        (loc) => loc.id_department === field.value,
-                      )}
-                      searchFn={(
-                        search: string,
-                        offset: number,
-                        size: number,
-                      ) =>
+                      value={dept?.find((loc) => loc.id_department === field.value)}
+                      searchFn={(search: string, offset: number, size: number) =>
                         Promise.resolve(
-                          dept
-                            ?.filter((loc) =>
-                              loc.nama_department
-                                .toLowerCase()
-                                .includes(search.toLowerCase()),
-                            )
-                            .slice(offset, offset + size) || [],
+                          dept?.filter((loc) => loc.nama_department.toLowerCase().includes(search.toLowerCase())).slice(offset, offset + size) || [],
                         )
                       }
                       renderText={(loc) => loc.nama_department}
@@ -589,193 +401,118 @@ export default function AssetAddForm() {
               />
             )}
 
-            {/* 👇 TAMBAHAN UI: document_number 👇 */}
             <Controller
               name="document_number"
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>No. Dokumen</FieldLabel>
-                  <Input
-                    {...field}
-                    placeholder="Contoh: DOC-001"
-                    aria-invalid={fieldState.invalid}
-                    readOnly={isReadonly}
-                  />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
+                  <FieldLabel>No. Dokumen Kontrak / Berkas</FieldLabel>
+                  <Input {...field} placeholder="DOC-001" readOnly={isReadonly} />
                 </Field>
               )}
             />
 
-            {/* 👇 TAMBAHAN UI: no_spb 👇 */}
             <Controller
               name="no_spb"
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>No. SPB</FieldLabel>
-                  <Input
-                    {...field}
-                    placeholder="Contoh: SPB-2024-001"
-                    aria-invalid={fieldState.invalid}
-                    readOnly={isReadonly}
-                  />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
+                  <FieldLabel>No. SPB (Surat Penyerahan Barang)</FieldLabel>
+                  <Input {...field} placeholder="SPB-2024-001" readOnly={isReadonly} />
                 </Field>
               )}
             />
 
-            <Controller
-              name="purchaseDate"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Tgl. Beli</FieldLabel>
-                  <Input type="date" {...field} readOnly={isReadonly} />
-                </Field>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-2">
+              <Controller
+                name="purchaseDate"
+                control={form.control}
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel>Tgl. Beli</FieldLabel>
+                    <Input type="date" {...field} readOnly={isReadonly} className="text-xs" />
+                  </Field>
+                )}
+              />
+              <Controller
+                name="purchasePrice"
+                control={form.control}
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel>Harga Beli</FieldLabel>
+                    <Input type="number" {...field} placeholder="0" readOnly={isReadonly} className="text-xs" />
+                  </Field>
+                )}
+              />
+            </div>
 
-            <Controller
-              name="purchasePrice"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Harga Beli</FieldLabel>
-                  <Input
-                    type="number"
-                    {...field}
-                    placeholder="0"
-                    readOnly={isReadonly}
-                  />
-                </Field>
-              )}
-            />
-
-            <Controller
-              name="garansi_exp"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Garansi Selesai</FieldLabel>
-                  <Input type="date" {...field} readOnly={isReadonly} />
-                </Field>
-              )}
-            />
-
-            <Controller
-              name="vendorName"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Vendor / Toko</FieldLabel>
-                  <Input
-                    {...field}
-                    placeholder="e.g. PT Maju Bersama"
-                    readOnly={isReadonly}
-                  />
-                </Field>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-2">
+              <Controller
+                name="garansi_exp"
+                control={form.control}
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel>Garansi Toko</FieldLabel>
+                    <Input type="date" {...field} readOnly={isReadonly} className="text-xs" />
+                  </Field>
+                )}
+              />
+              <Controller
+                name="vendorName"
+                control={form.control}
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel>Nama Vendor</FieldLabel>
+                    <Input {...field} placeholder="PT Maju Bersama" readOnly={isReadonly} className="text-xs" />
+                  </Field>
+                )}
+              />
+            </div>
           </div>
         </div>
 
         {/* PHOTO UPLOAD SECTION */}
         <div className="space-y-4 border rounded-lg p-4 bg-slate-50">
-          <h3 className="font-semibold text-sm">Foto Aset</h3>
-
+          <h3 className="font-semibold text-sm">Lampiran Foto Fisik Unit</h3>
           {imagePreview && (
             <div className="relative w-full flex justify-center">
               <div className="relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={imagePreview}
-                  alt="Asset preview"
-                  className="h-40 w-40 object-cover rounded-lg border"
-                />
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  className="absolute -top-2 -right-2 h-6 w-6"
-                  onClick={handleRemoveImage}
-                >
+                <img src={imagePreview} alt="Asset preview" className="h-40 w-40 object-cover rounded-lg border" />
+                <Button type="button" variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6" onClick={handleRemoveImage}>
                   <X className="h-3 w-3" />
                 </Button>
               </div>
             </div>
           )}
-
-          {imageError && (
-            <p className="text-sm text-red-500 bg-red-50 p-2 rounded">
-              {imageError}
-            </p>
-          )}
-
+          {imageError && <p className="text-sm text-red-500 bg-red-50 p-2 rounded">{imageError}</p>}
           <div className="flex items-center gap-2">
             <label htmlFor="photo-input" className="flex-1">
               <div className="flex items-center justify-center gap-2 p-3 border-2 border-dashed rounded-lg cursor-pointer hover:bg-slate-100 transition-colors">
                 <Camera className="h-4 w-4" />
-                <span className="text-sm text-slate-600">
-                  {imagePreview
-                    ? "Klik untuk ubah foto"
-                    : "Pilih atau drag foto aset"}
-                </span>
+                <span className="text-sm text-slate-600">{imagePreview ? "Ubah foto lampiran" : "Pilih dokumen foto aset"}</span>
               </div>
-              <input
-                id="photo-input"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageChange}
-                disabled={isPending}
-                readOnly={isReadonly}
-              />
+              <input id="photo-input" type="file" accept="image/*" className="hidden" onChange={handleImageChange} disabled={isPending} />
             </label>
           </div>
-          <p className="text-xs text-slate-500">
-            Format: JPG, PNG, WebP, GIF | Max: 5MB
-          </p>
         </div>
 
         <Controller
           name="notes"
           control={form.control}
-          render={({ field, fieldState }) => (
-            <Field data-invalid={fieldState.invalid}>
-              <FieldLabel>Catatan</FieldLabel>
-              <Textarea
-                {...field}
-                placeholder="Tambahkan keterangan tambahan jika perlu..."
-                rows={2}
-                readOnly={isReadonly}
-              />
+          render={({ field }) => (
+            <Field>
+              <FieldLabel>Catatan / Keterangan Kondisi Tambahan</FieldLabel>
+              <Textarea {...field} placeholder="Tulis catatan tambahan penempatan gedung di sini..." rows={2} readOnly={isReadonly} />
             </Field>
           )}
         />
 
         <div className="pt-4 flex flex-col-reverse md:flex-row justify-end gap-3 border-t mt-6">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.push("/assets")} // 👈 Arahkan ke halaman daftar aset
-            disabled={isPending}
-            className="w-full md:w-auto"
-          >
+          <Button type="button" variant="outline" onClick={() => router.push("/assets")} disabled={isPending} className="w-full md:w-auto">
             Batal
           </Button>
-
-          <Button
-            form="asset-form"
-            type="submit"
-            disabled={isPending}
-            className="w-full md:w-auto"
-          >
-            {isPending ? "Menyimpan..." : "Simpan Data Aset"}
+          <Button form="asset-form" type="submit" disabled={isPending} className="w-full md:w-auto">
+            {isPending ? "Menyimpan Unit..." : "Simpan Data Unit Aset"}
           </Button>
         </div>
       </form>

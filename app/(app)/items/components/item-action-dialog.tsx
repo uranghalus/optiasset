@@ -193,7 +193,31 @@ export function ItemActionDialog({ open, onOpenChange, currentRow }: Props) {
                 </Field>
               )}
             />
-
+            {/* KATEGORI */}
+            <Controller
+              name="categoryId"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel>Kategori</FieldLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger aria-invalid={fieldState.invalid}>
+                      <SelectValue placeholder="Pilih kategori..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories?.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
+            />
             <div className="grid grid-cols-2 gap-4">
               {/* KODE */}
               <Controller
@@ -241,35 +265,6 @@ export function ItemActionDialog({ open, onOpenChange, currentRow }: Props) {
                   </Field>
                 )}
               />
-
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              {/* KATEGORI */}
-              <Controller
-                name="categoryId"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel>Kategori</FieldLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger aria-invalid={fieldState.invalid}>
-                        <SelectValue placeholder="Pilih kategori..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories?.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id}>
-                            {cat.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
-                )}
-              />
-
 
             </div>
 

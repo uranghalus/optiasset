@@ -211,6 +211,9 @@ export async function getAvailableAssetsForLoanSelect({
 /* =======================
   // LINK CREATE ASSET
  ======================= */
+/* =======================
+   // LINK CREATE ASSET (UPDATED WITH AUTO-CODING)
+ ======================= */
 export async function createAsset(formData: FormData) {
   const session = await getServerSession();
   if (!session) throw new Error('Unauthorized');
@@ -239,16 +242,12 @@ export async function createAsset(formData: FormData) {
   const activeOrgId = session.session?.activeOrganizationId;
   if (!activeOrgId) throw new Error('No active organizationId found');
 
-  // --- INTEGRASI S3 MULAI DI SINI ---
+  // --- INTEGRASI S3 ---
   const photoFile = formData.get('photo') as File | null;
   let photoUrl = null;
-
-  // Cek apakah file ada dan ukurannya lebih dari 0 (bukan file kosong)
   if (photoFile && photoFile.size > 0) {
-    // Kita simpan Key S3 ke variabel photoUrl
     photoUrl = await uploadToS3(photoFile, 'asset-photos');
   }
-  // --- INTEGRASI S3 SELESAI ---
 
   const formDepartmentId = formData.get('departmentId')?.toString();
   const isAdminOrOwner = role === 'staff_asset' || role === 'owner';
@@ -260,7 +259,52 @@ export async function createAsset(formData: FormData) {
     ?.toString()
     .trim();
 
+  // 1. CARI MASTER ITEM DAN KATEGORINYA TERLEBIH DAHULU UNTUK MENDAPATKAN KODE PREFIX
+  const itemMaster = await prisma.item.findUnique({
+    where: { id: itemId },
+    include: {
+      category: true, // Taruh include category agar bisa membaca jembatan kode klasifikasi
+    },
+  });
+  if (!itemMaster) throw new Error('Master Item tidak ditemukan');
+
+  // Ambil input kode manual dari form jika ada
+  let finalKodeAsset = formData.get('kode_asset')?.toString()?.trim() || null;
+
   const asset = await prisma.$transaction(async (tx) => {
+    // 2. LOGIKA AUTO-GENERATION KODE BERDASARKAN KATEGORI ITEM
+    // Jika kode di form kosong DAN item memiliki kategori yang memiliki kode klasifikasi
+    if (!finalKodeAsset && itemMaster.category?.code) {
+      const prefix = itemMaster.category.code; // Contoh: "03.05.11.07"
+
+      // Cari nomor urut terakhir khusus untuk prefix kategori item ini
+      const lastAsset = await tx.asset.findFirst({
+        where: {
+          organizationId: activeOrgId,
+          kode_asset: {
+            startsWith: prefix + '.',
+          },
+        },
+        orderBy: {
+          kode_asset: 'desc',
+        },
+      });
+
+      let nextSequence = 1;
+      if (lastAsset?.kode_asset) {
+        const parts = lastAsset.kode_asset.split('.');
+        const lastSeq = Number(parts[parts.length - 1]);
+        if (!isNaN(lastSeq)) {
+          nextSequence = lastSeq + 1;
+        }
+      }
+
+      // Samakan padStart(4, '0') dengan fungsi generateAssetCode Anda agar format urutan seragam
+      const seq = String(nextSequence).padStart(4, '0');
+      finalKodeAsset = `${prefix}.${seq}`; // Hasil rilis: "03.05.11.07.0001"
+    }
+
+    // 3. JALANKAN PROSES PEMBUATAN ASSET
     const newAsset = await tx.asset.create({
       data: {
         itemId,
@@ -278,7 +322,7 @@ export async function createAsset(formData: FormData) {
         no_spb: formData.get('no_spb')?.toString() || null,
         departmentId: finalDepartmentId,
         notes: formData.get('notes')?.toString() || null,
-        kode_asset: formData.get('kode_asset')?.toString() || null,
+        kode_asset: finalKodeAsset, // 👈 Menyimpan kode otomatis / manual yang aman
         vendorName: formData.get('vendorName')?.toString() || null,
         ...(assetSubClusterId && {
           assetSubClusters: {
@@ -286,7 +330,7 @@ export async function createAsset(formData: FormData) {
           },
         }),
         garansi_exp: parseDateOrNull('garansi_exp'),
-        photoUrl, // Key S3 disimpan di sini
+        photoUrl,
       },
     });
 
@@ -314,7 +358,7 @@ export async function createAsset(formData: FormData) {
       action: 'CREATE',
       entityType: 'ASSET',
       entityId: newAsset.id,
-      entityInfo: `${newAsset.kode_asset || 'N/A'} - ${newAsset.itemId || 'N/A'}`,
+      entityInfo: `${newAsset.kode_asset || 'N/A'} - ${itemMaster.name || 'N/A'}`,
       details: { newData: newAsset },
       tx,
     });
@@ -1455,7 +1499,7 @@ export async function importAssetExcel(
         }
 
         // --- G. CREATE ASSET ---
-       await tx.asset.create({
+        await tx.asset.create({
           data: {
             itemId: item.id,
             organizationId,

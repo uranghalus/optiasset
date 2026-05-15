@@ -1231,8 +1231,7 @@ export async function importAssetExcel(
 
   if (!file) throw new Error('File tidak ditemukan');
 
-  // --- TAMBAHAN: VALIDASI AWAL TARGET SUB CLUSTER ---
-  // Pastikan ID Sub Cluster yang dikirim dari frontend benar-benar ada di database
+  // --- VALIDASI AWAL TARGET SUB CLUSTER ---
   if (targetSubClusterId && targetSubClusterId !== '') {
     const checkCluster = await prisma.assetSubCluster.findUnique({
       where: { id: targetSubClusterId },
@@ -1264,7 +1263,7 @@ export async function importAssetExcel(
   );
   if (startIdx === -1) throw new Error('Format Excel tidak dikenali');
 
-  // 2. SMART HEADER READER (Mengatasi Cell yang Di-Merge)
+  // 2. SMART HEADER READER
   const headerRow1 = rows[startIdx] || [];
   const headerRow2 = rows[startIdx + 1] || [];
   const maxCols = Math.max(headerRow1.length, headerRow2.length);
@@ -1275,19 +1274,14 @@ export async function importAssetExcel(
   for (let i = 0; i < maxCols; i++) {
     const h1 = headerRow1[i] ? String(headerRow1[i]).trim() : '';
     const h2 = headerRow2[i] ? String(headerRow2[i]).trim() : '';
-
-    // Jika h1 ada isinya, simpan sebagai header utama
     if (h1) lastMainHeader = h1;
-
-    // Gabungkan
     const combined = `${lastMainHeader} ${h2}`.trim().toLowerCase();
     combinedHeaders.push(combined);
   }
 
-  // Baris data dimulai setelah 2 baris header tersebut
   const dataRows = rows.slice(startIdx + 2);
 
-  // 3. MAPPING INDEX BERDASARKAN SMART HEADER
+  // 3. MAPPING INDEX
   const col = {
     unit: getColumnIndex(combinedHeaders, ASSET_MAPPER.unit),
     model: getColumnIndex(combinedHeaders, ASSET_MAPPER.model),
@@ -1302,7 +1296,51 @@ export async function importAssetExcel(
     kepemilikan: getColumnIndex(combinedHeaders, ASSET_MAPPER.kepemilikan),
   };
 
-  // 4. PRE-FETCH DEPARTEMEN
+  // --- 4. PRE-VALIDASI DUPLIKASI DI DALAM EXCEL ---
+  const seenSn = new Set<string>();
+  const seenKode = new Set<string>();
+  const excelErrors: string[] = [];
+
+  for (const [index, row] of dataRows.entries()) {
+    const excelRowNumber = index + startIdx + 3; // Menyesuaikan nomor baris di Excel asli
+
+    const rawSn =
+      col.sn !== -1 && row[col.sn] ? String(row[col.sn]).trim() : '';
+    const rawKode =
+      col.kode !== -1 && row[col.kode] ? String(row[col.kode]).trim() : '';
+
+    if (rawSn) {
+      if (seenSn.has(rawSn)) {
+        excelErrors.push(
+          `Baris ${excelRowNumber}: Serial Number "${rawSn}" duplikat di dalam file Excel.`,
+        );
+      } else {
+        seenSn.add(rawSn);
+      }
+    }
+
+    if (rawKode) {
+      if (seenKode.has(rawKode)) {
+        excelErrors.push(
+          `Baris ${excelRowNumber}: Kode Asset "${rawKode}" duplikat di dalam file Excel.`,
+        );
+      } else {
+        seenKode.add(rawKode);
+      }
+    }
+  }
+
+  // Jika ada duplikasi di dalam Excel, batalkan seluruh proses import untuk menjaga konsistensi
+  if (excelErrors.length > 0) {
+    return {
+      success: 0,
+      failed: excelErrors.length,
+      errors: excelErrors,
+    };
+  }
+  // --------------------------------------------------
+
+  // 5. PRE-FETCH DEPARTEMEN
   const allDepartments = await prisma.department.findMany({
     where: { organization_id: organizationId, deleted_at: null },
     select: {
@@ -1314,7 +1352,7 @@ export async function importAssetExcel(
 
   const results = { success: 0, failed: 0, errors: [] as string[] };
 
-  // 5. LOOP DATA
+  // 6. LOOP DATA
   for (const [index, row] of dataRows.entries()) {
     const unitName = row[col.unit];
     if (!unitName) continue; // Skip baris kosong
@@ -1336,7 +1374,7 @@ export async function importAssetExcel(
           }
         }
 
-        // --- B. LOKASI (Area & Lantai Digabung) ---
+        // --- B. LOKASI ---
         let locationId = null;
         let locationParts = [];
         if (col.lantai !== -1 && row[col.lantai])
@@ -1366,7 +1404,7 @@ export async function importAssetExcel(
           finalNotes = `Kepemilikan: ${String(row[col.kepemilikan]).trim()}`;
         }
 
-        // --- D. LOGIKA PIC (DEPARTEMEN vs NAMA ORANG) ---
+        // --- D. PIC ---
         let finalDepartmentId = null;
         let finalPersonName = null;
 
@@ -1374,7 +1412,6 @@ export async function importAssetExcel(
           const rawPicValue = String(row[col.pic]).trim();
           const excelDeptClean = rawPicValue.toLowerCase();
 
-          // Cari apakah nama/kode tersebut ada di tabel Departemen
           const existingDept = allDepartments.find(
             (d) =>
               d.nama_department.toLowerCase() === excelDeptClean ||
@@ -1389,8 +1426,8 @@ export async function importAssetExcel(
           }
         }
 
-        // --- E. KONDISI (Berdasarkan Kolom Baik/Rusak) ---
-        let condition = 'BAIK'; // Default
+        // --- E. KONDISI ---
+        let condition = 'BAIK';
         if (
           col.rusak !== -1 &&
           row[col.rusak] &&
@@ -1422,9 +1459,17 @@ export async function importAssetExcel(
           data: {
             itemId: item.id,
             organizationId,
-            kode_asset: col.kode !== -1 ? String(row[col.kode] || '') : null,
+
+            // PERBAIKAN NULL SANITIZATION:
+            kode_asset:
+              col.kode !== -1 && row[col.kode]
+                ? String(row[col.kode]).trim() || null
+                : null,
             serialNumber:
-              col.sn !== -1 ? String(row[col.sn] || '').trim() : null,
+              col.sn !== -1 && row[col.sn]
+                ? String(row[col.sn]).trim() || null
+                : null,
+
             model: modelName,
             departmentId: finalDepartmentId,
             PIC: finalPersonName,
@@ -1434,8 +1479,6 @@ export async function importAssetExcel(
             purchaseDate: purchaseDate,
             notes: finalNotes || null,
 
-            // --- PERBAIKAN: CONDITIONAL CONNECT ---
-            // Hanya lakukan connect jika targetSubClusterId valid dan ada
             ...(targetSubClusterId && targetSubClusterId !== ''
               ? {
                   assetSubClusters: {
@@ -1449,11 +1492,11 @@ export async function importAssetExcel(
       results.success++;
     } catch (err: any) {
       results.failed++;
-      // --- PERBAIKAN PADA LOG ERROR ---
-      // Menambahkan nomor baris Excel dan nama unit agar mudah dicari di Excel
       const excelRowNumber = index + startIdx + 3;
+
+      // Error database (seperti duplikasi dengan data yang sudah ada di DB) akan tertangkap di sini
       results.errors.push(
-        `Baris ${excelRowNumber} (${unitName}): ${err.message}`,
+        `Baris ${excelRowNumber} (${unitName}): ${err.message || 'Gagal menyimpan ke database'}`,
       );
     }
   }

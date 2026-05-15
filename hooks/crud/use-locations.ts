@@ -1,6 +1,7 @@
 import {
   createLocation,
   deleteLocation,
+  deleteManyLocation,
   getAllLocations,
   updateLocation,
 } from "@/action/location-action";
@@ -48,6 +49,20 @@ export function useDeleteLocation() {
 
   return useMutation({
     mutationFn: (id: string) => deleteLocation(id),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["locations"],
+      });
+    },
+  });
+}
+// LINK MultiDeleteLocation
+export function useDeleteManyLocation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (ids: string[]) => deleteManyLocation(ids),
 
     onSuccess: () => {
       queryClient.invalidateQueries({

@@ -69,45 +69,48 @@ export default function AssetAddForm() {
     },
   }) as any);
 
-  // Pantau perubahan Master Item yang dipilih
+  // 1. Pantau perubahan Master Item yang dipilih
   const selectedItemId = form.watch("itemId");
 
-  // Mengambil state silsilah untuk mentrigger auto-generate kode asset
-  const selectedGroup = form.watch("assetGroupId");
-  const selectedCategory = form.watch("assetCategoryId");
-  const selectedCluster = form.watch("assetClusterId");
-  const selectedSubCluster = form.watch("assetSubClusterId");
+  // 2. 👇 STATE UNTUK MENAMPUNG KODE KATEGORI AKTIF SECARA REAKTIF 👇
+  const [activeCategoryCode, setActiveCategoryCode] = useState<string>("");
 
-  // 👇 1. EFFECT AUTO-FILL SILSIALAH KLASIFIKASI BERDASARKAN MASTER ITEM SELECTED 👇
+  // 3. 👇 EFFECT UNTUK MENDETEKSI KATEGORI ITEM DAN AUTO-FILL VALUES KEDALAM FORM 👇
   useEffect(() => {
-    if (!selectedItemId || !items) return;
+    if (!selectedItemId || !items) {
+      setActiveCategoryCode("");
+      form.setValue("kode_asset", "");
+      return;
+    }
 
-    // Cari item yang dipilih dari daftar item select
+    // Cari objek data item lengkap dari array select list
     const currentItem = items.find((item) => item.id === selectedItemId);
 
-    // Asumsi: Anda sudah melakukan include relasi silsilah dari model `Item` di hooks `useItemsForSelect`
     if (currentItem && (currentItem as any).category) {
       const cat = (currentItem as any).category;
+      const categoryCode = cat.code || "";
 
-      // Suntik silsilah langsung ke form values secara otomatis
-      form.setValue("assetGroupId", cat.assetGroupId || "");
-      form.setValue("assetCategoryId", cat.assetCategoryId || "");
-      form.setValue("assetClusterId", cat.assetClusterId || "");
-      form.setValue("assetSubClusterId", cat.assetSubClusterId || "");
+      // Pasang string kode kategori ke state lokal untuk men-trigger React Query Hook
+      setActiveCategoryCode(categoryCode);
 
-      // Kosongkan kode asset lama agar ditrigger ulang oleh hook generate
+      // Suntik silsilah ke dalam skema form agar saat submit data tersimpan sempurna
+      form.setValue("assetGroupId", cat.assetGroupId || "", { shouldDirty: true });
+      form.setValue("assetCategoryId", cat.assetCategoryId || "", { shouldDirty: true });
+      form.setValue("assetClusterId", cat.assetClusterId || "", { shouldDirty: true });
+      form.setValue("assetSubClusterId", cat.assetSubClusterId || "", { shouldDirty: true });
+
+      // Kosongkan kode aset lama agar bersiap memuat penomoran urut baru
+      form.setValue("kode_asset", "", { shouldDirty: true });
+    } else {
+      setActiveCategoryCode("");
       form.setValue("kode_asset", "");
     }
   }, [selectedItemId, items, form]);
 
-  // Hook generate nomor urut berkelanjutan dari Server Action asset-action
-  const { data: generatedCode } = useGenerateAssetCode(
-    selectedGroup,
-    selectedCategory,
-    selectedCluster,
-    selectedSubCluster,
-  );
+  // 4. 👇 PERBAIKAN UTAMA: Panggil Hook dengan 1 parameter string murni sesuai isi file use-generate-asset-code kustom 👇
+  const { data: generatedCode } = useGenerateAssetCode(activeCategoryCode);
 
+  // 5. Masukkan hasil generate kode otomatis berkelanjutan ke input field form
   useEffect(() => {
     if (!generatedCode) return;
     form.setValue("kode_asset", generatedCode, { shouldDirty: true });
@@ -167,7 +170,7 @@ export default function AssetAddForm() {
       form.reset();
       setImagePreview(null);
       setImageError(null);
-      router.push("/assets"); // Alihkan langsung ke daftar aset jika sukses
+      router.push("/assets");
     } catch (error: any) {
       console.error(error);
       form.setError("root", {
@@ -178,8 +181,6 @@ export default function AssetAddForm() {
   };
 
   const isPending = createMutation.isPending;
-
-  // Temukan nama klasifikasi lengkap saat ini untuk ditampilkan sebagai Preview teks ke Admin
   const activeItemDetails = items?.find((item) => item.id === selectedItemId);
 
   return (
@@ -239,7 +240,7 @@ export default function AssetAddForm() {
               )}
             />
 
-            {/* 🔍 👇 PANEL INFO AUTOMATISASI KELOMPOK ASSET 👇 */}
+            {/* PANEL INFO AUTOMATISASI KELOMPOK ASSET */}
             {selectedItemId && activeItemDetails && (
               <div className="p-3 bg-slate-50 border rounded-lg space-y-2 text-xs">
                 <div className="flex items-center gap-1.5 font-medium text-slate-700">
@@ -289,8 +290,8 @@ export default function AssetAddForm() {
             <Controller
               name="brand"
               control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
+              render={({ field }) => (
+                <Field>
                   <FieldLabel>Brand / Merk</FieldLabel>
                   <Input {...field} placeholder="Lenovo / Yamato" readOnly={isReadonly} />
                 </Field>
@@ -299,8 +300,8 @@ export default function AssetAddForm() {
             <Controller
               name="model"
               control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
+              render={({ field }) => (
+                <Field>
                   <FieldLabel>Model / Tipe</FieldLabel>
                   <Input {...field} placeholder="ThinkPad / Powder 4.5Kg" readOnly={isReadonly} />
                 </Field>
@@ -309,8 +310,8 @@ export default function AssetAddForm() {
             <Controller
               name="partNumber"
               control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
+              render={({ field }) => (
+                <Field>
                   <FieldLabel>Part Number</FieldLabel>
                   <Input {...field} placeholder="P/N Code" readOnly={isReadonly} />
                 </Field>
@@ -319,8 +320,8 @@ export default function AssetAddForm() {
             <Controller
               name="serialNumber"
               control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
+              render={({ field }) => (
+                <Field>
                   <FieldLabel>Serial Number (S/N)</FieldLabel>
                   <Input {...field} placeholder="Nomor Seri Unik Pabrik" readOnly={isReadonly} />
                 </Field>
@@ -329,8 +330,8 @@ export default function AssetAddForm() {
             <Controller
               name="condition"
               control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
+              render={({ field }) => (
+                <Field>
                   <FieldLabel>Kondisi Awal</FieldLabel>
                   <Select value={field.value} onValueChange={field.onChange} disabled={isReadonly}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -355,8 +356,8 @@ export default function AssetAddForm() {
             <Controller
               name="locationId"
               control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
+              render={({ field }) => (
+                <Field>
                   <FieldLabel>Penempatan Lokasi</FieldLabel>
                   <Combobox<{ id: string; name: string; }>
                     title="Pilih Area Gedung..."
@@ -379,8 +380,8 @@ export default function AssetAddForm() {
               <Controller
                 name="departmentId"
                 control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
+                render={({ field }) => (
+                  <Field>
                     <FieldLabel>Departemen Penanggung Jawab</FieldLabel>
                     <Combobox<{ id_department: string; nama_department: string; }>
                       key={`dept-combo-${dept?.length || 0}`}
@@ -404,8 +405,8 @@ export default function AssetAddForm() {
             <Controller
               name="document_number"
               control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
+              render={({ field }) => (
+                <Field>
                   <FieldLabel>No. Dokumen Kontrak / Berkas</FieldLabel>
                   <Input {...field} placeholder="DOC-001" readOnly={isReadonly} />
                 </Field>
@@ -415,8 +416,8 @@ export default function AssetAddForm() {
             <Controller
               name="no_spb"
               control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
+              render={({ field }) => (
+                <Field>
                   <FieldLabel>No. SPB (Surat Penyerahan Barang)</FieldLabel>
                   <Input {...field} placeholder="SPB-2024-001" readOnly={isReadonly} />
                 </Field>

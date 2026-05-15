@@ -14,7 +14,7 @@ export const authClient = createAuthClient({
   plugins: [
     adminClient(),
     inferAdditionalFields<typeof auth>(),
-    nextCookies(),
+   
     usernameClient(),
     organizationClient({
       ac: ac,
@@ -29,5 +29,6 @@ export const authClient = createAuthClient({
         enabled: true,
       },
     }),
+     nextCookies(),
   ],
 });

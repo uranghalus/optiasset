@@ -84,7 +84,7 @@ export async function createLocation(formData: FormData) {
     },
   });
 
-  revalidatePath("/assets/locations");
+  revalidatePath("/locations");
   return location;
 }
 
@@ -133,7 +133,7 @@ export async function updateLocation(id: string, formData: FormData) {
     },
   });
 
-  revalidatePath("/assets/locations");
+  revalidatePath("/locations");
   return updated;
 }
 
@@ -145,6 +145,26 @@ export async function deleteLocation(id: string) {
   if (!session) throw new Error("Unauthorized");
   const activeOrgId = session.session?.activeOrganizationId;
   if (!activeOrgId) throw new Error("No active organizationId found");
+
+  // Disconnect related records before deleting
+  await prisma.$transaction([
+    prisma.asset.updateMany({
+      where: { locationId: id, organizationId: activeOrgId },
+      data: { locationId: null },
+    }),
+    prisma.stock.updateMany({
+      where: { locationId: id, organizationId: activeOrgId },
+      data: { locationId: null },
+    }),
+    prisma.assetTransfer.updateMany({
+      where: { fromLocationId: id, organizationId: activeOrgId },
+      data: { fromLocationId: null },
+    }),
+    prisma.assetTransfer.updateMany({
+      where: { toLocationId: id, organizationId: activeOrgId },
+      data: { toLocationId: null },
+    }),
+  ]);
 
   const location = await prisma.location.delete({
     where: {
@@ -166,7 +186,7 @@ export async function deleteLocation(id: string) {
     },
   });
 
-  revalidatePath("/assets/locations");
+  revalidatePath("/locations");
   return location;
 }
 
@@ -184,4 +204,59 @@ export async function getLocationsForSelect() {
     select: { id: true, name: true },
     orderBy: { name: "asc" },
   });
+}
+// LINK MultiDeleteLocation
+export async function deleteManyLocation(ids: string[]) {
+  const session = await getServerSession();
+  if (!session) throw new Error("Unauthorized");
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error("No active organizationId found");
+
+  try {
+    // Disconnect related records before deleting
+    await prisma.$transaction([
+      prisma.asset.updateMany({
+        where: { locationId: { in: ids }, organizationId: activeOrgId },
+        data: { locationId: null },
+      }),
+      prisma.stock.updateMany({
+        where: { locationId: { in: ids }, organizationId: activeOrgId },
+        data: { locationId: null },
+      }),
+      prisma.assetTransfer.updateMany({
+        where: { fromLocationId: { in: ids }, organizationId: activeOrgId },
+        data: { fromLocationId: null },
+      }),
+      prisma.assetTransfer.updateMany({
+        where: { toLocationId: { in: ids }, organizationId: activeOrgId },
+        data: { toLocationId: null },
+      }),
+    ]);
+
+    const deletedLocations = await prisma.location.deleteMany({
+      where: {
+        id: { in: ids },
+        organizationId: activeOrgId,
+      },
+    });
+
+    // Record Audit Log
+    await createAuditLog({
+      userId: session.user.id,
+      organizationId: activeOrgId,
+      action: "DELETE",
+      entityType: "LOCATION",
+      entityId: ids.join(", "),
+      entityInfo: `${deletedLocations.count} locations deleted`,
+      details: {
+        deletedData: ids,
+      },
+    });
+
+    revalidatePath("/locations");
+    return { success: true, message: "Locations deleted successfully" };
+  } catch (error) {
+    console.error("Error deleting locations:", error);
+    return { success: false, message: "Failed to delete locations" };
+  }
 }

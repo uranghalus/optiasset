@@ -1455,7 +1455,7 @@ export async function importAssetExcel(
         }
 
         // --- G. CREATE ASSET ---
-        await tx.asset.create({
+       await tx.asset.create({
           data: {
             itemId: item.id,
             organizationId,

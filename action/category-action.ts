@@ -209,8 +209,8 @@ export async function updateCategory(id: string, formData: FormData) {
     data: {
       name: name ?? category.name,
       code: classification.code || category.code,
-      targetId: classification.targetId || category.classificationId,
-      targetLevel: classification.targetLevel || category.classificationType,
+      classificationId: classification.targetId || category.classificationId,
+      classificationType: classification.targetLevel || category.classificationType,
     },
   });
 
@@ -254,4 +254,30 @@ export async function deleteCategory(id: string) {
 
   revalidatePath('/assets/categories');
   return category;
+}
+
+// Delete Many Category
+
+export async function deleteManyCategories(ids: string[]) {
+  const session = await getServerSession();
+  if (!session) throw new Error('Unauthorized');
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error('No active organizationId found');
+
+  const categories = await prisma.category.deleteMany({
+    where: { id: { in: ids }, organizationId: activeOrgId },
+  });
+
+  await createAuditLog({
+    userId: session.user.id,
+    organizationId: activeOrgId,
+    action: 'DELETE',
+    entityType: 'CATEGORY',
+    entityId: ids.join(','),
+    entityInfo: categories.count.toString(),
+    details: { deletedData: categories },
+  });
+
+  revalidatePath('/assets/categories');
+  return categories;
 }

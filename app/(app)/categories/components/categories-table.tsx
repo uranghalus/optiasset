@@ -17,7 +17,7 @@ export default function CategoriesTable() {
         pageIndex: 0,
         pageSize: 10,
     });
-    const { data, isLoading } = useCategories({
+    const { data, isLoading: loadCategories, isFetching } = useCategories({
         page: pagination.pageIndex,
         pageSize: pagination.pageSize,
     })
@@ -30,6 +30,7 @@ export default function CategoriesTable() {
         pagination,
         onPaginationChange: setPagination,
     });
+    const isLoading = loadCategories || isFetching;
     return (
         <div className='p-3 rounded-md border space-y-4'>
             <DataTableToolbar
@@ -38,7 +39,7 @@ export default function CategoriesTable() {
                 searchPlaceholder="Search category..."
             >
                 <div className="flex gap-2">
-                    <Button onClick={() => setOpen("add")} className="gap-2">
+                    <Button onClick={() => setOpen("add-category")} className="gap-2">
                         <Plus className="size-4" />
                         Add Category
                     </Button>

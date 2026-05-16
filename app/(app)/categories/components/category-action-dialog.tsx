@@ -44,8 +44,8 @@ export function CategoryActionDialog({
 }: Props) {
   const isEdit = !!currentRow;
 
-  const createMutation = useCreateCategory();
-  const updateMutation = useUpdateCategory();
+  const { mutate: createMutation, isPending: PendingCreate } = useCreateCategory();
+  const { mutate: updateMutation, isPending: PendingUpdate } = useUpdateCategory();
   const form = useForm<CategoryForm>({
     resolver: zodResolver(CategoryFormSchema),
     defaultValues: {
@@ -114,8 +114,8 @@ export function CategoryActionDialog({
     }
   }, [currentRow, form, open]);
 
-  const isPending = createMutation.isPending || updateMutation.isPending;
 
+  const isPending = PendingCreate || PendingUpdate
   const onSubmit = async (values: CategoryForm) => {
     const formData = new FormData();
     formData.append("name", values.name);
@@ -126,12 +126,12 @@ export function CategoryActionDialog({
     if (values.assetSubClusterId) formData.append("assetSubClusterId", values.assetSubClusterId);
     try {
       if (isEdit && currentRow) {
-        await updateMutation.mutateAsync({
+        await updateMutation({
           id: currentRow.id,
           formData,
         });
       } else {
-        await createMutation.mutateAsync(formData);
+        await createMutation(formData);
       }
 
       onOpenChange(false);

@@ -11,16 +11,16 @@ export default function CategoriesDialog() {
         <>
             <CategoryActionDialog
                 key="category-add"
-                open={open === "add"}
-                onOpenChange={() => setOpen("add")}
+                open={open === "add-category"}
+                onOpenChange={() => setOpen("add-category")}
             />
             {currentRow && (<>
                 <CategoryActionDialog
                     key={`category-edit-${(currentRow as Category).id}`}
-                    open={open === "edit"}
+                    open={open === "edit-category"}
                     currentRow={currentRow as Category}
                     onOpenChange={() => {
-                        setOpen("edit");
+                        setOpen("edit-category");
                         setCurrentRow(undefined);
                     }}
                 />

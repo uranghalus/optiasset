@@ -20,25 +20,27 @@ export function useCategories({ page, pageSize }: PaginationState) {
 // Create category
 export function useCreateCategory() {
   const queryClient = useQueryClient();
+
   const mutation = useMutation({
-    mutationFn: (formData: FormData) => createCategory(formData),
+    mutationFn: (data: FormData) => createCategory(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
     },
   });
-  const mutateWithToast = (formData: FormData) => {
-    // toast.promise menerima promise dari mutation.mutateAsync
-    toast.promise(mutation.mutateAsync(formData), {
-      loading: 'Membuat kategori...',
+
+  const mutateWithToast = (data: FormData) => {
+    // toast.promise membungkus promise dari mutateAsync
+    toast.promise(mutation.mutateAsync(data), {
+      loading: 'Membuat kategori baru...',
       success: 'Kategori berhasil dibuat!',
       error: 'Gagal membuat kategori.',
     });
-    return {
-      ...mutation,
-      mutate: mutateWithToast, // Meng-override mutate biasa dengan versi toast
-    };
   };
 
+  return {
+    ...mutation, // Ini yang mengirimkan `isPending` keluar
+    mutate: mutateWithToast, // Ini meng-override mutate biasa dengan versi toast
+  };
 }
 // Update category
 export function useUpdateCategory() {
@@ -54,17 +56,26 @@ export function useUpdateCategory() {
       });
     },
   });
-  const mutateWithToast = ({ id, formData }: { id: string; formData: FormData }) => {
+
+  const mutateWithToast = ({
+    id,
+    formData,
+  }: {
+    id: string;
+    formData: FormData;
+  }) => {
     // toast.promise menerima promise dari mutation.mutateAsync
     toast.promise(mutation.mutateAsync({ id, formData }), {
       loading: 'Memperbarui kategori...',
       success: 'Kategori berhasil diperbarui!',
       error: 'Gagal memperbarui kategori.',
     });
-    return {
-      ...mutation,
-      mutate: mutateWithToast, // Meng-override mutate biasa dengan versi toast
-    };
+  };
+
+  // KOREKSI: Pindahkan return ke sini (di luar fungsi mutateWithToast)
+  return {
+    ...mutation,
+    mutate: mutateWithToast, // Meng-override mutate biasa dengan versi toast
   };
 }
 // Delete category
@@ -76,24 +87,22 @@ export function useDeleteCategory() {
 
   const mutation = useMutation({
     mutationFn: (id: string) => deleteCategory(id),
-
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['categories'],
-      });
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
     },
   });
+
   const mutateWithToast = (id: string) => {
-    // toast.promise menerima promise dari mutation.mutateAsync
     toast.promise(mutation.mutateAsync(id), {
       loading: 'Menghapus kategori...',
       success: 'Kategori berhasil dihapus!',
       error: 'Gagal menghapus kategori.',
     });
-    return {
-      ...mutation,
-      mutate: mutateWithToast, // Meng-override mutate biasa dengan versi toast
-    };
+  };
+
+  return {
+    ...mutation, // <-- Ini otomatis mengekspor isPending, isSuccess, error, dll.
+    mutate: mutateWithToast,
   };
 }
 // LINK MultiDelete Categories

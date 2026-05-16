@@ -20,13 +20,13 @@ export default function CategoriesRowAction<TData>({
         <ButtonGroup>
             <Button variant="destructive" size="icon" onClick={() => {
                 setCurrentRow(category);
-                setOpen("delete");
+                setOpen("delete-category");
             }}>
                 <Trash2 />
             </Button>
             <Button variant="outline" size="icon" onClick={() => {
                 setCurrentRow(category);
-                setOpen("edit");
+                setOpen("edit-category");
             }}>
                 <Pencil />
             </Button>

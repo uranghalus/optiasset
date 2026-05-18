@@ -224,10 +224,7 @@ export async function getAvailableAssetsForLoanSelect({
 }
 
 /* =======================
-  // LINK CREATE ASSET
- ======================= */
-/* =======================
-   // LINK CREATE ASSET (UPDATED WITH AUTO-CODING)
+   // LINK CREATE ASSET (UPDATED WITH APAR & HYDRANT)
  ======================= */
 export async function createAsset(formData: FormData) {
   const session = await getServerSession();
@@ -255,7 +252,6 @@ export async function createAsset(formData: FormData) {
   };
 
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error("No active organizationId found");
 
   // --- INTEGRASI S3 ---
   const photoFile = formData.get("photo") as File | null;
@@ -274,25 +270,28 @@ export async function createAsset(formData: FormData) {
     ?.toString()
     .trim();
 
+  // 👇 TANGKAP PAYLOAD APAR & HYDRANT 👇
+  const isAparOrHydrant = formData.get("isAparOrHydrant")?.toString() || "NONE";
+  const jenisApar = formData.get("jenisApar")?.toString() as any;
+  const sizeApar = parseFloatOrNull("sizeApar");
+  const ukuranHydrant = formData.get("ukuranHydrant")?.toString();
+
   // 1. CARI MASTER ITEM DAN KATEGORINYA TERLEBIH DAHULU UNTUK MENDAPATKAN KODE PREFIX
   const itemMaster = await prisma.item.findUnique({
     where: { id: itemId },
     include: {
-      category: true, // Taruh include category agar bisa membaca jembatan kode klasifikasi
+      category: true,
     },
   });
   if (!itemMaster) throw new Error("Master Item tidak ditemukan");
 
-  // Ambil input kode manual dari form jika ada
   let finalKodeAsset = formData.get("kode_asset")?.toString()?.trim() || null;
-
+  if (!activeOrgId) throw new Error("No active organizationId found");
   const asset = await prisma.$transaction(async (tx) => {
     // 2. LOGIKA AUTO-GENERATION KODE BERDASARKAN KATEGORI ITEM
-    // Jika kode di form kosong DAN item memiliki kategori yang memiliki kode klasifikasi
     if (!finalKodeAsset && itemMaster.category?.code) {
-      const prefix = itemMaster.category.code; // Contoh: "03.05.11.07"
+      const prefix = itemMaster.category.code;
 
-      // Cari nomor urut terakhir khusus untuk prefix kategori item ini
       const lastAsset = await tx.asset.findFirst({
         where: {
           organizationId: activeOrgId,
@@ -314,9 +313,8 @@ export async function createAsset(formData: FormData) {
         }
       }
 
-      // Samakan padStart(4, '0') dengan fungsi generateAssetCode Anda agar format urutan seragam
       const seq = String(nextSequence).padStart(4, "0");
-      finalKodeAsset = `${prefix}.${seq}`; // Hasil rilis: "03.05.11.07.0001"
+      finalKodeAsset = `${prefix}.${seq}`;
     }
 
     // 3. JALANKAN PROSES PEMBUATAN ASSET
@@ -337,15 +335,38 @@ export async function createAsset(formData: FormData) {
         no_spb: formData.get("no_spb")?.toString() || null,
         departmentId: finalDepartmentId,
         notes: formData.get("notes")?.toString() || null,
-        kode_asset: finalKodeAsset, // 👈 Menyimpan kode otomatis / manual yang aman
+        kode_asset: finalKodeAsset,
         vendorName: formData.get("vendorName")?.toString() || null,
+        garansi_exp: parseDateOrNull("garansi_exp"),
+        photoUrl,
+
         ...(assetSubClusterId && {
           assetSubClusters: {
             connect: [{ id: assetSubClusterId }],
           },
         }),
-        garansi_exp: parseDateOrNull("garansi_exp"),
-        photoUrl,
+
+        // 👇 NESTED CREATE APAR / HYDRANT 👇
+        ...(isAparOrHydrant === "APAR" && jenisApar && sizeApar !== null
+          ? {
+              aparDetails: {
+                create: {
+                  jenis: jenisApar,
+                  size: sizeApar,
+                },
+              },
+            }
+          : {}),
+
+        ...(isAparOrHydrant === "HYDRANT" && ukuranHydrant
+          ? {
+              hydrantDetails: {
+                create: {
+                  ukuran: ukuranHydrant,
+                },
+              },
+            }
+          : {}),
       },
     });
 
@@ -385,7 +406,7 @@ export async function createAsset(formData: FormData) {
   return asset;
 }
 /* =======================
-  //  LINK UPDATE ASSET
+  //  LINK UPDATE ASSET (UPDATED WITH APAR & HYDRANT)
  ======================= */
 export async function updateAsset(id: string, formData: FormData) {
   const session = await getServerSession();
@@ -422,6 +443,12 @@ export async function updateAsset(id: string, formData: FormData) {
     return val ? parseFloat(val) : null;
   };
 
+  // 👇 TANGKAP PAYLOAD APAR & HYDRANT 👇
+  const isAparOrHydrant = formData.get("isAparOrHydrant")?.toString() || "NONE";
+  const jenisApar = formData.get("jenisApar")?.toString() as any;
+  const sizeApar = parseFloatOrNull("sizeApar");
+  const ukuranHydrant = formData.get("ukuranHydrant")?.toString();
+
   // --- LOGIKA FOTO (HAPUS & UPDATE) ---
   const removePhoto = formData.get("removePhoto") === "true";
   const photoFile = formData.get("photo") as File | null;
@@ -430,17 +457,12 @@ export async function updateAsset(id: string, formData: FormData) {
   let finalPhotoUrl = asset.photoUrl;
 
   if (removePhoto) {
-    // 1. Jika user mencentang hapus foto
     if (asset.photoUrl) await deleteS3File(asset.photoUrl);
     finalPhotoUrl = null;
   } else if (isPhotoValid) {
-    // 2. Jika user mengunggah foto baru
-    // Hapus foto lama dulu jika ada
     if (asset.photoUrl) await deleteS3File(asset.photoUrl);
-    // Upload foto baru
     finalPhotoUrl = await uploadToS3(photoFile, "asset-photos");
   }
-  // ------------------------------------
 
   const assetSubClusterId = formData.get("assetSubClusterId")?.toString();
   const subClusterUpdateObj = formData.has("assetSubClusterId")
@@ -506,20 +528,39 @@ export async function updateAsset(id: string, formData: FormData) {
         garansi_exp: formData.has("garansi_exp")
           ? parseDateOrNull("garansi_exp")
           : asset.garansi_exp,
-        photoUrl: finalPhotoUrl, // Simpan key baru atau null
+        photoUrl: finalPhotoUrl,
         updatedAt: new Date(),
         ...subClusterUpdateObj,
+
+        // 👇 NESTED UPDATE APAR / HYDRANT (Menghapus data lama jika tipe berubah, lalu membuat yang baru) 👇
+        aparDetails:
+          isAparOrHydrant === "APAR" && jenisApar && sizeApar !== null
+            ? {
+                deleteMany: {}, // Hapus record sebelumnya agar tidak dobel
+                create: {
+                  jenis: jenisApar,
+                  size: sizeApar,
+                },
+              }
+            : { deleteMany: {} },
+
+        hydrantDetails:
+          isAparOrHydrant === "HYDRANT" && ukuranHydrant
+            ? {
+                deleteMany: {},
+                create: {
+                  ukuran: ukuranHydrant,
+                },
+              }
+            : { deleteMany: {} },
       },
     });
 
-    // Handle Stock sync if location changed
+    // ... sisa logika stock sync dan history biarkan utuh sama seperti sebelumnya
     if (newLocationId && newLocationId !== oldLocationId) {
       if (oldLocationId) {
         await tx.stock.updateMany({
-          where: {
-            itemId: asset.itemId,
-            locationId: oldLocationId,
-          },
+          where: { itemId: asset.itemId, locationId: oldLocationId },
           data: { quantity: { decrement: 1 } },
         });
       }
@@ -528,7 +569,7 @@ export async function updateAsset(id: string, formData: FormData) {
           assetId: id,
           organizationId: activeOrgId,
           userId: session.user.id,
-          action: "TRANSFER_LOCATION", // Penanda pergerakan
+          action: "TRANSFER_LOCATION",
           field: "locationId",
           oldValue: oldLocationId || "N/A",
           newValue: newLocationId,
@@ -553,7 +594,6 @@ export async function updateAsset(id: string, formData: FormData) {
         },
       });
 
-      // Record Audit Log untuk Transfer
       await createAuditLog({
         userId: session.user.id,
         organizationId: activeOrgId,
@@ -575,9 +615,7 @@ export async function updateAsset(id: string, formData: FormData) {
       action: "UPDATE",
       entityType: "ASSET",
       entityId: id,
-      details: {
-        message: "Asset updated",
-      },
+      details: { message: "Asset updated" },
       tx,
     });
 
@@ -688,7 +726,7 @@ export async function getAssetsByManyIds(ids: string[]) {
 }
 
 /* =======================
-  // LINK GET ASSET BY ID (for detail page)
+  // LINK GET ASSET BY ID (for detail page & edit mode)
  ======================= */
 export async function getAssetById(id: string) {
   const session = await getServerSession();
@@ -701,19 +739,14 @@ export async function getAssetById(id: string) {
     const asset = await prisma.asset.findFirst({
       where: {
         id,
-        organizationId: activeOrgId, // 🔐 penting (multi-tenant)
+        organizationId: activeOrgId,
       },
       include: {
         item: true,
         location: true,
         department: true,
-        // 👇 TAMBAHKAN INI: Tarik data relasi Sub Cluster
         assetSubClusters: {
           include: {
-            // Jika Anda butuh menarik relasi ke atasnya (Cluster, Kategori, Golongan)
-            // Sesuaikan nama relasinya ('assetCluster', dll) dengan schema Prisma Anda.
-            // Contoh (uncomment jika schema Anda mendukung ini):
-
             assetCluster: {
               include: {
                 assetCategory: true,
@@ -721,6 +754,9 @@ export async function getAssetById(id: string) {
             },
           },
         },
+        // 👇 INCLUDE TABEL APAR & HYDRANT 👇
+        aparDetails: true,
+        hydrantDetails: true,
       },
     });
 
@@ -740,19 +776,26 @@ export async function getAssetById(id: string) {
       });
     }
 
-    // Ekstrak ID Sub Cluster dari array (karena bentuknya many-to-many / one-to-many)
-    // Ambil index pertama [0] sebagai data klasifikasi utama aset ini
     const subCluster = asset.assetSubClusters?.[0];
+
+    // 👇 BACA DATA APAR ATAU HYDRANT JIKA ADA 👇
+    const aparData = asset.aparDetails?.[0]; // Ambil index ke 0 karena relasinya dibaca array
+    const hydrantData = asset.hydrantDetails?.[0];
 
     return {
       ...asset,
       assignedUser,
-      // 👇 Memudahkan frontend membaca ID untuk mengisi defaultValues dropdown
       assetSubClusterId: subCluster?.id || null,
       assetClusterId: subCluster?.assetClusterId || null,
       assetCategoryId: subCluster?.assetCluster?.assetCategoryId || null,
       assetGroupId:
         subCluster?.assetCluster?.assetCategory?.assetGroupId || null,
+
+      // 👇 SUNTIKKAN KE RESPON AGAR DIBACA FORM FRONTEND 👇
+      isAparOrHydrant: aparData ? "APAR" : hydrantData ? "HYDRANT" : "NONE",
+      jenisApar: aparData?.jenis || undefined,
+      sizeApar: aparData?.size ? Number(aparData.size) : undefined,
+      ukuranHydrant: hydrantData?.ukuran || "",
     };
   } catch (error) {
     console.error(error);

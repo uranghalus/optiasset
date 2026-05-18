@@ -41,7 +41,7 @@ export default function AssetAddForm() {
   const { data: dept } = useSelectDepartment();
 
   // Inisialisasi Form
-  const form = useForm<AssetForm>(({
+  const form = useForm<AssetForm>({
     resolver: zodResolver(AssetFormSchema),
     defaultValues: {
       itemId: "",
@@ -66,16 +66,21 @@ export default function AssetAddForm() {
       serialNumber: "",
       document_number: "",
       no_spb: "",
+      // Inisialisasi field tambahan untuk APAR & Hydrant dengan string kosong
+      isAparOrHydrant: "NONE",
+      jenisApar: "" as any,
+      sizeApar: "" as any,
+      ukuranHydrant: "",
     },
-  }) as any);
+  } as any);
 
   // 1. Pantau perubahan Master Item yang dipilih
   const selectedItemId = form.watch("itemId");
 
-  // 2. 👇 STATE UNTUK MENAMPUNG KODE KATEGORI AKTIF SECARA REAKTIF 👇
+  // 2. STATE UNTUK MENAMPUNG KODE KATEGORI AKTIF
   const [activeCategoryCode, setActiveCategoryCode] = useState<string>("");
 
-  // 3. 👇 EFFECT UNTUK MENDETEKSI KATEGORI ITEM DAN AUTO-FILL VALUES KEDALAM FORM 👇
+  // 3. EFFECT UNTUK MENDETEKSI KATEGORI ITEM DAN AUTO-FILL VALUES KEDALAM FORM
   useEffect(() => {
     if (!selectedItemId || !items) {
       setActiveCategoryCode("");
@@ -83,23 +88,25 @@ export default function AssetAddForm() {
       return;
     }
 
-    // Cari objek data item lengkap dari array select list
     const currentItem = items.find((item) => item.id === selectedItemId);
 
     if (currentItem && (currentItem as any).category) {
       const cat = (currentItem as any).category;
       const categoryCode = cat.code || "";
 
-      // Pasang string kode kategori ke state lokal untuk men-trigger React Query Hook
       setActiveCategoryCode(categoryCode);
-
-      // Suntik silsilah ke dalam skema form agar saat submit data tersimpan sempurna
-      form.setValue("assetGroupId", cat.assetGroupId || "", { shouldDirty: true });
-      form.setValue("assetCategoryId", cat.assetCategoryId || "", { shouldDirty: true });
-      form.setValue("assetClusterId", cat.assetClusterId || "", { shouldDirty: true });
-      form.setValue("assetSubClusterId", cat.assetSubClusterId || "", { shouldDirty: true });
-
-      // Kosongkan kode aset lama agar bersiap memuat penomoran urut baru
+      form.setValue("assetGroupId", cat.assetGroupId || "", {
+        shouldDirty: true,
+      });
+      form.setValue("assetCategoryId", cat.assetCategoryId || "", {
+        shouldDirty: true,
+      });
+      form.setValue("assetClusterId", cat.assetClusterId || "", {
+        shouldDirty: true,
+      });
+      form.setValue("assetSubClusterId", cat.assetSubClusterId || "", {
+        shouldDirty: true,
+      });
       form.setValue("kode_asset", "", { shouldDirty: true });
     } else {
       setActiveCategoryCode("");
@@ -107,14 +114,40 @@ export default function AssetAddForm() {
     }
   }, [selectedItemId, items, form]);
 
-  // 4. 👇 PERBAIKAN UTAMA: Panggil Hook dengan 1 parameter string murni sesuai isi file use-generate-asset-code kustom 👇
+  // 4. GENERATE KODE OTOMATIS
   const { data: generatedCode } = useGenerateAssetCode(activeCategoryCode);
 
-  // 5. Masukkan hasil generate kode otomatis berkelanjutan ke input field form
   useEffect(() => {
     if (!generatedCode) return;
     form.setValue("kode_asset", generatedCode, { shouldDirty: true });
   }, [generatedCode, form]);
+
+  // =========================================================================
+  // DETEKSI APAR & HYDRANT LOGIC
+  // =========================================================================
+  const activeItemDetails = items?.find((item) => item.id === selectedItemId);
+  const itemName = activeItemDetails?.name?.toLowerCase() || "";
+  const categoryName =
+    (activeItemDetails as any)?.category?.name?.toLowerCase() || "";
+
+  const isApar = itemName.includes("apar") || categoryName.includes("apar");
+  const isHydrant =
+    itemName.includes("hydrant") || categoryName.includes("hydrant");
+
+  useEffect(() => {
+    if (isApar) {
+      form.setValue("isAparOrHydrant", "APAR");
+    } else if (isHydrant) {
+      form.setValue("isAparOrHydrant", "HYDRANT");
+    } else {
+      form.setValue("isAparOrHydrant", "NONE");
+      // Reset ke string kosong, bukan undefined
+      form.setValue("jenisApar", "" as any);
+      form.setValue("sizeApar", "" as any);
+      form.setValue("ukuranHydrant", "");
+    }
+  }, [isApar, isHydrant, form]);
+  // =========================================================================
 
   // Handle Image
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -147,7 +180,9 @@ export default function AssetAddForm() {
     setImagePreview(null);
     setImageError(null);
     form.setValue("photo", null);
-    const fileInput = document.getElementById("photo-input") as HTMLInputElement;
+    const fileInput = document.getElementById(
+      "photo-input",
+    ) as HTMLInputElement;
     if (fileInput) fileInput.value = "";
   };
 
@@ -156,7 +191,7 @@ export default function AssetAddForm() {
     const formData = new FormData();
 
     for (const [key, value] of Object.entries(values)) {
-      if (value !== undefined && value !== null) {
+      if (value !== undefined && value !== null && value !== "") {
         if (key === "photo" && value instanceof File) {
           formData.append(key, value);
         } else {
@@ -181,7 +216,6 @@ export default function AssetAddForm() {
   };
 
   const isPending = createMutation.isPending;
-  const activeItemDetails = items?.find((item) => item.id === selectedItemId);
 
   return (
     <div className="p-4 border border-gray-100 rounded-lg">
@@ -203,7 +237,6 @@ export default function AssetAddForm() {
               Informasi Asset Utama
             </h3>
 
-            {/* itemId */}
             <Controller
               name="itemId"
               control={form.control}
@@ -240,7 +273,6 @@ export default function AssetAddForm() {
               )}
             />
 
-            {/* PANEL INFO AUTOMATISASI KELOMPOK ASSET */}
             {selectedItemId && activeItemDetails && (
               <div className="p-3 bg-slate-50 border rounded-lg space-y-2 text-xs">
                 <div className="flex items-center gap-1.5 font-medium text-slate-700">
@@ -249,15 +281,18 @@ export default function AssetAddForm() {
                 </div>
                 <div className="grid grid-cols-3 text-slate-500 gap-y-1 pl-5">
                   <span className="col-span-1">Kategori Master:</span>
-                  <span className="col-span-2 font-mono text-slate-800">{(activeItemDetails as any).category?.name || "-"}</span>
+                  <span className="col-span-2 font-mono text-slate-800">
+                    {(activeItemDetails as any).category?.name || "-"}
+                  </span>
 
                   <span className="col-span-1">Kode Silsilah:</span>
-                  <span className="col-span-2 font-mono font-bold text-primary">{(activeItemDetails as any).category?.code || "00.00.00"}</span>
+                  <span className="col-span-2 font-mono font-bold text-primary">
+                    {(activeItemDetails as any).category?.code || "00.00.00"}
+                  </span>
                 </div>
               </div>
             )}
 
-            {/* KODE ASSET (READ ONLY - GENERATED BY SERVER) */}
             <Controller
               name="kode_asset"
               control={form.control}
@@ -266,12 +301,14 @@ export default function AssetAddForm() {
                   <FieldLabel>Kode Inventaris Tergenerate</FieldLabel>
                   <Input
                     {...field}
+                    value={field.value ?? ""}
                     readOnly
                     placeholder="Menunggu pemilihan master item..."
                     className="font-mono bg-slate-50 border-slate-200 font-bold text-primary text-base"
                   />
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    Nomor inventaris urut berkelanjutan dikalkulasi otomatis oleh sistem berdasarkan rumpun kategori.
+                    Nomor inventaris urut berkelanjutan dikalkulasi otomatis
+                    oleh sistem berdasarkan rumpun kategori.
                   </p>
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
@@ -293,7 +330,12 @@ export default function AssetAddForm() {
               render={({ field }) => (
                 <Field>
                   <FieldLabel>Brand / Merk</FieldLabel>
-                  <Input {...field} placeholder="Lenovo / Yamato" readOnly={isReadonly} />
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    placeholder="Lenovo / Yamato"
+                    readOnly={isReadonly}
+                  />
                 </Field>
               )}
             />
@@ -303,7 +345,12 @@ export default function AssetAddForm() {
               render={({ field }) => (
                 <Field>
                   <FieldLabel>Model / Tipe</FieldLabel>
-                  <Input {...field} placeholder="ThinkPad / Powder 4.5Kg" readOnly={isReadonly} />
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    placeholder="ThinkPad / Powder 4.5Kg"
+                    readOnly={isReadonly}
+                  />
                 </Field>
               )}
             />
@@ -313,7 +360,12 @@ export default function AssetAddForm() {
               render={({ field }) => (
                 <Field>
                   <FieldLabel>Part Number</FieldLabel>
-                  <Input {...field} placeholder="P/N Code" readOnly={isReadonly} />
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    placeholder="P/N Code"
+                    readOnly={isReadonly}
+                  />
                 </Field>
               )}
             />
@@ -323,7 +375,12 @@ export default function AssetAddForm() {
               render={({ field }) => (
                 <Field>
                   <FieldLabel>Serial Number (S/N)</FieldLabel>
-                  <Input {...field} placeholder="Nomor Seri Unik Pabrik" readOnly={isReadonly} />
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    placeholder="Nomor Seri Unik Pabrik"
+                    readOnly={isReadonly}
+                  />
                 </Field>
               )}
             />
@@ -333,8 +390,14 @@ export default function AssetAddForm() {
               render={({ field }) => (
                 <Field>
                   <FieldLabel>Kondisi Awal</FieldLabel>
-                  <Select value={field.value} onValueChange={field.onChange} disabled={isReadonly}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Select
+                    value={field.value || "GOOD"}
+                    onValueChange={field.onChange}
+                    disabled={isReadonly}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="GOOD">Bagus (Good)</SelectItem>
                       <SelectItem value="REPAIR">Dalam Perbaikan</SelectItem>
@@ -359,13 +422,19 @@ export default function AssetAddForm() {
               render={({ field }) => (
                 <Field>
                   <FieldLabel>Penempatan Lokasi</FieldLabel>
-                  <Combobox<{ id: string; name: string; }>
+                  <Combobox<{ id: string; name: string }>
                     title="Pilih Area Gedung..."
                     valueKey="id"
                     value={locations?.find((loc) => loc.id === field.value)}
                     searchFn={(search: string, offset: number, size: number) =>
                       Promise.resolve(
-                        locations?.filter((loc) => loc.name.toLowerCase().includes(search.toLowerCase())).slice(offset, offset + size) || [],
+                        locations
+                          ?.filter((loc) =>
+                            loc.name
+                              .toLowerCase()
+                              .includes(search.toLowerCase()),
+                          )
+                          .slice(offset, offset + size) || [],
                       )
                     }
                     renderText={(loc) => loc.name}
@@ -383,14 +452,29 @@ export default function AssetAddForm() {
                 render={({ field }) => (
                   <Field>
                     <FieldLabel>Departemen Penanggung Jawab</FieldLabel>
-                    <Combobox<{ id_department: string; nama_department: string; }>
+                    <Combobox<{
+                      id_department: string;
+                      nama_department: string;
+                    }>
                       key={`dept-combo-${dept?.length || 0}`}
                       title="Cari Departemen..."
                       valueKey="id_department"
-                      value={dept?.find((loc) => loc.id_department === field.value)}
-                      searchFn={(search: string, offset: number, size: number) =>
+                      value={dept?.find(
+                        (loc) => loc.id_department === field.value,
+                      )}
+                      searchFn={(
+                        search: string,
+                        offset: number,
+                        size: number,
+                      ) =>
                         Promise.resolve(
-                          dept?.filter((loc) => loc.nama_department.toLowerCase().includes(search.toLowerCase())).slice(offset, offset + size) || [],
+                          dept
+                            ?.filter((loc) =>
+                              loc.nama_department
+                                .toLowerCase()
+                                .includes(search.toLowerCase()),
+                            )
+                            .slice(offset, offset + size) || [],
                         )
                       }
                       renderText={(loc) => loc.nama_department}
@@ -408,7 +492,12 @@ export default function AssetAddForm() {
               render={({ field }) => (
                 <Field>
                   <FieldLabel>No. Dokumen Kontrak / Berkas</FieldLabel>
-                  <Input {...field} placeholder="DOC-001" readOnly={isReadonly} />
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    placeholder="DOC-001"
+                    readOnly={isReadonly}
+                  />
                 </Field>
               )}
             />
@@ -419,7 +508,12 @@ export default function AssetAddForm() {
               render={({ field }) => (
                 <Field>
                   <FieldLabel>No. SPB (Surat Penyerahan Barang)</FieldLabel>
-                  <Input {...field} placeholder="SPB-2024-001" readOnly={isReadonly} />
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    placeholder="SPB-2024-001"
+                    readOnly={isReadonly}
+                  />
                 </Field>
               )}
             />
@@ -431,7 +525,13 @@ export default function AssetAddForm() {
                 render={({ field }) => (
                   <Field>
                     <FieldLabel>Tgl. Beli</FieldLabel>
-                    <Input type="date" {...field} readOnly={isReadonly} className="text-xs" />
+                    <Input
+                      type="date"
+                      {...field}
+                      value={field.value ?? ""}
+                      readOnly={isReadonly}
+                      className="text-xs"
+                    />
                   </Field>
                 )}
               />
@@ -441,7 +541,14 @@ export default function AssetAddForm() {
                 render={({ field }) => (
                   <Field>
                     <FieldLabel>Harga Beli</FieldLabel>
-                    <Input type="number" {...field} placeholder="0" readOnly={isReadonly} className="text-xs" />
+                    <Input
+                      type="number"
+                      {...field}
+                      value={field.value ?? ""}
+                      placeholder="0"
+                      readOnly={isReadonly}
+                      className="text-xs"
+                    />
                   </Field>
                 )}
               />
@@ -454,7 +561,13 @@ export default function AssetAddForm() {
                 render={({ field }) => (
                   <Field>
                     <FieldLabel>Garansi Toko</FieldLabel>
-                    <Input type="date" {...field} readOnly={isReadonly} className="text-xs" />
+                    <Input
+                      type="date"
+                      {...field}
+                      value={field.value ?? ""}
+                      readOnly={isReadonly}
+                      className="text-xs"
+                    />
                   </Field>
                 )}
               />
@@ -464,7 +577,13 @@ export default function AssetAddForm() {
                 render={({ field }) => (
                   <Field>
                     <FieldLabel>Nama Vendor</FieldLabel>
-                    <Input {...field} placeholder="PT Maju Bersama" readOnly={isReadonly} className="text-xs" />
+                    <Input
+                      {...field}
+                      value={field.value ?? ""}
+                      placeholder="PT Maju Bersama"
+                      readOnly={isReadonly}
+                      className="text-xs"
+                    />
                   </Field>
                 )}
               />
@@ -472,27 +591,153 @@ export default function AssetAddForm() {
           </div>
         </div>
 
+        {/* ===================================================================== */}
+        {/* FORM DINAMIS: MUNCUL JIKA ITEM ADALAH APAR ATAU HYDRANT               */}
+        {/* ===================================================================== */}
+        {isApar && (
+          <div className="space-y-4 border p-5 rounded-lg bg-red-50/80 border-red-200 mt-6 shadow-sm">
+            <h3 className="font-bold text-sm text-red-800 border-b border-red-200 pb-2 flex items-center gap-2">
+              🔥 Spesifikasi Khusus APAR (Alat Pemadam Api Ringan)
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Controller
+                name="jenisApar"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel className="text-red-900">
+                      Jenis Media APAR
+                    </FieldLabel>
+                    <Select
+                      value={field.value || undefined}
+                      onValueChange={field.onChange}
+                      disabled={isReadonly}
+                    >
+                      <SelectTrigger className="bg-white border-red-200 focus:ring-red-500">
+                        <SelectValue placeholder="Pilih Jenis Media..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CO2">
+                          CO2 (Karbon Dioksida)
+                        </SelectItem>
+                        <SelectItem value="Powder">
+                          Dry Chemical Powder
+                        </SelectItem>
+                        <SelectItem value="Foam">Foam (Busa)</SelectItem>
+                        <SelectItem value="Air">Water (Air)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
+              <Controller
+                name="sizeApar"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel className="text-red-900">
+                      Kapasitas / Berat (Kg)
+                    </FieldLabel>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      {...field}
+                      value={field.value ?? ""} // Mencegah error uncontrolled
+                      placeholder="Contoh: 4.5"
+                      disabled={isReadonly}
+                      className="bg-white border-red-200 focus-visible:ring-red-500"
+                    />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
+            </div>
+          </div>
+        )}
+
+        {isHydrant && (
+          <div className="space-y-4 border p-5 rounded-lg bg-blue-50/80 border-blue-200 mt-6 shadow-sm">
+            <h3 className="font-bold text-sm text-blue-800 border-b border-blue-200 pb-2 flex items-center gap-2">
+              💧 Spesifikasi Khusus Instalasi Hydrant
+            </h3>
+            <div className="w-full md:w-1/2">
+              <Controller
+                name="ukuranHydrant"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel className="text-blue-900">
+                      Ukuran Hydrant (Pipa/Valve)
+                    </FieldLabel>
+                    <Input
+                      {...field}
+                      value={field.value ?? ""} // Mencegah error uncontrolled
+                      placeholder="Contoh: 1.5 Inch atau 2.5 Inch"
+                      disabled={isReadonly}
+                      className="bg-white border-blue-200 focus-visible:ring-blue-500"
+                    />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
+            </div>
+          </div>
+        )}
+        {/* ===================================================================== */}
+
         {/* PHOTO UPLOAD SECTION */}
-        <div className="space-y-4 border rounded-lg p-4 bg-slate-50">
+        <div className="space-y-4 border rounded-lg p-4 bg-slate-50 mt-6">
           <h3 className="font-semibold text-sm">Lampiran Foto Fisik Unit</h3>
           {imagePreview && (
             <div className="relative w-full flex justify-center">
               <div className="relative">
-                <img src={imagePreview} alt="Asset preview" className="h-40 w-40 object-cover rounded-lg border" />
-                <Button type="button" variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6" onClick={handleRemoveImage}>
+                <img
+                  src={imagePreview}
+                  alt="Asset preview"
+                  className="h-40 w-40 object-cover rounded-lg border shadow-sm"
+                />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full shadow-md"
+                  onClick={handleRemoveImage}
+                >
                   <X className="h-3 w-3" />
                 </Button>
               </div>
             </div>
           )}
-          {imageError && <p className="text-sm text-red-500 bg-red-50 p-2 rounded">{imageError}</p>}
+          {imageError && (
+            <p className="text-sm text-red-500 bg-red-50 p-2 rounded">
+              {imageError}
+            </p>
+          )}
           <div className="flex items-center gap-2">
             <label htmlFor="photo-input" className="flex-1">
-              <div className="flex items-center justify-center gap-2 p-3 border-2 border-dashed rounded-lg cursor-pointer hover:bg-slate-100 transition-colors">
-                <Camera className="h-4 w-4" />
-                <span className="text-sm text-slate-600">{imagePreview ? "Ubah foto lampiran" : "Pilih dokumen foto aset"}</span>
+              <div className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors">
+                <Camera className="h-4 w-4 text-slate-500" />
+                <span className="text-sm text-slate-600 font-medium">
+                  {imagePreview
+                    ? "Ubah foto lampiran"
+                    : "Pilih dokumen foto aset"}
+                </span>
               </div>
-              <input id="photo-input" type="file" accept="image/*" className="hidden" onChange={handleImageChange} disabled={isPending} />
+              <input
+                id="photo-input"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageChange}
+                disabled={isPending}
+              />
             </label>
           </div>
         </div>
@@ -503,16 +748,33 @@ export default function AssetAddForm() {
           render={({ field }) => (
             <Field>
               <FieldLabel>Catatan / Keterangan Kondisi Tambahan</FieldLabel>
-              <Textarea {...field} placeholder="Tulis catatan tambahan penempatan gedung di sini..." rows={2} readOnly={isReadonly} />
+              <Textarea
+                {...field}
+                value={field.value ?? ""}
+                placeholder="Tulis catatan tambahan penempatan atau info teknis di sini..."
+                rows={3}
+                readOnly={isReadonly}
+              />
             </Field>
           )}
         />
 
-        <div className="pt-4 flex flex-col-reverse md:flex-row justify-end gap-3 border-t mt-6">
-          <Button type="button" variant="outline" onClick={() => router.push("/assets")} disabled={isPending} className="w-full md:w-auto">
+        <div className="pt-4 flex flex-col-reverse md:flex-row justify-end gap-3 border-t mt-8">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.push("/assets")}
+            disabled={isPending}
+            className="w-full md:w-auto"
+          >
             Batal
           </Button>
-          <Button form="asset-form" type="submit" disabled={isPending} className="w-full md:w-auto">
+          <Button
+            form="asset-form"
+            type="submit"
+            disabled={isPending}
+            className="w-full md:w-auto"
+          >
             {isPending ? "Menyimpan Unit..." : "Simpan Data Unit Aset"}
           </Button>
         </div>

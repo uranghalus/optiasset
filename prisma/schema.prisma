@@ -205,6 +205,7 @@ model teamMember {
   @@map("teammember")
 }
 
+//LINK Item
 model Item {
   id             String       @id @default(uuid())
   code           String
@@ -307,6 +308,7 @@ model Stock {
   @@map("stocks")
 }
 
+// LINK STOCK TRANSACTION
 model StockTransaction {
   id        String          @id @default(uuid())
   stockId   String
@@ -321,7 +323,7 @@ model StockTransaction {
   @@map("stock_transactions")
 }
 
-// Kategory Untuk Asset
+//LINK Kategory Untuk Asset
 model AssetGroup {
   id             String  @id @default(uuid())
   code           String? @db.VarChar(20) // contoh: 01
@@ -405,7 +407,7 @@ enum ClassificationLevel {
   SUBCLUSTER
 }
 
-// Kategory untuk item
+//LINK Kategory untuk item
 model Category {
   id                 String               @id @default(uuid())
   name               String
@@ -422,6 +424,7 @@ model Category {
   @@map("categories")
 }
 
+//LINK Location
 model Location {
   id             String          @id @default(uuid())
   name           String
@@ -437,6 +440,7 @@ model Location {
   @@map("locations")
 }
 
+//LINK Department
 model department {
   id_department   String          @id
   organization_id String
@@ -458,6 +462,7 @@ model department {
   @@index([organization_id], map: "department_organization_id_idx_custom_v9")
 }
 
+//LINK Divisi
 model divisi {
   id_divisi       String         @id
   department_id   String
@@ -477,6 +482,7 @@ model divisi {
   @@index([organization_id, department_id], map: "divisi_org_dept_idx_custom_v9")
 }
 
+//LINK Asset History
 model AssetHistory {
   id               String        @id @default(uuid())
   assetId          String?
@@ -503,6 +509,7 @@ model AssetHistory {
   @@map("asset_history")
 }
 
+//LINK Audit Log
 model AuditLog {
   id             String        @id @default(uuid())
   userId         String?
@@ -523,6 +530,7 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+//LINK Asset Loan
 model AssetLoan {
   id                String       @id @default(uuid())
   assetId           String
@@ -554,6 +562,7 @@ model AssetLoan {
   @@map("asset_loans")
 }
 
+//LINK Asset Transfer
 model AssetTransfer {
   id             String       @id @default(uuid())
   assetId        String
@@ -584,6 +593,7 @@ model AssetTransfer {
   @@map("asset_transfers")
 }
 
+//LINK Asset Disposal
 model AssetDisposal {
   id                String   @id @default(uuid())
   assetId           String
@@ -609,6 +619,7 @@ model AssetDisposal {
   @@map("asset_disposals")
 }
 
+//LINK Divisi Team Rel
 model div_team_rel {
   A      String
   B      String

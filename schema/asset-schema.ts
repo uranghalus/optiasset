@@ -18,6 +18,14 @@ export const AssetFormSchema = z.object({
   kode_asset: z.string().optional(),
   vendorName: z.string().optional(),
   garansi_exp: z.string().optional(),
+  // 👇 TAMBAHKAN FIELD INI DI BAGIAN BAWAH SCHEMA ANDA 👇
+  isAparOrHydrant: z
+    .enum(["APAR", "HYDRANT", "NONE"])
+    .optional()
+    .default("NONE"),
+  jenisApar: z.enum(["CO2", "Powder", "Foam", "Air"]).optional(),
+  sizeApar: z.coerce.number().optional(),
+  ukuranHydrant: z.string().optional(),
   assetGroupId: z.string().optional(),
   assetCategoryId: z.string().optional(),
   assetClusterId: z.string().optional(),

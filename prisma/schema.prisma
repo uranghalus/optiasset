@@ -237,54 +237,75 @@ enum AssetAssignmentStatus {
 
 // LINK Asset
 model Asset {
-  id            String    @id @default(uuid())
-  itemId        String
-  condition     String?
-  purchaseDate  DateTime?
-  purchasePrice Float?
-  inComeDate    DateTime?
-  brokenDate    DateTime?
+  id              String                @id @default(uuid())
+  itemId          String
+  condition       String?
+  purchaseDate    DateTime?
+  purchasePrice   Float?
+  inComeDate      DateTime?
+  brokenDate      DateTime?
+  warrantyExpire  DateTime?
+  locationId      String?
+  departmentId    String?
+  assignedUserId  String?
+  assignedStatus  AssetAssignmentStatus @default(AVAILABLE)
+  brand           String?               @db.Char(100)
+  model           String?               @db.Char(100)
+  partNumber      String?               @db.Char(100)
+  serialNumber    String?               @db.Char(100)
+  no_spb          String?               @db.Char(100)
+  document_number String?               @db.Char(100)
+  PIC             String?               @db.Char(100)
+  notes           String?
+  photoUrl        String?               @db.Text
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime?             @updatedAt
+  kode_asset      String?               @db.Char(100)
+  garansi_exp     DateTime?
+  status          String                @default("ACTIVE") @db.VarChar(50)
+  vendorName      String?               @db.Char(100)
 
-  warrantyExpire     DateTime?
-  locationId         String?
-  departmentId       String?
-  assignedUserId     String?
-  assignedStatus     AssetAssignmentStatus @default(AVAILABLE)
-  brand              String?               @db.Char(100)
-  model              String?               @db.Char(100)
-  partNumber         String?               @db.Char(100)
-  serialNumber       String?               @db.Char(100)
-  no_spb             String?               @db.Char(100)
-  document_number    String?               @db.Char(100)
-  PIC                String?               @db.Char(100)
-  notes              String?
-  photoUrl           String?               @db.Text
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime?
-  kode_asset         String?               @db.Char(100)
-  garansi_exp        DateTime?
-  status             String                @default("ACTIVE") @db.VarChar(50)
-  vendorName         String?               @db.Char(100)
+  // 1. 👇 PENAMBAHAN FIELD ID KLASIFIKASI FLAT (OPTIONAL) 👇
+  assetGroupId      String?
+  assetCategoryId   String?
+  assetClusterId    String?
+  assetSubClusterId String?
+
+  // --- RELATIONS ---
   history            AssetHistory[]
   loans              AssetLoan[]
-  item               Item                  @relation(fields: [itemId, organizationId], references: [id, organizationId], onDelete: Cascade)
-  location           Location?             @relation(fields: [locationId, organizationId], references: [id, organizationId])
-  department         department?           @relation(fields: [departmentId], references: [id_department])
-  transfers          AssetTransfer[]       @relation("AssetTransfers")
-  disposals          AssetDisposal[]       @relation("AssetDisposals")
+  item               Item                @relation(fields: [itemId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  location           Location?           @relation(fields: [locationId, organizationId], references: [id, organizationId])
+  department         department?         @relation(fields: [departmentId], references: [id_department])
+  transfers          AssetTransfer[]     @relation("AssetTransfers")
+  disposals          AssetDisposal[]     @relation("AssetDisposals")
   organizationId     String
-  organization       Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  assetSubClusters   AssetSubCluster[]     @relation("AssetSubClusters")
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   aparDetails        AparDetail[]
   hydrantDetails     HydrantDetail[]
-  aparInspections    AparInspection[]      @relation("AparInspections")
-  hydrantInspections HydrantInspection[]   @relation("HydrantInspections")
+  aparInspections    AparInspection[]    @relation("AparInspections")
+  hydrantInspections HydrantInspection[] @relation("HydrantInspections")
+
+  // 2. 👇 PENAMBAHAN EMULASI RELASI BERANTAI DINAMIS 👇
+  assetGroup      AssetGroup?      @relation(fields: [assetGroupId], references: [id], onDelete: SetNull)
+  assetCategory   AssetCategory?   @relation(fields: [assetCategoryId], references: [id], onDelete: SetNull)
+  assetCluster    AssetCluster?    @relation(fields: [assetClusterId], references: [id], onDelete: SetNull)
+  assetSubCluster AssetSubCluster? @relation(fields: [assetSubClusterId], references: [id], onDelete: SetNull)
+
+  // Tetap pertahankan relasi many-to-many lama jika masih dipakai untuk backward compatibility
+  assetSubClusters AssetSubCluster[] @relation("AssetSubClusters")
 
   @@unique([id, organizationId])
   @@unique([kode_asset, organizationId])
   @@unique([serialNumber, organizationId])
+  // 3. 👇 OPTIMASI INDEX BARU UNTUK PENCARIAN SILSILAH FILTER LAPORAN 👇
   @@index([itemId, organizationId])
   @@index([organizationId])
+  // MENJADI INI (Composite Index):
+  @@index([organizationId, assetGroupId])
+  @@index([organizationId, assetCategoryId])
+  @@index([organizationId, assetClusterId])
+  @@index([organizationId, assetSubClusterId])
   @@map("assets")
 }
 
@@ -336,6 +357,7 @@ model AssetGroup {
   categories AssetCategory[]
   createdAt  DateTime        @default(now())
   updatedAt  DateTime        @updatedAt
+  assets     Asset[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
@@ -355,6 +377,7 @@ model AssetCategory {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  assets    Asset[]
 
   @@unique([assetGroupId, code])
   @@index([assetGroupId])
@@ -374,6 +397,7 @@ model AssetCluster {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  assets    Asset[]
 
   @@unique([assetCategoryId, code])
   @@index([assetCategoryId])
@@ -390,10 +414,14 @@ model AssetSubCluster {
 
   assetCluster AssetCluster @relation(fields: [assetClusterId], references: [id], onDelete: Cascade)
 
-  assets Asset[] @relation("AssetSubClusters")
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // 1. Relasi baru (One-to-Many) untuk menyambung field flat `assetSubClusterId` di tabel Asset
+  assets Asset[]
+
+  // 2. Relasi lama (Many-to-Many) untuk backward compatibility
+  legacyAssets Asset[] @relation("AssetSubClusters")
 
   @@unique([assetClusterId, code])
   @@index([assetClusterId])

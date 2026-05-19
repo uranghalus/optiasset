@@ -43,14 +43,17 @@ export const Combobox = <T extends object>({
 
   const [options, setOptions] = useState<T[]>([]);
   const [canLoadMore, setCanLoadMore] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
+
+  // 🔥 Pisahkan state loading untuk UX yang lebih baik
+  const [isFetching, setIsFetching] = useState(false);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
 
   const requestIdRef = useRef(0);
 
   // 🔥 fetch awal / search
   const getOptions = useCallback(async () => {
     const requestId = ++requestIdRef.current;
-    setIsLoading(true);
+    setIsFetching(true); // Gunakan state isFetching
 
     const result = await searchFn(debouncedSearch || "", 0, size);
 
@@ -59,13 +62,13 @@ export const Combobox = <T extends object>({
 
     setOptions(result);
     setCanLoadMore(result.length >= size);
-    setIsLoading(false);
+    setIsFetching(false);
   }, [debouncedSearch, searchFn, size]);
 
   // 🔥 load more
   const getMoreOptions = useCallback(async () => {
     const requestId = ++requestIdRef.current;
-    setIsLoading(true);
+    setIsFetchingMore(true); // Gunakan state isFetchingMore
 
     const result = await searchFn(debouncedSearch || "", options.length, size);
 
@@ -78,7 +81,7 @@ export const Combobox = <T extends object>({
       setCanLoadMore(result.length >= size);
     }
 
-    setIsLoading(false);
+    setIsFetchingMore(false);
   }, [debouncedSearch, searchFn, options.length, size]);
 
   // 🔥 reset saat search berubah
@@ -127,44 +130,59 @@ export const Combobox = <T extends object>({
           />
 
           <CommandList className="w-full">
-            <CommandEmpty>No item found.</CommandEmpty>
+            {/* 🔥 Tampilkan Spinner saat Fetching Awal/Pencarian */}
+            {isFetching ? (
+              <div className="p-6 flex flex-col items-center justify-center text-sm text-muted-foreground">
+                <LoaderIcon className="h-6 w-6 animate-spin mb-2 text-primary" />
+                Memuat data...
+              </div>
+            ) : (
+              <>
+                {/* Pastikan Empty state hanya muncul jika benar-benar tidak ada data dan tidak sedang loading */}
+                <CommandEmpty>No item found.</CommandEmpty>
 
-            <CommandGroup className="max-h-60 overflow-y-auto">
-              {options.map((option) => (
-                <CommandItem
-                  key={option[valueKey] as string}
-                  value={option[valueKey] as string}
-                  onSelect={() => {
-                    onChange?.(option);
-                    setOpen(false); // 🔥 close setelah pilih
-                  }}
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      option[valueKey] === value?.[valueKey]
-                        ? "opacity-100"
-                        : "opacity-0",
-                    )}
-                  />
-                  {renderText(option)}
-                </CommandItem>
-              ))}
+                <CommandGroup className="max-h-60 overflow-y-auto">
+                  {options.map((option) => (
+                    <CommandItem
+                      key={option[valueKey] as string}
+                      value={option[valueKey] as string}
+                      onSelect={() => {
+                        onChange?.(option);
+                        setOpen(false); // 🔥 close setelah pilih
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          option[valueKey] === value?.[valueKey]
+                            ? "opacity-100"
+                            : "opacity-0",
+                        )}
+                      />
+                      {renderText(option)}
+                    </CommandItem>
+                  ))}
 
-              {canLoadMore && (
-                <CommandItem
-                  onSelect={getMoreOptions}
-                  disabled={isLoading}
-                  className="justify-center"
-                >
-                  {isLoading ? (
-                    <LoaderIcon className="w-4 h-4 animate-spin" />
-                  ) : (
-                    "Load More ↓"
+                  {canLoadMore && (
+                    <CommandItem
+                      onSelect={getMoreOptions}
+                      disabled={isFetchingMore}
+                      className="justify-center py-3 text-sm text-muted-foreground"
+                    >
+                      {/* 🔥 Tampilkan indikator saat Load More */}
+                      {isFetchingMore ? (
+                        <div className="flex items-center">
+                          <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />
+                          Memuat lebih banyak...
+                        </div>
+                      ) : (
+                        "Load More ↓"
+                      )}
+                    </CommandItem>
                   )}
-                </CommandItem>
-              )}
-            </CommandGroup>
+                </CommandGroup>
+              </>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>

@@ -3,6 +3,7 @@ import {
   deleteCategory,
   deleteManyCategories,
   getAllCategories,
+  importCategoryExcel,
   updateCategory,
 } from '@/action/category-action';
 import { PaginationState } from '@/types';
@@ -10,10 +11,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 // Get all categories
-export function useCategories({ page, pageSize }: PaginationState) {
+export function useCategories({ page, pageSize, search }: PaginationState) {
   return useQuery({
-    queryKey: ['categories', page, pageSize],
-    queryFn: () => getAllCategories({ page, pageSize }),
+    queryKey: ['categories', page, pageSize, search],
+    queryFn: () => getAllCategories({ page, pageSize, search }),
   });
 }
 
@@ -129,5 +130,47 @@ export function useMultiDeleteCategories() {
       ...mutation,
       mutate: mutateWithToast, // Meng-override mutate biasa dengan versi toast
     };
+  };
+}
+// LINK Import Excel Categories
+export function useImportCategoriesExcel() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const result = await importCategoryExcel(formData);
+
+      // Jika action mengembalikan error, throw agar masuk ke state error di toast
+      if (result?.error) {
+        throw new Error(result.error);
+      }
+
+      return result;
+    },
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['categories'],
+      });
+    },
+  });
+
+  const mutateWithToast = (
+    formData: FormData,
+    p0: { onSuccess: () => void },
+  ) => {
+    // toast.promise menerima promise dari mutation.mutateAsync
+    toast.promise(mutation.mutateAsync(formData), {
+      loading: 'Mengimpor kategori dari Excel...',
+      // Menampilkan pesan sukses langsung dari response server jika ada
+      success: (data) => data.success || 'Kategori berhasil diimport!',
+      // Menampilkan pesan error dari throw Error di atas
+      error: (err) => err.message || 'Gagal mengimpor kategori.',
+    });
+  };
+
+  return {
+    ...mutation,
+    mutate: mutateWithToast, // Meng-override mutate biasa dengan versi toast
   };
 }

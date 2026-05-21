@@ -4,6 +4,7 @@ import React from 'react'
 import { CategoryActionDialog } from './category-action-dialog';
 import { Category } from '@/generated/prisma/client';
 import { CategoryDeleteDialog } from './categories-delete-dialog';
+import CategoryImportDialog from './categories-import-dialog';
 
 export default function CategoriesDialog() {
     const { currentRow, open, setCurrentRow, setOpen } = useDialog();
@@ -13,6 +14,11 @@ export default function CategoriesDialog() {
                 key="category-add"
                 open={open === "add-category"}
                 onOpenChange={() => setOpen("add-category")}
+            />
+            <CategoryImportDialog
+                key="category-import"
+                open={open === "import-category"}
+                onOpenChange={() => setOpen("import-category")}
             />
             {currentRow && (<>
                 <CategoryActionDialog

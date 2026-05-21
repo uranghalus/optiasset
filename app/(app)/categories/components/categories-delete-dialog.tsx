@@ -18,24 +18,17 @@ import { toast } from "sonner";
 
 export function CategoryDeleteDialog() {
     const { open, setOpen, currentRow } = useDialog();
-    const deleteMutation = useDeleteCategory();
+    const { mutate: deleteCategory, isPending } = useDeleteCategory();
     const category = currentRow as Category;
 
     const handleDelete = () => {
-        deleteMutation.mutate(category.id, {
-            onSuccess: () => {
-                toast.success("Category deleted successfully");
-                setOpen(null);
-            },
-            onError: () => {
-                toast.error("Failed to delete category");
-            },
-        });
+        deleteCategory(category.id);
+        setOpen(null); // Tutup dialog setelah memulai delete
     };
 
     return (
         <AlertDialog
-            open={open === "delete"}
+            open={open === "delete-category"}
             onOpenChange={(val) => {
                 if (!val) setOpen(null);
             }}
@@ -54,9 +47,9 @@ export function CategoryDeleteDialog() {
                     <AlertDialogAction
                         onClick={handleDelete}
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        disabled={deleteMutation.isPending}
+                        disabled={isPending}
                     >
-                        {deleteMutation.isPending ? "Deleting..." : "Delete"}
+                        {isPending ? "Deleting..." : "Delete"}
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

@@ -58,14 +58,14 @@ export default function AssetTable() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 500);
 
-  const { data, isLoading } = useAssets({
+  const { data, isLoading: assetLoading, isFetching } = useAssets({
     page: pagination.pageIndex + 1,
     pageSize: pagination.pageSize,
     departmentId: selectedDept,
     condition: selectedCondition,
     search: debouncedSearch,
   });
-
+  const isLoading = assetLoading || isFetching;
   /* =======================
      FILTER CONFIG
   ======================= */
@@ -85,10 +85,10 @@ export default function AssetTable() {
         columnId: "condition",
         title: "Kondisi Aset",
         options: [
-          { label: "Bagus", value: "GOOD" },
-          { label: "Dalam Perbaikan", value: "REPAIR" },
-          { label: "Rusak", value: "BROKEN" },
-          { label: "Hilang", value: "LOST" },
+          { label: "Bagus", value: "BAIK" },
+          { label: "Dalam Perbaikan", value: "PERBAIKAN" },
+          { label: "Rusak", value: "RUSAK" },
+          { label: "Hilang", value: "HILANG" },
         ],
       },
     ];
@@ -101,7 +101,7 @@ export default function AssetTable() {
     pageCount: data?.pageCount ?? 0,
     rowCount: data?.total ?? 0,
     manualPagination: true,
-    manualFilter: false,
+    manualFilter: true,
     pagination,
     onPaginationChange: setPagination,
     columnFilters,

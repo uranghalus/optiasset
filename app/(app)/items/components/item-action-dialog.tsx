@@ -41,6 +41,8 @@ import {
 } from "@/hooks/crud/use-items";
 import { ItemForm, ItemFormSchema } from "@/schema/item-schema";
 import { authClient } from "@/lib/auth-client";
+// PASTIKAN IMPORT COMBOBOX ADA DI SINI
+import { Combobox } from "@/components/ui/combobox";
 
 type Props = {
   open: boolean;
@@ -54,14 +56,13 @@ export function ItemActionDialog({ open, onOpenChange, currentRow }: Props) {
   const createMutation = useCreateItem();
   const updateMutation = useUpdateItem();
   const { data: categories } = useCategoriesForSelect();
-  const { data: session } = authClient.useSession()
+  const { data: session } = authClient.useSession();
   const form = useForm<ItemForm>({
     resolver: zodResolver(ItemFormSchema),
     defaultValues: {
       code: "",
       name: "",
       categoryId: "",
-
       description: "",
       assetType: "FIXED",
     },
@@ -94,19 +95,14 @@ export function ItemActionDialog({ open, onOpenChange, currentRow }: Props) {
         assetType: "FIXED",
       });
     }
-  }, [currentRow, open]);
+  }, [currentRow, open, form]);
+
   useEffect(() => {
     if (!isEdit && nextCode) {
       form.setValue("code", nextCode, {
         shouldValidate: true,
         shouldDirty: true,
       });
-    }
-  }, [nextCode, isEdit]);
-  // Update code when nextCode changes (for new items)
-  useEffect(() => {
-    if (!isEdit && nextCode) {
-      form.setValue("code", nextCode);
     }
   }, [nextCode, isEdit, form]);
 
@@ -194,6 +190,48 @@ export function ItemActionDialog({ open, onOpenChange, currentRow }: Props) {
               )}
             />
 
+            {/* KATEGORI (DIUBAH MENJADI COMBOBOX) */}
+            <Controller
+              name="categoryId"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel>Kategori</FieldLabel>
+                  <Combobox<{
+                    id: string;
+                    name: string;
+                    code: string | null;
+                  }>
+                    key={`cat-combo-${categories?.length || 0}`}
+                    title="Cari Kategori..."
+                    valueKey="id"
+                    value={categories?.find((cat) => cat.id === field.value)}
+                    searchFn={(search: string, offset: number, size: number) =>
+                      Promise.resolve(
+                        categories
+                          ?.filter(
+                            (cat) =>
+                              // Pencarian berdasarkan Nama ATAU Kode Kategori
+                              cat.name.toLowerCase().includes(search.toLowerCase()) ||
+                              (cat.code && cat.code.toLowerCase().includes(search.toLowerCase()))
+                          )
+                          .slice(offset, offset + size) || []
+                      )
+                    }
+                    // Menampilkan [Kode] Nama, atau hanya Nama jika kode kosong
+                    renderText={(cat) =>
+                      cat.code ? `[${cat.code}] ${cat.name}` : cat.name
+                    }
+                    onChange={(cat) => field.onChange(cat.id)}
+                    disabled={isPending}
+                  />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
+            />
+
             <div className="grid grid-cols-2 gap-4">
               {/* KODE */}
               <Controller
@@ -241,38 +279,7 @@ export function ItemActionDialog({ open, onOpenChange, currentRow }: Props) {
                   </Field>
                 )}
               />
-
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              {/* KATEGORI */}
-              <Controller
-                name="categoryId"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel>Kategori</FieldLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger aria-invalid={fieldState.invalid}>
-                        <SelectValue placeholder="Pilih kategori..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories?.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id}>
-                            {cat.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
-                )}
-              />
-
-
-            </div>
-
 
             {/* DESKRIPSI */}
             <Controller

@@ -44,7 +44,19 @@ export const categoryColumns: ColumnDef<AssetCategoryWithCount>[] = [
         enableHiding: false,
         size: 40,
     },
-
+    /* =====================
+   * Code Category
+   ===================== */
+    {
+        accessorKey: 'code',
+        header: ({ column }) => (
+            <DataTableColumnHeader column={column} title="Category Code" />
+        ),
+        cell: ({ cell }) => (
+            <div className="ps-2 font-medium">{cell.getValue() as string}</div>
+        ),
+        size: 150,
+    },
     /* =====================
        * NAME
        ===================== */

@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
     '10.223.232.47',
     '172.17.87.55',
     'optiasset.loca.lt',
+    '172.18.24.152',
+    '10.84.193.47'
   ],
 };
 

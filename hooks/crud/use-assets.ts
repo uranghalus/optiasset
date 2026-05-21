@@ -198,25 +198,15 @@ export function useExportAssets() {
   });
 }
 // LINK generate asset code
-export function useGenerateAssetCode(
-  groupId?: string,
-  categoryId?: string,
-  clusterId?: string,
-  subClusterId?: string,
-) {
+export function useGenerateAssetCode(categoryCode?: string) {
   return useQuery({
-    queryKey: [
-      'generate-asset-code',
-      groupId,
-      categoryId,
-      clusterId,
-      subClusterId,
-    ],
+    queryKey: ['generate-asset-code', categoryCode],
 
-    queryFn: () =>
-      generateAssetCode(groupId!, categoryId!, clusterId!, subClusterId),
+    // Kirim string kode kategori langsung ke server action dinamis kita
+    queryFn: () => generateAssetCode(categoryCode),
 
-    enabled: !!groupId && !!categoryId && !!clusterId && !!subClusterId,
+    // Hook hanya aktif mengirim request jika categoryCode terisi dan bukan string kosong
+    enabled: !!categoryCode && categoryCode !== "",
   });
 }
 // LINK Import asset

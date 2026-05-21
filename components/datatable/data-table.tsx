@@ -12,6 +12,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table'
+import { Spinner } from '../ui/spinner'
 
 type DataTableProps<TData> = {
     table: any
@@ -86,8 +87,11 @@ export function DataTable<TData>({
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={columnCount} className="h-24 text-center">
-                                    Loading...
+                                <TableCell colSpan={columnCount} className="h-24 p-0">
+                                    <div className="flex items-center justify-center w-full h-full">
+                                        <Spinner className="mr-2" />
+                                        <span>Loading...</span>
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         ) : table.getRowModel().rows.length ? (

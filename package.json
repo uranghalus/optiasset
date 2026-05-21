@@ -3,13 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx prisma/seeder/seed.ts",
     "open:tunnel": "npx localtunnel --port 3000 --subdomain optiasset",
-    "prisma:push": "npx prisma db push && npx prisma generate"
+    "prisma:push": "npx prisma db push && npx prisma generate",
+    "docker:dev": "docker compose -f docker-compose.dev.yml up --build",
+    "docker:build-prod": "docker build -t uranghalus/optima-asset:latest .",
+    "docker:stop": "docker compose -f docker-compose.dev.yml down",
+    "docker:logs": "docker compose -f docker-compose.dev.yml logs -f"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1045.0",

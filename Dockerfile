@@ -4,17 +4,20 @@ WORKDIR /app
 
 RUN apk add --no-cache libc6-compat openssl python3 make g++
 
-# copy semua file langsung (hindari cache issue)
-COPY . .
+# 1. Copy HANYA file package dan folder prisma terlebih dahulu
+COPY package.json package-lock.json ./
+COPY prisma ./prisma/
 
-# install deps setelah semua file masuk
+# 2. Install dependencies (Langkah ini akan di-cache oleh Docker!)
 RUN npm install
 
-# pastikan prisma schema terbaca
-RUN ls prisma
-
+# 3. Generate Prisma Client
 RUN npx prisma generate
 
+# 4. Copy sisa kode aplikasi (Setelah dependencies aman di-cache)
+COPY . .
+
+# 5. Build Next.js
 RUN npm run build
 
 EXPOSE 3000

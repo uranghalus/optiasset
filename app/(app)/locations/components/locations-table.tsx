@@ -11,6 +11,7 @@ import { useDialog } from "@/context/dialog-provider";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { locationColumns } from "./locations-column";
+import LocationBulkAction from "./location-bulk-action";
 
 export default function LocationsTable() {
   const { setOpen } = useDialog();
@@ -45,7 +46,7 @@ export default function LocationsTable() {
           </Button>
         </div>
       </DataTableToolbar>
-
+      <LocationBulkAction table={table} />
       <DataTable table={table} loading={isLoading} />
 
       <DataTablePagination table={table} pageCount={data?.pageCount ?? 0} />

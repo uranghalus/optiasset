@@ -43,7 +43,7 @@ import { useSelectDepartment } from "@/hooks/crud/use-department";
 export default function AssetEditForm({ assetId }: { assetId: string }) {
   const { data: session } = authClient.useSession();
   const activeOrgId = session?.session?.activeOrganizationId || "";
-  const router = useRouter(); //
+  const router = useRouter();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
 
@@ -90,20 +90,29 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
       assetCategoryId: "",
       assetClusterId: "",
       assetSubClusterId: "",
+      // Field APAR / Hydrant
+      isAparOrHydrant: "NONE",
+      jenisApar: "" as any,
+      sizeApar: "" as any,
+      ukuranHydrant: "",
     },
-  });
+  } as any);
 
-  // Watchers untuk Dropdown Klasifikasi
+  // Watchers untuk Dropdown Klasifikasi & Item
   const selectedGroup = form.watch("assetGroupId");
   const selectedCategory = form.watch("assetCategoryId");
   const selectedCluster = form.watch("assetClusterId");
+  const selectedItemId = form.watch("itemId");
+  const currentAssetType = form.watch("isAparOrHydrant");
 
   const { data: groups } = useAssetGroupsForSelect();
   const { data: categories } = useCategoriesByGroup(selectedGroup);
   const { data: clusters } = useClustersByCategory(selectedCategory);
   const { data: subClusters } = useSubClustersByCluster(selectedCluster);
 
-  // LOGIKA PRE-FILL DATA KE FORM
+  // =========================================================================
+  // LOGIKA PRE-FILL DATA KE FORM (TERMASUK APAR/HYDRANT)
+  // =========================================================================
   useEffect(() => {
     if (assetData) {
       isPreFilling.current = true; // Aktifkan kunci
@@ -116,6 +125,16 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
           return "";
         }
       };
+
+      // Handle data APAR atau Hydrant jika ada di balikan API
+      const aparInfo =
+        assetData.aparDetails?.[0] || (assetData as any).aparDetail;
+      const hydrantInfo =
+        assetData.hydrantDetails?.[0] || (assetData as any).hydrantDetail;
+
+      let initialType = "NONE";
+      if (aparInfo) initialType = "APAR";
+      else if (hydrantInfo) initialType = "HYDRANT";
 
       form.reset({
         itemId: assetData.itemId || "",
@@ -138,11 +157,16 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
         document_number: assetData.document_number || "",
         no_spb: assetData.no_spb || "",
 
-        // Klasifikasi (Jika API backend me-return data ini)
         assetGroupId: assetData.assetGroupId || "",
         assetCategoryId: assetData.assetCategoryId || "",
         assetClusterId: assetData.assetClusterId || "",
         assetSubClusterId: assetData.assetSubClusterId || "",
+
+        // Setup state awal APAR/Hydrant
+        isAparOrHydrant: initialType as any,
+        jenisApar: aparInfo?.jenis || ("" as any),
+        sizeApar: aparInfo?.size ? String(aparInfo.size) : ("" as any),
+        ukuranHydrant: hydrantInfo?.ukuran || "",
 
         photo: null,
       });
@@ -156,9 +180,39 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
     }
   }, [assetData, form]);
 
-  // LOGIKA RESET CASCADING DROPDOWN
+  // =========================================================================
+  // LOGIKA DETEKSI JIKA USER MENGGANTI ITEM SAAT EDIT
+  // =========================================================================
+  const activeItemDetails = items?.find((item) => item.id === selectedItemId);
+  const itemName = activeItemDetails?.name?.toLowerCase() || "";
+  const categoryName =
+    (activeItemDetails as any)?.category?.name?.toLowerCase() || "";
+
+  const isAparItem = itemName.includes("apar") || categoryName.includes("apar");
+  const isHydrantItem =
+    itemName.includes("hydrant") || categoryName.includes("hydrant");
+
   useEffect(() => {
-    if (isPreFilling.current) return; // Jangan reset jika sedang loading dari DB
+    // Jangan overwrite data saat proses pre-filling dari database
+    if (isPreFilling.current) return;
+
+    if (isAparItem) {
+      form.setValue("isAparOrHydrant", "APAR");
+    } else if (isHydrantItem) {
+      form.setValue("isAparOrHydrant", "HYDRANT");
+    } else {
+      form.setValue("isAparOrHydrant", "NONE");
+      form.setValue("jenisApar", "" as any);
+      form.setValue("sizeApar", "" as any);
+      form.setValue("ukuranHydrant", "");
+    }
+  }, [isAparItem, isHydrantItem, form]);
+
+  // =========================================================================
+  // LOGIKA RESET CASCADING DROPDOWN
+  // =========================================================================
+  useEffect(() => {
+    if (isPreFilling.current) return;
     form.setValue("assetCategoryId", "");
     form.setValue("assetClusterId", "");
     form.setValue("assetSubClusterId", "");
@@ -207,8 +261,8 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
     if (fileInput) fileInput.value = "";
   };
 
-  const isPending = updateMutation.isPending;
   // Handle Submit
+  const isPending = updateMutation.isPending;
   const onSubmit = async (values: AssetForm) => {
     const formData = new FormData();
     for (const [key, value] of Object.entries(values)) {
@@ -229,7 +283,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
 
   if (isFetching) {
     return (
-      <div className="flex flex-col items-center justify-center text-slate-500 space-y-2">
+      <div className="flex flex-col items-center justify-center text-slate-500 space-y-2 py-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p>Memuat data aset...</p>
       </div>
@@ -408,7 +462,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                   <Input
                     {...field}
                     readOnly
-                    className="font-mono bg-slate-50"
+                    className="font-mono bg-slate-50 font-semibold"
                   />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
@@ -622,8 +676,108 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
           </div>
         </div>
 
-        {/* PHOTO */}
-        <div className="space-y-4 border rounded-lg p-4 bg-slate-50">
+        {/* ===================================================================== */}
+        {/* FIELD DINAMIS APAR / HYDRANT */}
+        {/* ===================================================================== */}
+        {currentAssetType === "APAR" && (
+          <div className="space-y-4 border p-5 rounded-lg bg-red-50/80 border-red-200 mt-6 shadow-sm">
+            <h3 className="font-bold text-sm text-red-800 border-b border-red-200 pb-2 flex items-center gap-2">
+              🔥 Spesifikasi Khusus APAR (Alat Pemadam Api Ringan)
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Controller
+                name="jenisApar"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel className="text-red-900">
+                      Jenis Media APAR
+                    </FieldLabel>
+                    <Select
+                      value={field.value || undefined}
+                      onValueChange={field.onChange}
+                      disabled={isReadonly}
+                    >
+                      <SelectTrigger className="bg-white border-red-200 focus:ring-red-500">
+                        <SelectValue placeholder="Pilih Jenis Media..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CO2">
+                          CO2 (Karbon Dioksida)
+                        </SelectItem>
+                        <SelectItem value="Powder">
+                          Dry Chemical Powder
+                        </SelectItem>
+                        <SelectItem value="Foam">Foam (Busa)</SelectItem>
+                        <SelectItem value="Air">Water (Air)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
+              <Controller
+                name="sizeApar"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel className="text-red-900">
+                      Kapasitas / Berat (Kg)
+                    </FieldLabel>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      {...field}
+                      value={field.value ?? ""}
+                      placeholder="Contoh: 4.5"
+                      disabled={isReadonly}
+                      className="bg-white border-red-200 focus-visible:ring-red-500"
+                    />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
+            </div>
+          </div>
+        )}
+
+        {currentAssetType === "HYDRANT" && (
+          <div className="space-y-4 border p-5 rounded-lg bg-blue-50/80 border-blue-200 mt-6 shadow-sm">
+            <h3 className="font-bold text-sm text-blue-800 border-b border-blue-200 pb-2 flex items-center gap-2">
+              💧 Spesifikasi Khusus Instalasi Hydrant
+            </h3>
+            <div className="w-full md:w-1/2">
+              <Controller
+                name="ukuranHydrant"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel className="text-blue-900">
+                      Ukuran Hydrant (Pipa/Valve)
+                    </FieldLabel>
+                    <Input
+                      {...field}
+                      value={field.value ?? ""}
+                      placeholder="Contoh: 1.5 Inch atau 2.5 Inch"
+                      disabled={isReadonly}
+                      className="bg-white border-blue-200 focus-visible:ring-blue-500"
+                    />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* PHOTO SECTION */}
+        <div className="space-y-4 border rounded-lg p-4 bg-slate-50 mt-6">
           <h3 className="font-semibold text-sm">Foto Aset</h3>
           {imagePreview && (
             <div className="relative w-full flex justify-center">
@@ -632,13 +786,13 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                 <img
                   src={imagePreview}
                   alt="Asset preview"
-                  className="h-40 w-40 object-cover rounded-lg border bg-white"
+                  className="h-40 w-40 object-cover rounded-lg border bg-white shadow-sm"
                 />
                 <Button
                   type="button"
                   variant="destructive"
                   size="icon"
-                  className="absolute -top-2 -right-2 h-6 w-6"
+                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full shadow-md"
                   onClick={handleRemoveImage}
                 >
                   <X className="h-3 w-3" />
@@ -653,10 +807,10 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
           )}
           <div className="flex items-center gap-2">
             <label htmlFor="photo-input" className="flex-1">
-              <div className="flex items-center justify-center gap-2 p-3 border-2 border-dashed rounded-lg cursor-pointer hover:bg-slate-100 bg-white">
-                <Camera className="h-4 w-4" />
-                <span className="text-sm text-slate-600">
-                  {imagePreview ? "Klik ubah foto" : "Pilih foto"}
+              <div className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-100 bg-white transition-colors">
+                <Camera className="h-4 w-4 text-slate-500" />
+                <span className="text-sm text-slate-600 font-medium">
+                  {imagePreview ? "Klik ubah foto" : "Pilih dokumen foto aset"}
                 </span>
               </div>
               <input
@@ -677,24 +831,25 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
           render={({ field }) => (
             <Field>
               <FieldLabel>Catatan</FieldLabel>
-              <Textarea {...field} rows={2} readOnly={isReadonly} />
+              <Textarea {...field} rows={3} readOnly={isReadonly} />
             </Field>
           )}
         />
 
-        <div className="pt-4 flex flex-col-reverse md:flex-row justify-end gap-3 border-t mt-6">
+        <div className="pt-4 flex flex-col-reverse md:flex-row justify-end gap-3 border-t mt-8">
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.push("/assets")} // 👈 Arahkan ke halaman daftar aset
+            onClick={() => router.push("/assets")}
             disabled={isPending}
             className="w-full md:w-auto"
           >
             Batal
           </Button>
 
+          {/* PERBAIKAN BUG: Pastikan atribut "form" sesuai dengan ID form di atas */}
           <Button
-            form="asset-form"
+            form="asset-edit-form"
             type="submit"
             disabled={isPending}
             className="w-full md:w-auto"

@@ -1,16 +1,18 @@
-version: "3.9"
+version: '3.9'
 
 services:
+  image: uranghalus/optima-asset:latest
   optiasset_app:
     container_name: optiasset_app
     build: .
     ports:
-      - "3000:3000"
+      - '3000:3000'
     env_file:
       - .env
-    depends_on:
-      - optiasset_db
     restart: always
-
-volumes:
-  optiasset_mysql_data:
+    # Menjaga agar container Next.js tidak menghabiskan seluruh 2 vCPU dan RAM
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 2.5G

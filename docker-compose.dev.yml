@@ -1,0 +1,26 @@
+version: '3.9'
+
+services:
+  optiasset_app:
+    image: uranghalus/optima-asset:latest # <--- Letakkan di sini (berada di dalam optiasset_app)
+    container_name: optiasset_app_dev
+    # --- TAMBAHKAN BARIS INI ---
+    privileged: true 
+    # ---------------------------
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '3000:3000'
+    env_file:
+      - .env
+    command: npm run dev
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 2.5G

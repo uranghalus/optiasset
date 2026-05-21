@@ -11,13 +11,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import {
-  useAssetGroupsForSelect,
-  useCategoriesByGroup,
-  useClustersByCategory,
-  useSubClustersByCluster,
-} from "@/hooks/crud/use-asset-classification";
+
+// 👇 Sesuaikan import ini dengan hook yang mengambil data dari model `Category` (Polimorfik) Anda
+
 import { useImportAsset } from "@/hooks/crud/use-assets";
+import { useCategoriesForSelect } from "@/hooks/crud/use-items";
 import { useActiveMemberRole } from "@/hooks/use-active-member";
 import { authClient } from "@/lib/auth-client";
 import { getAssetFormAccess } from "@/lib/utils";
@@ -26,10 +24,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { FileSpreadsheet, UploadCloud, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
+
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
+
 export default function ImportAssetDialog({ open, onOpenChange }: Props) {
   const [filePreview, setFilePreview] = useState<File | null>(null);
   const [importResult, setImportResult] = useState<any>(null);
@@ -37,40 +37,19 @@ export default function ImportAssetDialog({ open, onOpenChange }: Props) {
   const form = useForm<ImportForm>({
     resolver: zodResolver(ImportFormSchema),
     defaultValues: {
-      assetGroupId: "",
-      assetCategoryId: "",
-      assetClusterId: "",
-      assetSubClusterId: "",
+      categoryId: "", // 👈 Cukup gunakan categoryId saja
       file: undefined,
     },
   });
-  const { mutateAsync: importAsset, isPending } = useImportAsset();
+
+  const { mutateAsync: importAsset, isPending: isImporting } = useImportAsset();
   const { data: session } = authClient.useSession();
-  const selectedGroup = form.watch("assetGroupId");
-  const selectedCategory = form.watch("assetCategoryId");
-  const selectedCluster = form.watch("assetClusterId");
 
-  const { data: groups } = useAssetGroupsForSelect();
-  const { data: categories } = useCategoriesByGroup(selectedGroup);
-  const { data: clusters } = useClustersByCategory(selectedCategory);
-  const { data: subClusters } = useSubClustersByCluster(selectedCluster);
+  // Ambil data Kategori Item
+  const { data: categories, isLoading: isCategoriesLoading } = useCategoriesForSelect();
+
   const { data: role } = useActiveMemberRole();
-  const { canView, isReadonly } = getAssetFormAccess(role);
-  // Efek Chained Select (Reset child jika parent berubah)
-  useEffect(() => {
-    form.setValue("assetCategoryId", "");
-    form.setValue("assetClusterId", "");
-    form.setValue("assetSubClusterId", "");
-  }, [selectedGroup, form]);
-
-  useEffect(() => {
-    form.setValue("assetClusterId", "");
-    form.setValue("assetSubClusterId", "");
-  }, [selectedCategory, form]);
-
-  useEffect(() => {
-    form.setValue("assetSubClusterId", "");
-  }, [selectedCluster, form]);
+  const { canView } = getAssetFormAccess(role);
 
   // Reset state saat dialog dibuka/ditutup
   useEffect(() => {
@@ -111,9 +90,7 @@ export default function ImportAssetDialog({ open, onOpenChange }: Props) {
   const handleRemoveFile = () => {
     setFilePreview(null);
     form.setValue("file", undefined, { shouldValidate: true });
-    const fileInput = document.getElementById(
-      "excel-upload",
-    ) as HTMLInputElement;
+    const fileInput = document.getElementById("excel-upload") as HTMLInputElement;
     if (fileInput) fileInput.value = "";
   };
 
@@ -123,13 +100,16 @@ export default function ImportAssetDialog({ open, onOpenChange }: Props) {
     try {
       const formData = new FormData();
       formData.append("file", values.file);
-      formData.append("targetSubClusterId", values.assetSubClusterId ?? "");
+      // 👇 Kirim categoryId ke Server Action 👇
+      formData.append("categoryId", values.categoryId);
+
       if (!session?.session.activeOrganizationId) {
         form.setError("root", {
           message: "Anda tidak memiliki organisasi aktif",
         });
         return;
       }
+
       // Panggil Server Action
       const result = await importAsset({
         formData: formData,
@@ -146,19 +126,18 @@ export default function ImportAssetDialog({ open, onOpenChange }: Props) {
       console.error(error);
       form.setError("root", {
         type: "server",
-        message:
-          error?.message ?? "Terjadi kesalahan saat memproses file Excel",
+        message: error?.message ?? "Terjadi kesalahan saat memproses file Excel",
       });
     }
   };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-screen overflow-y-auto">
+      <DialogContent className="sm:max-w-xl max-h-screen overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Import Data Aset (Excel)</DialogTitle>
           <DialogDescription>
-            Pilih klasifikasi aset terlebih dahulu, lalu unggah file Excel
-            berisi daftar aset yang ingin di-import.
+            Pilih <b>Kategori Item</b> terlebih dahulu, lalu unggah file Excel berisi daftar aset yang ingin di-import.
           </DialogDescription>
         </DialogHeader>
 
@@ -183,7 +162,7 @@ export default function ImportAssetDialog({ open, onOpenChange }: Props) {
                 <li>Gagal: {importResult.failed} baris</li>
               </ul>
               {importResult.errors?.length > 0 && (
-                <div className="mt-2 max-h-24 overflow-y-auto bg-white/50 p-2 rounded text-xs text-red-600">
+                <div className="mt-2 max-h-32 overflow-y-auto bg-white/50 p-2 rounded text-xs text-red-600 space-y-1">
                   {importResult.errors.map((err: string, i: number) => (
                     <div key={i}>{err}</div>
                   ))}
@@ -196,142 +175,39 @@ export default function ImportAssetDialog({ open, onOpenChange }: Props) {
             {canView && (
               <>
                 <h3 className="font-semibold text-sm border-b pb-1">
-                  Tentukan Klasifikasi Global (Wajib)
+                  Master Kategori (Wajib)
                 </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* GOLONGAN */}
-                  <Controller
-                    name="assetGroupId"
-                    control={form.control}
-                    render={({ field, fieldState }) => (
-                      <Field data-invalid={fieldState.invalid}>
-                        <FieldLabel>Golongan</FieldLabel>
-                        <Combobox
-                          title="Pilih Golongan"
-                          valueKey="id"
-                          value={groups?.find((g) => g.id === field.value)}
-                          searchFn={(search, offset, size) =>
-                            Promise.resolve(
-                              groups
-                                ?.filter((g) =>
-                                  g.name
-                                    .toLowerCase()
-                                    .includes(search.toLowerCase()),
-                                )
-                                .slice(offset, offset + size) || [],
-                            )
-                          }
-                          renderText={(item) => `${item.code} - ${item.name}`}
-                          onChange={(item) => field.onChange(item.id)}
-                          disabled={isPending}
-                        />
-                        {fieldState.invalid && (
-                          <FieldError errors={[fieldState.error]} />
-                        )}
-                      </Field>
-                    )}
-                  />
-
-                  {/* KATEGORI */}
-                  <Controller
-                    name="assetCategoryId"
-                    control={form.control}
-                    render={({ field, fieldState }) => (
-                      <Field data-invalid={fieldState.invalid}>
-                        <FieldLabel>Kategori</FieldLabel>
-                        <Combobox
-                          title="Pilih Kategori"
-                          valueKey="id"
-                          value={categories?.find((x) => x.id === field.value)}
-                          searchFn={(search, offset, size) =>
-                            Promise.resolve(
-                              categories
-                                ?.filter((x) =>
-                                  x.name
-                                    .toLowerCase()
-                                    .includes(search.toLowerCase()),
-                                )
-                                .slice(offset, offset + size) || [],
-                            )
-                          }
-                          renderText={(x) => `${x.code} - ${x.name}`}
-                          onChange={(x) => field.onChange(x.id)}
-                          disabled={!selectedGroup || isPending}
-                        />
-                        {fieldState.invalid && (
-                          <FieldError errors={[fieldState.error]} />
-                        )}
-                      </Field>
-                    )}
-                  />
-
-                  {/* CLUSTER */}
-                  <Controller
-                    name="assetClusterId"
-                    control={form.control}
-                    render={({ field, fieldState }) => (
-                      <Field data-invalid={fieldState.invalid}>
-                        <FieldLabel>Cluster</FieldLabel>
-                        <Combobox
-                          title="Pilih Cluster"
-                          valueKey="id"
-                          value={clusters?.find((x) => x.id === field.value)}
-                          searchFn={(search, offset, size) =>
-                            Promise.resolve(
-                              clusters
-                                ?.filter((x) =>
-                                  x.name
-                                    .toLowerCase()
-                                    .includes(search.toLowerCase()),
-                                )
-                                .slice(offset, offset + size) || [],
-                            )
-                          }
-                          renderText={(x) => `${x.code} - ${x.name}`}
-                          onChange={(x) => field.onChange(x.id)}
-                          disabled={!selectedCategory || isPending}
-                        />
-                        {fieldState.invalid && (
-                          <FieldError errors={[fieldState.error]} />
-                        )}
-                      </Field>
-                    )}
-                  />
-
-                  {/* SUB CLUSTER */}
-                  <Controller
-                    name="assetSubClusterId"
-                    control={form.control}
-                    render={({ field, fieldState }) => (
-                      <Field data-invalid={fieldState.invalid}>
-                        <FieldLabel>Sub Cluster</FieldLabel>
-                        <Combobox
-                          title="Pilih Sub Cluster"
-                          valueKey="id"
-                          value={subClusters?.find((x) => x.id === field.value)}
-                          searchFn={(search, offset, size) =>
-                            Promise.resolve(
-                              subClusters
-                                ?.filter((x) =>
-                                  x.name
-                                    .toLowerCase()
-                                    .includes(search.toLowerCase()),
-                                )
-                                .slice(offset, offset + size) || [],
-                            )
-                          }
-                          renderText={(x) => `${x.code} - ${x.name}`}
-                          onChange={(x) => field.onChange(x.id)}
-                          disabled={!selectedCluster || isPending}
-                        />
-                        {fieldState.invalid && (
-                          <FieldError errors={[fieldState.error]} />
-                        )}
-                      </Field>
-                    )}
-                  />
-                </div>
+                <Controller
+                  name="categoryId"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel>Kategori Item</FieldLabel>
+                      <Combobox
+                        title="Pilih Kategori Item"
+                        valueKey="id"
+                        value={categories?.find((c: any) => c.id === field.value)}
+                        searchFn={(search, offset, size) =>
+                          Promise.resolve(
+                            categories
+                              ?.filter((c: any) =>
+                                c.name.toLowerCase().includes(search.toLowerCase()) ||
+                                (c.code && c.code.toLowerCase().includes(search.toLowerCase()))
+                              )
+                              .slice(offset, offset + size) || [],
+                          )
+                        }
+                        renderText={(c) => `${c.code ? c.code + ' - ' : ''}${c.name}`}
+                        onChange={(c) => field.onChange(c.id)}
+                        disabled={isCategoriesLoading || isImporting}
+                      />
+                      {fieldState.invalid && (
+                        <FieldError errors={[fieldState.error]} />
+                      )}
+                    </Field>
+                  )}
+                />
               </>
             )}
           </div>
@@ -348,7 +224,7 @@ export default function ImportAssetDialog({ open, onOpenChange }: Props) {
                   <div className="flex items-center gap-2">
                     <label
                       htmlFor="excel-upload"
-                      className={`flex-1 ${isPending ? "opacity-50 pointer-events-none" : ""}`}
+                      className={`flex-1 ${isImporting ? "opacity-50 pointer-events-none" : ""}`}
                     >
                       <div
                         className={`flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${fieldState.invalid ? "border-red-300 bg-red-50 hover:bg-red-100" : "border-slate-300 hover:bg-slate-100"}`}
@@ -378,12 +254,12 @@ export default function ImportAssetDialog({ open, onOpenChange }: Props) {
                         accept=".xlsx, .xls"
                         className="hidden"
                         onChange={handleFileChange}
-                        disabled={isPending}
+                        disabled={isImporting}
                       />
                     </label>
                   </div>
 
-                  {filePreview && !isPending && (
+                  {filePreview && !isImporting && (
                     <div className="flex justify-center">
                       <Button
                         type="button"
@@ -401,8 +277,7 @@ export default function ImportAssetDialog({ open, onOpenChange }: Props) {
                     <FieldError errors={[fieldState.error]} />
                   )}
                   <p className="text-xs text-slate-500 text-center">
-                    Format yang didukung: .xlsx, .xls | Pastikan format kolom
-                    sesuai standar.
+                    Format yang didukung: .xlsx, .xls | Pastikan format kolom sesuai standar.
                   </p>
                 </div>
               )}
@@ -414,17 +289,17 @@ export default function ImportAssetDialog({ open, onOpenChange }: Props) {
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isPending}
+              disabled={isImporting}
             >
               Batal
             </Button>
             <Button
               form="import-asset-form"
               type="submit"
-              disabled={isPending || !form.formState.isValid}
+              disabled={isImporting || !form.formState.isValid}
               className="w-full md:w-auto"
             >
-              {isPending ? "Memproses Import..." : "Mulai Import Data"}
+              {isImporting ? "Memproses Import..." : "Mulai Import Data"}
             </Button>
           </DialogFooter>
         </form>

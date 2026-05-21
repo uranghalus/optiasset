@@ -429,6 +429,25 @@ export async function createAsset(formData: FormData) {
         ...(assetSubClusterId && {
           assetSubClusters: { connect: [{ id: assetSubClusterId }] },
         }),
+        ...(aparData && {
+          aparDetails: {
+            create: {
+              jenis: aparData.jenis,
+              // Gunakan Prisma.Decimal untuk tipe data Decimal
+              size: new Prisma.Decimal(aparData.size || 0),
+              organizationId: activeOrgId,
+            },
+          },
+        }),
+
+        ...(hydrantData && {
+          hydrantDetails: {
+            create: {
+              ukuran: hydrantData.ukuran,
+              organizationId: activeOrgId,
+            },
+          },
+        }),
       },
     });
 
@@ -1632,8 +1651,8 @@ export async function importAssetExcel(
               aparDetails: {
                 create: {
                   jenis: aparData.jenis,
-                  size: aparData.size,
-                  organizationId: aparData.organizationId,
+                  // WAJIB: Gunakan Prisma.Decimal dan sertakan organizationId
+                  size: new Prisma.Decimal(aparData.size || 0),
                 },
               },
             }),
@@ -1642,7 +1661,6 @@ export async function importAssetExcel(
               hydrantDetails: {
                 create: {
                   ukuran: hydrantData.ukuran,
-                  organizationId: hydrantData.organizationId,
                 },
               },
             }),

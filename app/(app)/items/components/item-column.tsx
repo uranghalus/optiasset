@@ -5,14 +5,31 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ColumnDef } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
-import { Item } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 import ItemRowAction from "./item-row-action";
 
-type ItemWithRelations = Item & {
-  category?: { id: string; name: string } | null;
-  _count?: { assets: number };
-};
-
+export type ItemWithRelations = Prisma.ItemGetPayload<{
+  include: {
+    category: {
+      select: {
+        id: true;
+        name: true;
+      };
+    };
+    department: {
+      select: {
+        id_department: true;
+        kode_department: true;
+        nama_department: true;
+      };
+    };
+    _count: {
+      select: {
+        assets: true;
+      };
+    };
+  };
+}>;
 export const itemColumns: ColumnDef<ItemWithRelations>[] = [
   {
     id: "select",
@@ -86,6 +103,20 @@ export const itemColumns: ColumnDef<ItemWithRelations>[] = [
       <div className="ps-2">{row.original.category?.name ?? "-"}</div>
     ),
     size: 150,
+  },
+  {
+    id: "department",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Department" />
+    ),
+    cell: ({ row }) => (
+      <div className="ps-2">
+        {row.original.department
+          ? `${row.original.department.kode_department} - ${row.original.department.nama_department}`
+          : "-"}
+      </div>
+    ),
+    size: 200,
   },
   {
     id: "assets_count",

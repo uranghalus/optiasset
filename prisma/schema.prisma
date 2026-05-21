@@ -207,25 +207,32 @@ model teamMember {
 
 //LINK Item
 model Item {
-  id             String       @id @default(uuid())
+  id             String    @id @default(uuid())
   code           String
   name           String
   categoryId     String?
+  departmentId   String? // Field foreign key untuk department
   description    String?
   assetType      AssetType
-  createdAt      DateTime     @default(now())
+  createdAt      DateTime  @default(now())
   createdBy      String?
   updatedAt      DateTime?
   updatedBy      String?
   organizationId String
-  assets         Asset[]
-  category       Category?    @relation(fields: [categoryId, organizationId], references: [id, organizationId])
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  stocks         Stock[]
+
+  assets       Asset[]
+  category     Category?    @relation(fields: [categoryId, organizationId], references: [id, organizationId])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  stocks       Stock[]
+
+  // RELASI KE DEPARTMENT
+  // Perhatikan perbedaan casing: model target 'department', references ke 'id_department' dan 'organization_id'
+  department department? @relation(fields: [departmentId, organizationId], references: [id_department, organization_id])
 
   @@unique([code, organizationId])
   @@unique([id, organizationId])
   @@index([categoryId, organizationId])
+  @@index([departmentId, organizationId]) // Index untuk performa
   @@index([organizationId])
   @@map("items")
 }
@@ -484,8 +491,10 @@ model department {
   assets          Asset[]
   transfersFrom   AssetTransfer[] @relation("FromDept")
   transfersTo     AssetTransfer[] @relation("ToDept")
+  items           Item[]
 
   @@unique([organization_id, kode_department(length: 191)], map: "department_org_kode_unique_custom_v9")
+  @@unique([id_department, organization_id])
   @@index([deleted_at], map: "department_deleted_at_idx_custom_v9")
   @@index([organization_id], map: "department_organization_id_idx_custom_v9")
 }

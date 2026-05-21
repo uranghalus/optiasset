@@ -1,16 +1,27 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use server';
 
+import { auth } from '@/lib/auth';
 import { getServerSession } from '@/lib/get-session';
 import { prisma } from '@/lib/prisma';
+import { headers } from 'next/headers';
 
 export async function getDashboardData() {
   const session = await getServerSession();
   if (!session) throw new Error('Unauthorized');
 
   const activeOrgId = session.session?.activeOrganizationId;
+  const deptId = session.user.departmentId;
   if (!activeOrgId)
     throw new Error('No active organizationId found in session');
+  const { role } = await auth.api.getActiveMemberRole({
+    headers: await headers(),
+  });
+  const isStaff = role === ('staff_asset' as any) || role === 'owner';
+  const assetWhere = {
+    organizationId: activeOrgId,
+    ...(isStaff && deptId ? { departmentId: deptId } : {}),
+  };
 
   // Fetch counts and stats
   const [
@@ -22,7 +33,7 @@ export async function getDashboardData() {
     lowStockItems,
   ] = await Promise.all([
     // 1. Total Assets (Fixed Assets)
-    prisma.asset.count({ where: { organizationId: activeOrgId } }),
+    prisma.asset.count({ where: assetWhere }),
 
     // 2. Total Items (Catalog)
     prisma.item.count({ where: { organizationId: activeOrgId } }),

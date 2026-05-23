@@ -90,10 +90,10 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
       assetCategoryId: "",
       assetClusterId: "",
       assetSubClusterId: "",
-      // Field APAR / Hydrant
+      // PERBAIKAN: Field APAR / Hydrant menggunakan undefined untuk enum opsional Zod
       isAparOrHydrant: "NONE",
-      jenisApar: "" as any,
-      sizeApar: "" as any,
+      jenisApar: undefined,
+      sizeApar: undefined,
       ukuranHydrant: "",
     },
   } as any);
@@ -162,10 +162,10 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
         assetClusterId: assetData.assetClusterId || "",
         assetSubClusterId: assetData.assetSubClusterId || "",
 
-        // Setup state awal APAR/Hydrant
+        // PERBAIKAN: Setup state awal APAR/Hydrant menggunakan undefined
         isAparOrHydrant: initialType as any,
-        jenisApar: aparInfo?.jenis || ("" as any),
-        sizeApar: aparInfo?.size ? String(aparInfo.size) : ("" as any),
+        jenisApar: aparInfo?.jenis || undefined,
+        sizeApar: aparInfo?.size ? String(aparInfo.size) : undefined,
         ukuranHydrant: hydrantInfo?.ukuran || "",
 
         photo: null,
@@ -202,8 +202,8 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
       form.setValue("isAparOrHydrant", "HYDRANT");
     } else {
       form.setValue("isAparOrHydrant", "NONE");
-      form.setValue("jenisApar", "" as any);
-      form.setValue("sizeApar", "" as any);
+      form.setValue("jenisApar", undefined); // PERBAIKAN
+      form.setValue("sizeApar", undefined);  // PERBAIKAN
       form.setValue("ukuranHydrant", "");
     }
   }, [isAparItem, isHydrantItem, form]);
@@ -281,6 +281,11 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
     updateMutation.mutate({ id: assetId, formData });
   };
 
+  // PERBAIKAN: Handler Error untuk Debugging Validation Zod
+  const onError = (errors: any) => {
+    console.error("Zod Validation Errors:", errors);
+  };
+
   if (isFetching) {
     return (
       <div className="flex flex-col items-center justify-center text-slate-500 space-y-2 py-12">
@@ -294,7 +299,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
     <div className="p-4 border border-gray-100 rounded-lg bg-white">
       <form
         id="asset-edit-form"
-        onSubmit={form.handleSubmit(onSubmit)}
+        onSubmit={form.handleSubmit(onSubmit, onError)} // PERBAIKAN: Tambahkan onError
         className="space-y-6"
       >
         {form.formState.errors.root?.message && (
@@ -477,51 +482,64 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
             <h3 className="font-semibold text-sm border-b pb-1">
               Detail Asset
             </h3>
+            {/* PERBAIKAN: Menambahkan FieldState dan Error Reporting ke Field Wajib */}
             <Controller
               name="brand"
               control={form.control}
-              render={({ field }) => (
-                <Field>
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>Brand</FieldLabel>
                   <Input {...field} readOnly={isReadonly} />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
                 </Field>
               )}
             />
             <Controller
               name="model"
               control={form.control}
-              render={({ field }) => (
-                <Field>
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>Model</FieldLabel>
                   <Input {...field} readOnly={isReadonly} />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
                 </Field>
               )}
             />
             <Controller
               name="partNumber"
               control={form.control}
-              render={({ field }) => (
-                <Field>
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>Part Number</FieldLabel>
                   <Input {...field} readOnly={isReadonly} />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
                 </Field>
               )}
             />
             <Controller
               name="serialNumber"
               control={form.control}
-              render={({ field }) => (
-                <Field>
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>Serial Number</FieldLabel>
                   <Input {...field} readOnly={isReadonly} />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
                 </Field>
               )}
             />
             <Controller
               name="condition"
               control={form.control}
-              render={({ field }) => (
-                <Field>
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>Kondisi</FieldLabel>
                   <Select
                     value={field.value}
@@ -538,6 +556,9 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                       <SelectItem value="LOST">Hilang</SelectItem>
                     </SelectContent>
                   </Select>
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
                 </Field>
               )}
             />
@@ -847,7 +868,6 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
             Batal
           </Button>
 
-          {/* PERBAIKAN BUG: Pastikan atribut "form" sesuai dengan ID form di atas */}
           <Button
             form="asset-edit-form"
             type="submit"

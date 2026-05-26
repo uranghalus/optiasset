@@ -62,3 +62,14 @@ export function useApproveDisposal() {
     },
   });
 }
+
+export function useAssetsForDisposalSelect() {
+  return useQuery({
+    queryKey: ["assets-for-disposal-select"],
+    queryFn: () =>
+      import("@/action/asset-disposal-action").then((m) =>
+        m.getAssetsForDisposalSelect()
+      ),
+  });
+}
+

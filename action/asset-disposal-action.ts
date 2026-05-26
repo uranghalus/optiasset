@@ -211,3 +211,32 @@ export async function approveDisposalAction(
   revalidatePath('/asset-disposals');
   return result;
 }
+
+export async function getAssetsForDisposalSelect() {
+  const session = await getServerSession();
+  if (!session) throw new Error('Unauthorized');
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error('No active organizationId found');
+
+  return prisma.asset.findMany({
+    where: {
+      organizationId: activeOrgId,
+      status: { not: 'DISPOSED' }, // only show active assets
+    },
+    select: {
+      id: true,
+      kode_asset: true,
+      brand: true,
+      model: true,
+      item: {
+        select: {
+          name: true,
+        },
+      },
+    },
+    orderBy: {
+      kode_asset: 'asc',
+    },
+  });
+}
+

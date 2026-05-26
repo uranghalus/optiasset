@@ -8,8 +8,15 @@ import { useDataTable } from "@/hooks/use-data-table";
 import { DataTableToolbar } from "@/components/datatable/datatable-toolbar";
 import { DataTable } from "@/components/datatable/data-table";
 import { DataTablePagination } from "@/components/datatable/datatable-pagination";
+import { useDialog } from "@/context/dialog-provider";
+import { usePermission } from "@/hooks/use-permission";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 
 export default function DisposalTable() {
+  const { setOpen } = useDialog();
+  const { can } = usePermission();
+
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10,
@@ -60,7 +67,17 @@ export default function DisposalTable() {
         searchKey="reason"
         searchPlaceholder="Cari alasan penghapusan..."
         filters={filters}
-      />
+      >
+        {can("asset.disposal", ["create"]) && (
+          <Button
+            className="gap-2 w-full sm:w-auto justify-center"
+            onClick={() => setOpen("add-disposal")}
+          >
+            <Plus className="size-4 shrink-0" />
+            Tambah Penghapusan
+          </Button>
+        )}
+      </DataTableToolbar>
 
       <DataTable table={table} loading={isLoading} />
 

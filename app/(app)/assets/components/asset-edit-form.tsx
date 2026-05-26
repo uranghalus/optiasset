@@ -90,7 +90,6 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
       assetCategoryId: "",
       assetClusterId: "",
       assetSubClusterId: "",
-      // PERBAIKAN: Field APAR / Hydrant menggunakan undefined untuk enum opsional Zod
       isAparOrHydrant: "NONE",
       jenisApar: undefined,
       sizeApar: undefined,
@@ -162,10 +161,9 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
         assetClusterId: assetData.assetClusterId || "",
         assetSubClusterId: assetData.assetSubClusterId || "",
 
-        // PERBAIKAN: Setup state awal APAR/Hydrant menggunakan undefined
         isAparOrHydrant: initialType as any,
         jenisApar: aparInfo?.jenis || undefined,
-        sizeApar: aparInfo?.size ? String(aparInfo.size) : undefined,
+        sizeApar: aparInfo?.size ? Number(aparInfo.size) : undefined,
         ukuranHydrant: hydrantInfo?.ukuran || "",
 
         photo: null,
@@ -202,8 +200,8 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
       form.setValue("isAparOrHydrant", "HYDRANT");
     } else {
       form.setValue("isAparOrHydrant", "NONE");
-      form.setValue("jenisApar", undefined); // PERBAIKAN
-      form.setValue("sizeApar", undefined);  // PERBAIKAN
+      form.setValue("jenisApar", undefined as any);
+      form.setValue("sizeApar", undefined as any);
       form.setValue("ukuranHydrant", "");
     }
   }, [isAparItem, isHydrantItem, form]);
@@ -281,7 +279,6 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
     updateMutation.mutate({ id: assetId, formData });
   };
 
-  // PERBAIKAN: Handler Error untuk Debugging Validation Zod
   const onError = (errors: any) => {
     console.error("Zod Validation Errors:", errors);
   };
@@ -299,7 +296,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
     <div className="p-4 border border-gray-100 rounded-lg bg-white">
       <form
         id="asset-edit-form"
-        onSubmit={form.handleSubmit(onSubmit, onError)} // PERBAIKAN: Tambahkan onError
+        onSubmit={form.handleSubmit(onSubmit, onError)}
         className="space-y-6"
       >
         {form.formState.errors.root?.message && (
@@ -312,7 +309,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
           {/* KOLOM KIRI */}
           <div className="space-y-4">
             <h3 className="font-semibold text-sm border-b pb-1">
-              Informasi Asset
+              Informasi Asset Utama
             </h3>
             <Controller
               name="itemId"
@@ -353,8 +350,8 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
             <Controller
               name="assetGroupId"
               control={form.control}
-              render={({ field }) => (
-                <Field>
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>Golongan</FieldLabel>
                   <Combobox
                     title="Pilih Golongan"
@@ -373,6 +370,9 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                     onChange={(item) => field.onChange(item.id)}
                     disabled={isReadonly}
                   />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
                 </Field>
               )}
             />
@@ -380,8 +380,8 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
             <Controller
               name="assetCategoryId"
               control={form.control}
-              render={({ field }) => (
-                <Field>
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>Kategori</FieldLabel>
                   <Combobox
                     title="Pilih Kategori"
@@ -400,6 +400,9 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                     onChange={(x) => field.onChange(x.id)}
                     disabled={!selectedGroup || isReadonly}
                   />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
                 </Field>
               )}
             />
@@ -407,8 +410,8 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
             <Controller
               name="assetClusterId"
               control={form.control}
-              render={({ field }) => (
-                <Field>
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>Cluster</FieldLabel>
                   <Combobox
                     title="Pilih Cluster"
@@ -427,6 +430,9 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                     onChange={(x) => field.onChange(x.id)}
                     disabled={!selectedCategory || isReadonly}
                   />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
                 </Field>
               )}
             />
@@ -434,8 +440,8 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
             <Controller
               name="assetSubClusterId"
               control={form.control}
-              render={({ field }) => (
-                <Field>
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>Sub Cluster</FieldLabel>
                   <Combobox
                     title="Pilih Sub Cluster"
@@ -454,6 +460,9 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                     onChange={(x) => field.onChange(x.id)}
                     disabled={!selectedCluster || isReadonly}
                   />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
                 </Field>
               )}
             />
@@ -466,6 +475,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                   <FieldLabel>Kode Asset</FieldLabel>
                   <Input
                     {...field}
+                    value={field.value ?? ""}
                     readOnly
                     className="font-mono bg-slate-50 font-semibold"
                   />
@@ -480,16 +490,20 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
           {/* KOLOM TENGAH */}
           <div className="space-y-4">
             <h3 className="font-semibold text-sm border-b pb-1">
-              Detail Asset
+              Spesifikasi Fisik Unit
             </h3>
-            {/* PERBAIKAN: Menambahkan FieldState dan Error Reporting ke Field Wajib */}
             <Controller
               name="brand"
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Brand</FieldLabel>
-                  <Input {...field} readOnly={isReadonly} />
+                  <FieldLabel>Brand / Merk</FieldLabel>
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    placeholder="Lenovo / Yamato"
+                    readOnly={isReadonly}
+                  />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
                   )}
@@ -501,8 +515,13 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Model</FieldLabel>
-                  <Input {...field} readOnly={isReadonly} />
+                  <FieldLabel>Model / Tipe</FieldLabel>
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    placeholder="ThinkPad / Powder 4.5Kg"
+                    readOnly={isReadonly}
+                  />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
                   )}
@@ -515,7 +534,12 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>Part Number</FieldLabel>
-                  <Input {...field} readOnly={isReadonly} />
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    placeholder="P/N Code"
+                    readOnly={isReadonly}
+                  />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
                   )}
@@ -527,8 +551,13 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Serial Number</FieldLabel>
-                  <Input {...field} readOnly={isReadonly} />
+                  <FieldLabel>Serial Number (S/N)</FieldLabel>
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    placeholder="Nomor Seri Unik Pabrik"
+                    readOnly={isReadonly}
+                  />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
                   )}
@@ -540,7 +569,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Kondisi</FieldLabel>
+                  <FieldLabel>Kondisi Awal</FieldLabel>
                   <Select
                     value={field.value}
                     onValueChange={field.onChange}
@@ -567,16 +596,16 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
           {/* KOLOM KANAN */}
           <div className="space-y-4">
             <h3 className="font-semibold text-sm border-b pb-1">
-              Penempatan & Pembelian
+              Logistik & Legalitas
             </h3>
             <Controller
               name="locationId"
               control={form.control}
-              render={({ field }) => (
-                <Field>
-                  <FieldLabel>Lokasi</FieldLabel>
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel>Penempatan Lokasi</FieldLabel>
                   <Combobox<{ id: string; name: string }>
-                    title="Cari Lokasi"
+                    title="Pilih Area Gedung..."
                     valueKey="id"
                     value={locations?.find((loc) => loc.id === field.value)}
                     searchFn={(s, o, sz) =>
@@ -592,6 +621,9 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                     onChange={(loc) => field.onChange(loc.id)}
                     disabled={isReadonly}
                   />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
                 </Field>
               )}
             />
@@ -600,14 +632,14 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
               <Controller
                 name="departmentId"
                 control={form.control}
-                render={({ field }) => (
-                  <Field>
-                    <FieldLabel>Departemen</FieldLabel>
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel>Departemen Penanggung Jawab</FieldLabel>
                     <Combobox<{
                       id_department: string;
                       nama_department: string;
                     }>
-                      title="Cari Departemen"
+                      title="Cari Departemen..."
                       valueKey="id_department"
                       value={dept?.find(
                         (loc) => loc.id_department === field.value,
@@ -627,6 +659,9 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                       onChange={(loc) => field.onChange(loc.id_department)}
                       disabled={isReadonly}
                     />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
                   </Field>
                 )}
               />
@@ -635,65 +670,122 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
             <Controller
               name="document_number"
               control={form.control}
-              render={({ field }) => (
-                <Field>
-                  <FieldLabel>No. Dokumen</FieldLabel>
-                  <Input {...field} readOnly={isReadonly} />
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel>No. Dokumen Kontrak / Berkas</FieldLabel>
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    placeholder="DOC-001"
+                    readOnly={isReadonly}
+                  />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
                 </Field>
               )}
             />
             <Controller
               name="no_spb"
               control={form.control}
-              render={({ field }) => (
-                <Field>
-                  <FieldLabel>No. SPB</FieldLabel>
-                  <Input {...field} readOnly={isReadonly} />
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel>No. SPB (Surat Penyerahan Barang)</FieldLabel>
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    placeholder="SPB-2024-001"
+                    readOnly={isReadonly}
+                  />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
                 </Field>
               )}
             />
-            <div className="grid grid-cols-2 gap-4">
+
+            <div className="grid grid-cols-2 gap-2">
               <Controller
                 name="purchaseDate"
                 control={form.control}
-                render={({ field }) => (
-                  <Field>
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
                     <FieldLabel>Tgl. Beli</FieldLabel>
-                    <Input type="date" {...field} readOnly={isReadonly} />
+                    <Input
+                      type="date"
+                      {...field}
+                      value={field.value ?? ""}
+                      readOnly={isReadonly}
+                      className="text-xs"
+                    />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
                   </Field>
                 )}
               />
               <Controller
-                name="garansi_exp"
+                name="purchasePrice"
                 control={form.control}
-                render={({ field }) => (
-                  <Field>
-                    <FieldLabel>Garansi Selesai</FieldLabel>
-                    <Input type="date" {...field} readOnly={isReadonly} />
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel>Harga Beli</FieldLabel>
+                    <Input
+                      type="number"
+                      {...field}
+                      value={field.value ?? ""}
+                      placeholder="0"
+                      readOnly={isReadonly}
+                      className="text-xs"
+                    />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
                   </Field>
                 )}
               />
             </div>
-            <Controller
-              name="purchasePrice"
-              control={form.control}
-              render={({ field }) => (
-                <Field>
-                  <FieldLabel>Harga Beli</FieldLabel>
-                  <Input type="number" {...field} readOnly={isReadonly} />
-                </Field>
-              )}
-            />
-            <Controller
-              name="vendorName"
-              control={form.control}
-              render={({ field }) => (
-                <Field>
-                  <FieldLabel>Vendor</FieldLabel>
-                  <Input {...field} readOnly={isReadonly} />
-                </Field>
-              )}
-            />
+
+            <div className="grid grid-cols-2 gap-2">
+              <Controller
+                name="garansi_exp"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel>Garansi Toko</FieldLabel>
+                    <Input
+                      type="date"
+                      {...field}
+                      value={field.value ?? ""}
+                      readOnly={isReadonly}
+                      className="text-xs"
+                    />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
+              <Controller
+                name="vendorName"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel>Nama Vendor</FieldLabel>
+                    <Input
+                      {...field}
+                      value={field.value ?? ""}
+                      placeholder="PT Maju Bersama"
+                      readOnly={isReadonly}
+                      className="text-xs"
+                    />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
+            </div>
           </div>
         </div>
 
@@ -799,7 +891,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
 
         {/* PHOTO SECTION */}
         <div className="space-y-4 border rounded-lg p-4 bg-slate-50 mt-6">
-          <h3 className="font-semibold text-sm">Foto Aset</h3>
+          <h3 className="font-semibold text-sm">Lampiran Foto Fisik Unit</h3>
           {imagePreview && (
             <div className="relative w-full flex justify-center">
               <div className="relative">
@@ -849,10 +941,19 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
         <Controller
           name="notes"
           control={form.control}
-          render={({ field }) => (
-            <Field>
-              <FieldLabel>Catatan</FieldLabel>
-              <Textarea {...field} rows={3} readOnly={isReadonly} />
+          render={({ field, fieldState }) => (
+            <Field data-invalid={fieldState.invalid}>
+              <FieldLabel>Catatan / Keterangan Kondisi Tambahan</FieldLabel>
+              <Textarea
+                {...field}
+                value={field.value ?? ""}
+                placeholder="Tulis catatan tambahan penempatan atau info teknis di sini..."
+                rows={3}
+                readOnly={isReadonly}
+              />
+              {fieldState.invalid && (
+                <FieldError errors={[fieldState.error]} />
+              )}
             </Field>
           )}
         />
@@ -874,7 +975,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
             disabled={isPending}
             className="w-full md:w-auto"
           >
-            {isPending ? "Menyimpan..." : "Simpan Data Aset"}
+            {isPending ? "Menyimpan Unit..." : "Simpan Data Unit Aset"}
           </Button>
         </div>
       </form>

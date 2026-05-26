@@ -66,10 +66,10 @@ export default function AssetAddForm() {
       serialNumber: "",
       document_number: "",
       no_spb: "",
-      // Inisialisasi field tambahan untuk APAR & Hydrant dengan string kosong
+      // PERBAIKAN: Gunakan undefined, bukan string kosong agar lolos validasi Zod Enum
       isAparOrHydrant: "NONE",
-      jenisApar: "" as any,
-      sizeApar: "" as any,
+      jenisApar: undefined,
+      sizeApar: undefined,
       ukuranHydrant: "",
     },
   } as any);
@@ -141,9 +141,9 @@ export default function AssetAddForm() {
       form.setValue("isAparOrHydrant", "HYDRANT");
     } else {
       form.setValue("isAparOrHydrant", "NONE");
-      // Reset ke string kosong, bukan undefined
-      form.setValue("jenisApar", "" as any);
-      form.setValue("sizeApar", "" as any);
+      // PERBAIKAN: Reset ke undefined, bukan string kosong
+      form.setValue("jenisApar", undefined as any);
+      form.setValue("sizeApar", undefined as any);
       form.setValue("ukuranHydrant", "");
     }
   }, [isApar, isHydrant, form]);
@@ -327,8 +327,8 @@ export default function AssetAddForm() {
             <Controller
               name="brand"
               control={form.control}
-              render={({ field }) => (
-                <Field>
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>Brand / Merk</FieldLabel>
                   <Input
                     {...field}
@@ -336,14 +336,17 @@ export default function AssetAddForm() {
                     placeholder="Lenovo / Yamato"
                     readOnly={isReadonly}
                   />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
                 </Field>
               )}
             />
             <Controller
               name="model"
               control={form.control}
-              render={({ field }) => (
-                <Field>
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>Model / Tipe</FieldLabel>
                   <Input
                     {...field}
@@ -351,14 +354,17 @@ export default function AssetAddForm() {
                     placeholder="ThinkPad / Powder 4.5Kg"
                     readOnly={isReadonly}
                   />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
                 </Field>
               )}
             />
             <Controller
               name="partNumber"
               control={form.control}
-              render={({ field }) => (
-                <Field>
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>Part Number</FieldLabel>
                   <Input
                     {...field}
@@ -366,14 +372,17 @@ export default function AssetAddForm() {
                     placeholder="P/N Code"
                     readOnly={isReadonly}
                   />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
                 </Field>
               )}
             />
             <Controller
               name="serialNumber"
               control={form.control}
-              render={({ field }) => (
-                <Field>
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>Serial Number (S/N)</FieldLabel>
                   <Input
                     {...field}
@@ -381,14 +390,17 @@ export default function AssetAddForm() {
                     placeholder="Nomor Seri Unik Pabrik"
                     readOnly={isReadonly}
                   />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
                 </Field>
               )}
             />
             <Controller
               name="condition"
               control={form.control}
-              render={({ field }) => (
-                <Field>
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>Kondisi Awal</FieldLabel>
                   <Select
                     value={field.value || "GOOD"}
@@ -405,6 +417,9 @@ export default function AssetAddForm() {
                       <SelectItem value="LOST">Hilang</SelectItem>
                     </SelectContent>
                   </Select>
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
                 </Field>
               )}
             />
@@ -419,8 +434,8 @@ export default function AssetAddForm() {
             <Controller
               name="locationId"
               control={form.control}
-              render={({ field }) => (
-                <Field>
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>Penempatan Lokasi</FieldLabel>
                   <Combobox<{ id: string; name: string }>
                     title="Pilih Area Gedung..."
@@ -441,6 +456,9 @@ export default function AssetAddForm() {
                     onChange={(loc) => field.onChange(loc.id)}
                     disabled={isReadonly}
                   />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
                 </Field>
               )}
             />
@@ -449,8 +467,8 @@ export default function AssetAddForm() {
               <Controller
                 name="departmentId"
                 control={form.control}
-                render={({ field }) => (
-                  <Field>
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
                     <FieldLabel>Departemen Penanggung Jawab</FieldLabel>
                     <Combobox<{
                       id_department: string;
@@ -481,6 +499,9 @@ export default function AssetAddForm() {
                       onChange={(loc) => field.onChange(loc.id_department)}
                       disabled={isReadonly}
                     />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
                   </Field>
                 )}
               />
@@ -489,8 +510,8 @@ export default function AssetAddForm() {
             <Controller
               name="document_number"
               control={form.control}
-              render={({ field }) => (
-                <Field>
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>No. Dokumen Kontrak / Berkas</FieldLabel>
                   <Input
                     {...field}
@@ -498,6 +519,9 @@ export default function AssetAddForm() {
                     placeholder="DOC-001"
                     readOnly={isReadonly}
                   />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
                 </Field>
               )}
             />
@@ -505,8 +529,8 @@ export default function AssetAddForm() {
             <Controller
               name="no_spb"
               control={form.control}
-              render={({ field }) => (
-                <Field>
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>No. SPB (Surat Penyerahan Barang)</FieldLabel>
                   <Input
                     {...field}
@@ -514,6 +538,9 @@ export default function AssetAddForm() {
                     placeholder="SPB-2024-001"
                     readOnly={isReadonly}
                   />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
                 </Field>
               )}
             />
@@ -522,8 +549,8 @@ export default function AssetAddForm() {
               <Controller
                 name="purchaseDate"
                 control={form.control}
-                render={({ field }) => (
-                  <Field>
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
                     <FieldLabel>Tgl. Beli</FieldLabel>
                     <Input
                       type="date"
@@ -532,14 +559,17 @@ export default function AssetAddForm() {
                       readOnly={isReadonly}
                       className="text-xs"
                     />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
                   </Field>
                 )}
               />
               <Controller
                 name="purchasePrice"
                 control={form.control}
-                render={({ field }) => (
-                  <Field>
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
                     <FieldLabel>Harga Beli</FieldLabel>
                     <Input
                       type="number"
@@ -549,6 +579,9 @@ export default function AssetAddForm() {
                       readOnly={isReadonly}
                       className="text-xs"
                     />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
                   </Field>
                 )}
               />
@@ -558,8 +591,8 @@ export default function AssetAddForm() {
               <Controller
                 name="garansi_exp"
                 control={form.control}
-                render={({ field }) => (
-                  <Field>
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
                     <FieldLabel>Garansi Toko</FieldLabel>
                     <Input
                       type="date"
@@ -568,14 +601,17 @@ export default function AssetAddForm() {
                       readOnly={isReadonly}
                       className="text-xs"
                     />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
                   </Field>
                 )}
               />
               <Controller
                 name="vendorName"
                 control={form.control}
-                render={({ field }) => (
-                  <Field>
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
                     <FieldLabel>Nama Vendor</FieldLabel>
                     <Input
                       {...field}
@@ -584,6 +620,9 @@ export default function AssetAddForm() {
                       readOnly={isReadonly}
                       className="text-xs"
                     />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
                   </Field>
                 )}
               />
@@ -645,7 +684,7 @@ export default function AssetAddForm() {
                       type="number"
                       step="0.1"
                       {...field}
-                      value={field.value ?? ""} // Mencegah error uncontrolled
+                      value={field.value ?? ""}
                       placeholder="Contoh: 4.5"
                       disabled={isReadonly}
                       className="bg-white border-red-200 focus-visible:ring-red-500"
@@ -676,7 +715,7 @@ export default function AssetAddForm() {
                     </FieldLabel>
                     <Input
                       {...field}
-                      value={field.value ?? ""} // Mencegah error uncontrolled
+                      value={field.value ?? ""}
                       placeholder="Contoh: 1.5 Inch atau 2.5 Inch"
                       disabled={isReadonly}
                       className="bg-white border-blue-200 focus-visible:ring-blue-500"
@@ -745,8 +784,8 @@ export default function AssetAddForm() {
         <Controller
           name="notes"
           control={form.control}
-          render={({ field }) => (
-            <Field>
+          render={({ field, fieldState }) => (
+            <Field data-invalid={fieldState.invalid}>
               <FieldLabel>Catatan / Keterangan Kondisi Tambahan</FieldLabel>
               <Textarea
                 {...field}
@@ -755,6 +794,9 @@ export default function AssetAddForm() {
                 rows={3}
                 readOnly={isReadonly}
               />
+              {fieldState.invalid && (
+                <FieldError errors={[fieldState.error]} />
+              )}
             </Field>
           )}
         />

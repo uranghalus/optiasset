@@ -12,15 +12,26 @@ export async function getDashboardData() {
 
   const activeOrgId = session.session?.activeOrganizationId;
   const deptId = session.user.departmentId;
+
   if (!activeOrgId)
     throw new Error('No active organizationId found in session');
+
   const { role } = await auth.api.getActiveMemberRole({
     headers: await headers(),
   });
+
   const isStaff = role === ('staff_asset' as any) || role === 'owner';
-  const assetWhere = {
+
+  // 1. Filter umum (Untuk Asset, Item, dan Stock yang memiliki departmentId langsung)
+  const baseWhere = {
     organizationId: activeOrgId,
     ...(isStaff && deptId ? { departmentId: deptId } : {}),
+  };
+
+  // 2. Filter khusus AuditLog (Karena AuditLog tidak punya departmentId, kita filter lewat relasi User)
+  const auditWhere = {
+    organizationId: activeOrgId,
+    ...(isStaff && deptId ? { user: { departmentId: deptId } } : {}),
   };
 
   // Fetch counts and stats
@@ -32,21 +43,21 @@ export async function getDashboardData() {
     recentAssets,
     lowStockItems,
   ] = await Promise.all([
-    // 1. Total Assets (Fixed Assets)
-    prisma.asset.count({ where: assetWhere }),
+    // 1. Total Assets (Bisa difilter per departemen)
+    prisma.asset.count({ where: baseWhere }),
 
-    // 2. Total Items (Catalog)
-    prisma.item.count({ where: { organizationId: activeOrgId } }),
+    // 2. Total Items (Bisa difilter per departemen karena di schema ada departmentId)
+    prisma.item.count({ where: baseWhere }),
 
-    // 3. Stock Level (Sum of quantity for SUPPLY items)
+    // 3. Stock Level (Bisa difilter per departemen karena di schema ada departmentId)
     prisma.stock.aggregate({
-      where: { organizationId: activeOrgId },
+      where: baseWhere,
       _sum: {
         quantity: true,
       },
     }),
 
-    // 4. Category distribution (for chart)
+    // 4. Category distribution (Tetap Global per Organisasi karena Category tidak punya departmentId)
     prisma.category.findMany({
       where: { organizationId: activeOrgId },
       include: {
@@ -56,9 +67,9 @@ export async function getDashboardData() {
       },
     }),
 
-    // 5. Recent Activity from Audit Logs
+    // 5. Recent Activity from Audit Logs (Difilter lewat relasi user.departmentId)
     prisma.auditLog.findMany({
-      where: { organizationId: activeOrgId },
+      where: auditWhere,
       take: 10,
       orderBy: { createdAt: 'desc' },
       include: {
@@ -68,10 +79,10 @@ export async function getDashboardData() {
       },
     }),
 
-    // 6. Low Stock Items (Supply with quantity < 5)
+    // 6. Low Stock Items (Difilter per departemen)
     prisma.stock.findMany({
       where: {
-        organizationId: activeOrgId,
+        ...baseWhere,
         quantity: { lt: 5 },
         item: {
           assetType: 'SUPPLY',

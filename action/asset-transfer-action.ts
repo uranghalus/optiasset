@@ -1,10 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-'use server';
+"use server";
 
-import { getServerSession } from '@/lib/get-session';
-import { prisma } from '@/lib/prisma';
-import { revalidatePath } from 'next/cache';
-import { createAuditLog } from '@/lib/logger';
+import { getServerSession } from "@/lib/get-session";
+import { prisma } from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
+import { createAuditLog } from "@/lib/logger";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { isGlobalAccess } from "@/lib/filter";
 
 /* =======================
    TYPES
@@ -26,9 +29,14 @@ export async function getAllTransfers({
   status,
 }: TransferArgs) {
   const session = await getServerSession();
-  if (!session) throw new Error('Unauthorized');
+  if (!session) throw new Error("Unauthorized");
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error('No active organizationId found');
+  if (!activeOrgId) throw new Error("No active organizationId found");
+
+  const roleRes = await auth.api.getActiveMemberRole({
+    headers: await headers(),
+  });
+  const role = roleRes?.role;
 
   const safePage = Math.max(1, page);
   const safePageSize = Math.max(1, pageSize);
@@ -41,12 +49,20 @@ export async function getAllTransfers({
     where.status = { in: status };
   }
 
+  // User biasa hanya bisa lihat transfer yang terkait departemen mereka
+  if (!isGlobalAccess(role)) {
+    where.OR = [
+      { fromDeptId: session.user.departmentId },
+      { toDeptId: session.user.departmentId },
+    ];
+  }
+
   const [data, total] = await Promise.all([
     prisma.assetTransfer.findMany({
       where,
       skip,
       take,
-      orderBy: { transferDate: 'desc' },
+      orderBy: { transferDate: "desc" },
       include: {
         asset: {
           select: {
@@ -78,23 +94,23 @@ export async function getAllTransfers({
    ======================= */
 export async function transferAssetAction(formData: FormData) {
   const session = await getServerSession();
-  if (!session) throw new Error('Unauthorized');
+  if (!session) throw new Error("Unauthorized");
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error('No active organizationId found');
+  if (!activeOrgId) throw new Error("No active organizationId found");
 
-  const assetId = formData.get('assetId')?.toString();
-  const toLocationId = formData.get('toLocationId')?.toString();
-  const toDeptId = formData.get('toDeptId')?.toString();
-  const toDivId = formData.get('toDivId')?.toString();
-  const reason = formData.get('reason')?.toString() || null;
+  const assetId = formData.get("assetId")?.toString();
+  const toLocationId = formData.get("toLocationId")?.toString();
+  const toDeptId = formData.get("toDeptId")?.toString();
+  const toDivId = formData.get("toDivId")?.toString();
+  const reason = formData.get("reason")?.toString() || null;
 
-  if (!assetId) throw new Error('Asset ID is required');
+  if (!assetId) throw new Error("Asset ID is required");
 
   const asset = await prisma.asset.findFirst({
     where: { id: assetId, organizationId: activeOrgId },
   });
 
-  if (!asset) throw new Error('Asset not found');
+  if (!asset) throw new Error("Asset not found");
 
   const oldLocationId = asset.locationId;
   const oldDeptId = asset.departmentId;
@@ -110,13 +126,13 @@ export async function transferAssetAction(formData: FormData) {
       toDivId: toDivId,
       reason,
       transferBy: session.user.name,
-      status: 'PENDING',
+      status: "PENDING",
       organizationId: activeOrgId,
     },
   });
 
-  revalidatePath('/assets');
-  revalidatePath('/asset-transfers');
+  revalidatePath("/assets");
+  revalidatePath("/asset-transfers");
   return result;
 }
 
@@ -125,12 +141,12 @@ export async function transferAssetAction(formData: FormData) {
    ======================= */
 export async function approveAssetTransferAction(
   id: string,
-  status: 'APPROVED' | 'REJECTED',
+  status: "APPROVED" | "REJECTED",
 ) {
   const session = await getServerSession();
-  if (!session) throw new Error('Unauthorized');
+  if (!session) throw new Error("Unauthorized");
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error('No active organizationId found');
+  if (!activeOrgId) throw new Error("No active organizationId found");
 
   const transfer = await prisma.assetTransfer.findUnique({
     where: { id },
@@ -138,11 +154,11 @@ export async function approveAssetTransferAction(
   });
 
   if (!transfer || transfer.organizationId !== activeOrgId) {
-    throw new Error('Transfer not found');
+    throw new Error("Transfer not found");
   }
 
-  if (transfer.status !== 'PENDING') {
-    throw new Error('Transfer already processed');
+  if (transfer.status !== "PENDING") {
+    throw new Error("Transfer already processed");
   }
 
   const result = await prisma.$transaction(async (tx) => {
@@ -154,7 +170,7 @@ export async function approveAssetTransferAction(
       },
     });
 
-    if (status === 'APPROVED') {
+    if (status === "APPROVED") {
       const updatedAsset = await tx.asset.update({
         where: { id: transfer.assetId },
         data: {
@@ -183,11 +199,11 @@ export async function approveAssetTransferAction(
             assetId: transfer.assetId,
             organizationId: activeOrgId,
             userId: session.user.id, // User yang menyetujui transfer
-            action: 'TRANSFER',
-            field: 'location/department',
-            oldValue: `Loc: ${transfer.fromLocationId || '-'} | Dept: ${transfer.fromDeptId || '-'}`,
-            newValue: `Loc: ${transfer.toLocationId || '-'} | Dept: ${transfer.toDeptId || '-'}`,
-            asset_info: `Transfer Disetujui. Alasan: ${transfer.reason || 'N/A'}`,
+            action: "TRANSFER",
+            field: "location/department",
+            oldValue: `Loc: ${transfer.fromLocationId || "-"} | Dept: ${transfer.fromDeptId || "-"}`,
+            newValue: `Loc: ${transfer.toLocationId || "-"} | Dept: ${transfer.toDeptId || "-"}`,
+            asset_info: `Transfer Disetujui. Alasan: ${transfer.reason || "N/A"}`,
           },
         });
         await tx.stock.upsert({
@@ -212,10 +228,10 @@ export async function approveAssetTransferAction(
       await createAuditLog({
         userId: session.user.id,
         organizationId: activeOrgId,
-        action: 'TRANSFER_APPROVED',
-        entityType: 'ASSET',
+        action: "TRANSFER_APPROVED",
+        entityType: "ASSET",
         entityId: transfer.assetId,
-        entityInfo: `${updatedAsset.kode_asset || 'N/A'} - ${updatedAsset.itemId || 'N/A'}`,
+        entityInfo: `${updatedAsset.kode_asset || "N/A"} - ${updatedAsset.itemId || "N/A"}`,
         details: {
           transferId: id,
           fromLocationId: transfer.fromLocationId,
@@ -228,7 +244,7 @@ export async function approveAssetTransferAction(
     return updatedTransfer;
   });
 
-  revalidatePath('/assets');
-  revalidatePath('/asset-transfers');
+  revalidatePath("/assets");
+  revalidatePath("/asset-transfers");
   return result;
 }

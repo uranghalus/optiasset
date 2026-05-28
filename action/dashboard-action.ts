@@ -20,24 +20,23 @@ export async function getDashboardData() {
     headers: await headers(),
   });
 
-  const isStaff = role === ('staff_asset' as any) || role === 'owner';
+  // Menentukan sama ada data perlu ditapis mengikut jabatan.
+  // Jika role BUKAN 'staff_asset' dan BUKAN 'owner', maka tapis mengikut jabatan pengguna yang log masuk.
+  const shouldFilterByDept = role !== 'staff_asset' && role !== 'owner';
 
-  // 1. Filter umum (Untuk Asset, Item, dan Stock)
+  // 1. Tapisan umum (Untuk Asset, Item, dan Stock)
   const baseWhere = {
     organizationId: activeOrgId,
-    ...(isStaff && deptId ? { departmentId: deptId } : {}),
+    ...(shouldFilterByDept && deptId ? { departmentId: deptId } : {}),
   };
 
-  // 2. Filter khusus AuditLog
-  // Jika role BUKAN 'staff_asset', maka filter berdasarkan departmentId dari user yang login
+  // 2. Tapisan khusus untuk AuditLog
   const auditWhere = {
     organizationId: activeOrgId,
-    ...(role !== ('staff_asset' as any) && deptId
-      ? { user: { departmentId: deptId } }
-      : {}),
+    ...(shouldFilterByDept && deptId ? { user: { departmentId: deptId } } : {}),
   };
 
-  // Fetch counts and stats
+  // Mengambil kiraan dan statistik
   const [
     totalAssets,
     totalItems,
@@ -46,13 +45,13 @@ export async function getDashboardData() {
     recentAssets,
     lowStockItems,
   ] = await Promise.all([
-    // 1. Total Assets (Bisa difilter per departemen)
+    // 1. Jumlah Assets (Ditapis mengikut jabatan jika bukan staff_asset/owner)
     prisma.asset.count({ where: baseWhere }),
 
-    // 2. Total Items (Bisa difilter per departemen karena di schema ada departmentId)
+    // 2. Jumlah Items (Ditapis mengikut jabatan jika bukan staff_asset/owner)
     prisma.item.count({ where: baseWhere }),
 
-    // 3. Stock Level (Bisa difilter per departemen karena di schema ada departmentId)
+    // 3. Tahap Stok (Ditapis mengikut jabatan jika bukan staff_asset/owner)
     prisma.stock.aggregate({
       where: baseWhere,
       _sum: {
@@ -60,17 +59,23 @@ export async function getDashboardData() {
       },
     }),
 
-    // 4. Category distribution (Tetap Global per Organisasi karena Category tidak punya departmentId)
+    // 4. Pengagihan Kategori
+    // Kategori adalah global, tetapi kiraan item di dalamnya mesti mengikut jabatan pengguna
     prisma.category.findMany({
       where: { organizationId: activeOrgId },
       include: {
         _count: {
-          select: { items: true },
+          select: {
+            items: {
+              where:
+                shouldFilterByDept && deptId ? { departmentId: deptId } : {},
+            },
+          },
         },
       },
     }),
 
-    //LINK 5. Recent Activity from Audit Logs (Filter baru diterapkan di sini)
+    // 5. Aktiviti Terkini dari Log Audit (Ditapis melalui departmentId pengguna)
     prisma.auditLog.findMany({
       where: auditWhere,
       take: 10,
@@ -82,7 +87,7 @@ export async function getDashboardData() {
       },
     }),
 
-    // 6. Low Stock Items (Difilter per departemen)
+    // 6. Barangan Stok Rendah (Ditapis mengikut jabatan jika bukan staff_asset/owner)
     prisma.stock.findMany({
       where: {
         ...baseWhere,
@@ -111,8 +116,10 @@ export async function getDashboardData() {
         name: cat.name,
         value: cat._count.items,
       }))
+      // Hanya tunjukkan kategori yang mempunyai item berdasarkan tapisan jabatan tadi
       .filter((c) => c.value > 0),
-    // LINK Aktivitas Terbaru
+
+    // Aktiviti Terkini
     recentActivity: recentAssets.map((log: any) => ({
       id: log.id,
       action: log.action,
@@ -121,6 +128,8 @@ export async function getDashboardData() {
       userName: log.user?.name || 'System',
       createdAt: log.createdAt,
     })),
+
+    // Barangan Stok Rendah
     lowStockItems: lowStockItems.map((s) => ({
       name: s.item.name,
       code: s.item.code,

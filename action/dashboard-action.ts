@@ -22,7 +22,8 @@ export async function getDashboardData() {
 
   // Menentukan sama ada data perlu ditapis mengikut jabatan.
   // Jika role BUKAN 'staff_asset' dan BUKAN 'owner', maka tapis mengikut jabatan pengguna yang log masuk.
-  const shouldFilterByDept = role !== 'staff_asset' && role !== 'owner';
+  const shouldFilterByDept =
+    role !== ('staff_asset' as any) && role !== 'owner';
 
   // 1. Tapisan umum (Untuk Asset, Item, dan Stock)
   const baseWhere = {

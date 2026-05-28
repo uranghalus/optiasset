@@ -22,16 +22,19 @@ export async function getDashboardData() {
 
   const isStaff = role === ('staff_asset' as any) || role === 'owner';
 
-  // 1. Filter umum (Untuk Asset, Item, dan Stock yang memiliki departmentId langsung)
+  // 1. Filter umum (Untuk Asset, Item, dan Stock)
   const baseWhere = {
     organizationId: activeOrgId,
     ...(isStaff && deptId ? { departmentId: deptId } : {}),
   };
 
-  // 2. Filter khusus AuditLog (Karena AuditLog tidak punya departmentId, kita filter lewat relasi User)
+  // 2. Filter khusus AuditLog
+  // Jika role BUKAN 'staff_asset', maka filter berdasarkan departmentId dari user yang login
   const auditWhere = {
     organizationId: activeOrgId,
-    ...(isStaff && deptId ? { user: { departmentId: deptId } } : {}),
+    ...(role !== ('staff_asset' as any) && deptId
+      ? { user: { departmentId: deptId } }
+      : {}),
   };
 
   // Fetch counts and stats
@@ -67,14 +70,14 @@ export async function getDashboardData() {
       },
     }),
 
-    // 5. Recent Activity from Audit Logs (Difilter lewat relasi user.departmentId)
+    //LINK 5. Recent Activity from Audit Logs (Filter baru diterapkan di sini)
     prisma.auditLog.findMany({
       where: auditWhere,
       take: 10,
       orderBy: { createdAt: 'desc' },
       include: {
         user: {
-          select: { name: true, image: true },
+          select: { name: true, image: true, departmentId: true },
         },
       },
     }),
@@ -109,6 +112,7 @@ export async function getDashboardData() {
         value: cat._count.items,
       }))
       .filter((c) => c.value > 0),
+    // LINK Aktivitas Terbaru
     recentActivity: recentAssets.map((log: any) => ({
       id: log.id,
       action: log.action,

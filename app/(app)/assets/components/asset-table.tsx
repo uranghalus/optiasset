@@ -35,11 +35,16 @@ import { AssetBulkAction } from "./asset-bulk-action";
 import { useSelectDepartment } from "@/hooks/crud/use-department";
 import { useDebounce } from "@/hooks/use-debounce";
 
+import { useSearchParams } from "next/navigation";
+
 export default function AssetTable() {
   const { setOpen } = useDialog();
   const { can } = usePermission();
   const { data: role } = useActiveMemberRole();
   const { data: departments = [] } = useSelectDepartment();
+
+  const searchParams = useSearchParams();
+  const categoryId = searchParams.get("categoryId") || undefined;
 
   const [pagination, setPagination] = useState({
     pageIndex: 0,
@@ -63,6 +68,7 @@ export default function AssetTable() {
     pageSize: pagination.pageSize,
     departmentId: selectedDept,
     condition: selectedCondition,
+    categoryId,
     search: debouncedSearch,
   });
   const isLoading = assetLoading || isFetching;

@@ -27,6 +27,7 @@ export type AssetArgs = {
   pageSize: number;
   departmentId?: string[];
   condition?: string[];
+  categoryId?: string;
   search?: string;
   organizationId?: string;
 };
@@ -40,6 +41,7 @@ export async function getAllAssets({
   pageSize,
   departmentId,
   condition,
+  categoryId,
   search,
 }: AssetArgs) {
   const session = await getServerSession();
@@ -58,6 +60,7 @@ export async function getAllAssets({
     userDepartmentId: session.user.departmentId,
     filterDepartmentId: departmentId,
     condition,
+    categoryId,
     search,
     organizationId: activeOrgId,
   });

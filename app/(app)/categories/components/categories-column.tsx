@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 // import { CategoryRowActions } from "./category-row-action";
 import { Category } from "@/generated/prisma/client";
 import CategoriesRowAction from "./categories-row-action";
+import Link from "next/link";
 
 // Extended type to include count
 type AssetCategoryWithCount = Category & {
@@ -79,7 +80,14 @@ export const categoryColumns: ColumnDef<AssetCategoryWithCount>[] = [
             <DataTableColumnHeader column={column} title="Assets" />
         ),
         cell: ({ row }) => (
-            <div className="ps-2">{row.original._count?.assets ?? 0}</div>
+            <div className="ps-2">
+                <Link 
+                    href={`/assets?categoryId=${row.original.id}`}
+                    className="text-primary hover:underline font-medium"
+                >
+                    {row.original._count?.assets ?? 0}
+                </Link>
+            </div>
         ),
         size: 100,
     },

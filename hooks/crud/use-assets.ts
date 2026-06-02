@@ -24,12 +24,13 @@ export function useAssets({
   pageSize,
   condition,
   departmentId,
+  categoryId,
   search,
 }: PaginationState) {
   return useQuery({
-    queryKey: ['assets', page, pageSize, condition, departmentId, search],
+    queryKey: ['assets', page, pageSize, condition, departmentId, categoryId, search],
     queryFn: () =>
-      getAllAssets({ page, pageSize, condition, departmentId, search }),
+      getAllAssets({ page, pageSize, condition, departmentId, categoryId, search }),
   });
 }
 interface UseAssetByIdProps {

@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   description: "Manajemen daftar unit aset perusahaan",
 };
 
+import { Suspense } from "react";
+
 export default function AssetsPage() {
   return (
     <DialogProvider>
@@ -21,7 +23,9 @@ export default function AssetsPage() {
             </p>
           </div>
         </div>
-        <AssetTable />
+        <Suspense fallback={<div>Loading assets...</div>}>
+          <AssetTable />
+        </Suspense>
       </div>
 
       {/* Dialog khusus asset */}

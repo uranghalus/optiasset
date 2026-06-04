@@ -502,7 +502,6 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                     {...field}
                     value={field.value ?? ""}
                     placeholder="Lenovo / Yamato"
-                    readOnly={isReadonly}
                   />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
@@ -686,7 +685,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                       {...field}
                       value={field.value ?? ""}
                       placeholder="0"
-                      readOnly={isReadonly}
+
                       className="text-xs"
                     />
                     {fieldState.invalid && (

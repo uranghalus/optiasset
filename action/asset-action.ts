@@ -529,6 +529,8 @@ export async function updateAsset(id: string, formData: FormData) {
   } else if (photoFile && photoFile.size > 0) {
     if (asset.photoUrl) await deleteS3File(asset.photoUrl);
     finalPhotoUrl = await uploadToS3(photoFile, 'asset-photos');
+    // Cek apakah hasil upload me-return nama file/URL yang benar
+    console.log('2. HASIL UPLOAD S3:', finalPhotoUrl);
   }
 
   const newItemId = formData.get('itemId')?.toString() || asset.itemId;

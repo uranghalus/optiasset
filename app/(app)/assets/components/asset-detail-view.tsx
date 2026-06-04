@@ -41,32 +41,7 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
 
     // STATE UNTUK GAMBAR
     const [imageError, setImageError] = useState(false);
-    const [signedUrl, setSignedUrl] = useState<string | null>(null);
-    const [isLoadingImage, setIsLoadingImage] = useState(true);
-
-    // FETCH SIGNED URL DARI S3 SAAT KOMPONEN DI-MOUNT
-    useEffect(() => {
-        let isMounted = true;
-
-        async function fetchImageUrl() {
-            if (asset.photoUrl) {
-                setIsLoadingImage(true);
-                const url = await getS3SignedUrlAction(asset.photoUrl);
-                if (isMounted) {
-                    setSignedUrl(url);
-                    setIsLoadingImage(false);
-                }
-            } else {
-                if (isMounted) setIsLoadingImage(false);
-            }
-        }
-
-        fetchImageUrl();
-
-        return () => {
-            isMounted = false;
-        };
-    }, [asset.photoUrl]);
+    console.log('Data:', asset);
 
     const getConditionBadge = (condition: string) => {
         const variants = {

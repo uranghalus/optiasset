@@ -55,6 +55,7 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
     const { setOpen, setCurrentRow } = useDialog();
     const { can } = usePermission();
     const [imageError, setImageError] = useState(false);
+    console.log('Data:', asset);
 
     const getConditionBadge = (condition: string) => {
         const variants = {

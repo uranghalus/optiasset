@@ -533,274 +533,291 @@ export async function updateAsset(id: string, formData: FormData) {
 
   const newItemId = formData.get('itemId')?.toString() || asset.itemId;
 
-  const updated = await prisma.$transaction(async (tx) => {
-    const newLocationId = formData.get('locationId')?.toString();
-    const oldLocationId = asset.locationId;
+  try {
+    const updated = await prisma.$transaction(async (tx) => {
+      const newLocationId = formData.get('locationId')?.toString();
+      const oldLocationId = asset.locationId;
 
-    let finalKodeAsset = asset.kode_asset;
-    let assetGroupId = asset.assetGroupId || null;
-    let assetCategoryId = asset.assetCategoryId || null;
-    let assetClusterId = asset.assetClusterId || null;
-    let assetSubClusterId = asset.assetSubClusterId || null;
-
-    if (newItemId !== asset.itemId) {
-      const itemMaster = await tx.item.findUnique({
-        where: { id: newItemId },
-        include: { category: true },
-      });
-
-      if (itemMaster?.category) {
-        const prefix = itemMaster.category.code || '';
-
-        if (prefix) {
-          const lastAsset = await tx.asset.findFirst({
-            where: {
-              organizationId: activeOrgId,
-              kode_asset: { startsWith: prefix + '.' },
-            },
-            orderBy: { kode_asset: 'desc' },
-          });
-
-          let nextSequence = 1;
-          if (lastAsset?.kode_asset) {
-            const parts = lastAsset.kode_asset.split('.');
-            const lastSeq = Number(parts[parts.length - 1]);
-            if (!isNaN(lastSeq)) nextSequence = lastSeq + 1;
-          }
-          finalKodeAsset = `${prefix}.${String(nextSequence).padStart(4, '0')}`;
-        }
-
-        if (
-          itemMaster.category.classificationId &&
-          itemMaster.category.classificationType
-        ) {
-          const targetId = itemMaster.category.classificationId;
-          const type = itemMaster.category.classificationType;
-
-          assetGroupId = null;
-          assetCategoryId = null;
-          assetClusterId = null;
-          assetSubClusterId = null;
-
-          if (type === 'SUBCLUSTER') {
-            const sub = await tx.assetSubCluster.findUnique({
-              where: { id: targetId },
-              include: { assetCluster: { include: { assetCategory: true } } },
-            });
-            assetSubClusterId = targetId;
-            assetClusterId = sub?.assetClusterId || null;
-            assetCategoryId = sub?.assetCluster?.assetCategoryId || null;
-            assetGroupId =
-              sub?.assetCluster?.assetCategory?.assetGroupId || null;
-          } else if (type === 'CLUSTER') {
-            const clust = await tx.assetCluster.findUnique({
-              where: { id: targetId },
-              include: { assetCategory: true },
-            });
-            assetClusterId = targetId;
-            assetCategoryId = clust?.assetCategoryId || null;
-            assetGroupId = clust?.assetCategory?.assetGroupId || null;
-          } else if (type === 'CATEGORY') {
-            const cat = await tx.assetCategory.findUnique({
-              where: { id: targetId },
-            });
-            assetCategoryId = targetId;
-            assetGroupId = cat?.assetGroupId || null;
-          } else if (type === 'GROUP') {
-            assetGroupId = targetId;
-          }
-        }
-      }
-    }
-
-    const result = await tx.asset.update({
-      where: { id },
-      data: {
-        itemId: newItemId,
-        purchaseDate: formData.has('purchaseDate')
-          ? parseDateOrNull('purchaseDate')
-          : asset.purchaseDate,
-        purchasePrice: formData.has('purchasePrice')
-          ? parseFloatOrNull('purchasePrice')
-          : asset.purchasePrice,
-        condition: formData.has('condition')
-          ? formData.get('condition')?.toString() || null
-          : asset.condition,
-        warrantyExpire: formData.has('warrantyExpire')
-          ? parseDateOrNull('warrantyExpire')
-          : asset.warrantyExpire,
-        brand: formData.has('brand')
-          ? formData.get('brand')?.toString() || null
-          : asset.brand,
-        model: formData.has('model')
-          ? formData.get('model')?.toString() || null
-          : asset.model,
-        partNumber: formData.has('partNumber')
-          ? formData.get('partNumber')?.toString() || null
-          : asset.partNumber,
-        serialNumber: formData.has('serialNumber')
-          ? formData.get('serialNumber')?.toString() || null
-          : asset.serialNumber,
-        document_number: formData.has('document_number')
-          ? formData.get('document_number')?.toString() || null
-          : asset.document_number,
-        no_spb: formData.has('no_spb')
-          ? formData.get('no_spb')?.toString() || null
-          : asset.no_spb,
-        locationId: newLocationId || asset.locationId,
-        departmentId: finalDepartmentId,
-        notes: formData.has('notes')
-          ? formData.get('notes')?.toString() || null
-          : asset.notes,
-        vendorName: formData.has('vendorName')
-          ? formData.get('vendorName')?.toString() || null
-          : asset.vendorName,
-        garansi_exp: formData.has('garansi_exp')
-          ? parseDateOrNull('garansi_exp')
-          : asset.garansi_exp,
-        photoUrl: finalPhotoUrl,
-        updatedAt: new Date(),
-        kode_asset: finalKodeAsset,
-
-        assetGroupId,
-        assetCategoryId,
-        assetClusterId,
-        assetSubClusterId,
-
-        ...(newItemId !== asset.itemId && {
-          assetSubClusters: {
-            set: [],
-            ...(assetSubClusterId
-              ? { connect: [{ id: assetSubClusterId }] }
-              : {}),
-          },
-        }),
-      },
-    });
-
-    // INTELEJEN UPSERT/CLEANUP UNTUK APAR & HYDRANT
-    const currentItem = await tx.item.findUnique({ where: { id: newItemId } });
-    const lowerUnitName = String(currentItem?.name || '').toLowerCase();
-
-    // 1. APAR
-    if (
-      lowerUnitName.includes('apar') ||
-      lowerUnitName.includes('fire extinguisher')
-    ) {
-      let jenis = formData.get('aparJenis')?.toString() as
-        | 'CO2'
-        | 'Powder'
-        | 'Foam'
-        | 'Air'
-        | undefined;
-      let size = formData.get('aparSize')
-        ? parseFloat(formData.get('aparSize') as string)
-        : null;
+      let finalKodeAsset = asset.kode_asset;
+      let assetGroupId = asset.assetGroupId || null;
+      let assetCategoryId = asset.assetCategoryId || null;
+      let assetClusterId = asset.assetClusterId || null;
+      let assetSubClusterId = asset.assetSubClusterId || null;
 
       if (newItemId !== asset.itemId) {
-        if (!jenis) {
-          jenis = 'Powder';
-          if (lowerUnitName.includes('co2')) jenis = 'CO2';
-          else if (lowerUnitName.includes('foam')) jenis = 'Foam';
-          else if (
-            lowerUnitName.includes('air') ||
-            lowerUnitName.includes('water')
-          )
-            jenis = 'Air';
+        const itemMaster = await tx.item.findUnique({
+          where: { id: newItemId },
+          include: { category: true },
+        });
+
+        if (itemMaster?.category) {
+          const prefix = itemMaster.category.code || '';
+
+          if (prefix) {
+            const lastAsset = await tx.asset.findFirst({
+              where: {
+                organizationId: activeOrgId,
+                kode_asset: { startsWith: prefix + '.' },
+              },
+              orderBy: { kode_asset: 'desc' },
+            });
+
+            let nextSequence = 1;
+            if (lastAsset?.kode_asset) {
+              const parts = lastAsset.kode_asset.split('.');
+              const lastSeq = Number(parts[parts.length - 1]);
+              if (!isNaN(lastSeq)) nextSequence = lastSeq + 1;
+            }
+            finalKodeAsset = `${prefix}.${String(nextSequence).padStart(4, '0')}`;
+          }
+
+          if (
+            itemMaster.category.classificationId &&
+            itemMaster.category.classificationType
+          ) {
+            const targetId = itemMaster.category.classificationId;
+            const type = itemMaster.category.classificationType;
+
+            assetGroupId = null;
+            assetCategoryId = null;
+            assetClusterId = null;
+            assetSubClusterId = null;
+
+            if (type === 'SUBCLUSTER') {
+              const sub = await tx.assetSubCluster.findUnique({
+                where: { id: targetId },
+                include: { assetCluster: { include: { assetCategory: true } } },
+              });
+              assetSubClusterId = targetId;
+              assetClusterId = sub?.assetClusterId || null;
+              assetCategoryId = sub?.assetCluster?.assetCategoryId || null;
+              assetGroupId =
+                sub?.assetCluster?.assetCategory?.assetGroupId || null;
+            } else if (type === 'CLUSTER') {
+              const clust = await tx.assetCluster.findUnique({
+                where: { id: targetId },
+                include: { assetCategory: true },
+              });
+              assetClusterId = targetId;
+              assetCategoryId = clust?.assetCategoryId || null;
+              assetGroupId = clust?.assetCategory?.assetGroupId || null;
+            } else if (type === 'CATEGORY') {
+              const cat = await tx.assetCategory.findUnique({
+                where: { id: targetId },
+              });
+              assetCategoryId = targetId;
+              assetGroupId = cat?.assetGroupId || null;
+            } else if (type === 'GROUP') {
+              assetGroupId = targetId;
+            }
+          }
         }
-        if (!size || isNaN(size)) {
-          const sizeMatch = lowerUnitName.match(
-            /(\d+(\.\d+)?)\s*(kg|liter|l)/i,
-          );
-          size = sizeMatch ? parseFloat(sizeMatch[1]) : 4.5;
-        }
       }
 
-      if (jenis && size) {
-        await tx.aparDetail.upsert({
-          where: { assetId: id },
-          create: { assetId: id, organizationId: activeOrgId, jenis, size },
-          update: { jenis, size },
-        });
-      }
-    } else {
-      await tx.aparDetail.deleteMany({ where: { assetId: id } });
-    }
-
-    // 2. HYDRANT
-    if (lowerUnitName.includes('hydrant')) {
-      let ukuran = formData.get('hydrantUkuran')?.toString();
-      if (newItemId !== asset.itemId && !ukuran) {
-        const sizeMatch = lowerUnitName.match(
-          /(\d+(\.\d+)?)\s*(inch|in|"|cm)/i,
-        );
-        ukuran = sizeMatch ? `${sizeMatch[1]} ${sizeMatch[3]}` : '1.5 inch';
-      }
-      if (ukuran) {
-        await tx.hydrantDetail.upsert({
-          where: { assetId: id },
-          create: { assetId: id, organizationId: activeOrgId, ukuran },
-          update: { ukuran },
-        });
-      }
-    } else {
-      await tx.hydrantDetail.deleteMany({ where: { assetId: id } });
-    }
-
-    // Sync Stock
-    if (newLocationId && newLocationId !== oldLocationId) {
-      if (oldLocationId) {
-        await tx.stock.updateMany({
-          where: { itemId: asset.itemId, locationId: oldLocationId },
-          data: { quantity: { decrement: 1 } },
-        });
-      }
-      await tx.assetHistory.create({
+      const result = await tx.asset.update({
+        where: { id },
         data: {
-          assetId: id,
-          organizationId: activeOrgId,
-          userId: session.user.id,
-          action: 'TRANSFER_LOCATION',
-          field: 'locationId',
-          oldValue: oldLocationId || 'N/A',
-          newValue: newLocationId,
-          asset_info: `${result.kode_asset || id} - ${result.itemId}`,
+          itemId: newItemId,
+          purchaseDate: formData.has('purchaseDate')
+            ? parseDateOrNull('purchaseDate')
+            : asset.purchaseDate,
+          purchasePrice: formData.has('purchasePrice')
+            ? parseFloatOrNull('purchasePrice')
+            : asset.purchasePrice,
+          condition: formData.has('condition')
+            ? formData.get('condition')?.toString() || null
+            : asset.condition,
+          warrantyExpire: formData.has('warrantyExpire')
+            ? parseDateOrNull('warrantyExpire')
+            : asset.warrantyExpire,
+          brand: formData.has('brand')
+            ? formData.get('brand')?.toString() || null
+            : asset.brand,
+          model: formData.has('model')
+            ? formData.get('model')?.toString() || null
+            : asset.model,
+          partNumber: formData.has('partNumber')
+            ? formData.get('partNumber')?.toString() || null
+            : asset.partNumber,
+          serialNumber: formData.has('serialNumber')
+            ? formData.get('serialNumber')?.toString() || null
+            : asset.serialNumber,
+          document_number: formData.has('document_number')
+            ? formData.get('document_number')?.toString() || null
+            : asset.document_number,
+          no_spb: formData.has('no_spb')
+            ? formData.get('no_spb')?.toString() || null
+            : asset.no_spb,
+          locationId: newLocationId || asset.locationId,
+          departmentId: finalDepartmentId,
+          notes: formData.has('notes')
+            ? formData.get('notes')?.toString() || null
+            : asset.notes,
+          vendorName: formData.has('vendorName')
+            ? formData.get('vendorName')?.toString() || null
+            : asset.vendorName,
+          garansi_exp: formData.has('garansi_exp')
+            ? parseDateOrNull('garansi_exp')
+            : asset.garansi_exp,
+          photoUrl: finalPhotoUrl,
+          updatedAt: new Date(),
+          kode_asset: finalKodeAsset,
+
+          assetGroupId,
+          assetCategoryId,
+          assetClusterId,
+          assetSubClusterId,
+
+          ...(newItemId !== asset.itemId && {
+            assetSubClusters: {
+              set: [],
+              ...(assetSubClusterId
+                ? { connect: [{ id: assetSubClusterId }] }
+                : {}),
+            },
+          }),
         },
       });
-      await tx.stock.upsert({
-        where: {
-          itemId_locationId: {
+
+      // INTELEJEN UPSERT/CLEANUP UNTUK APAR & HYDRANT
+      const currentItem = await tx.item.findUnique({ where: { id: newItemId } });
+      const lowerUnitName = String(currentItem?.name || '').toLowerCase();
+
+      // 1. APAR
+      if (
+        lowerUnitName.includes('apar') ||
+        lowerUnitName.includes('fire extinguisher')
+      ) {
+        let jenis = formData.get('aparJenis')?.toString() as
+          | 'CO2'
+          | 'Powder'
+          | 'Foam'
+          | 'Air'
+          | undefined;
+        let size = formData.get('aparSize')
+          ? parseFloat(formData.get('aparSize') as string)
+          : null;
+
+        if (newItemId !== asset.itemId) {
+          if (!jenis) {
+            jenis = 'Powder';
+            if (lowerUnitName.includes('co2')) jenis = 'CO2';
+            else if (lowerUnitName.includes('foam')) jenis = 'Foam';
+            else if (
+              lowerUnitName.includes('air') ||
+              lowerUnitName.includes('water')
+            )
+              jenis = 'Air';
+          }
+          if (!size || isNaN(size)) {
+            const sizeMatch = lowerUnitName.match(
+              /(\d+(\.\d+)?)\s*(kg|liter|l)/i,
+            );
+            size = sizeMatch ? parseFloat(sizeMatch[1]) : 4.5;
+          }
+        }
+
+        if (jenis && size) {
+          await tx.aparDetail.upsert({
+            where: { assetId: id },
+            create: { assetId: id, organizationId: activeOrgId, jenis, size },
+            update: { jenis, size },
+          });
+        }
+      } else {
+        await tx.aparDetail.deleteMany({ where: { assetId: id } });
+      }
+
+      // 2. HYDRANT
+      if (lowerUnitName.includes('hydrant')) {
+        let ukuran = formData.get('hydrantUkuran')?.toString();
+        if (newItemId !== asset.itemId && !ukuran) {
+          const sizeMatch = lowerUnitName.match(
+            /(\d+(\.\d+)?)\s*(inch|in|"|cm)/i,
+          );
+          ukuran = sizeMatch ? `${sizeMatch[1]} ${sizeMatch[3]}` : '1.5 inch';
+        }
+        if (ukuran) {
+          await tx.hydrantDetail.upsert({
+            where: { assetId: id },
+            create: { assetId: id, organizationId: activeOrgId, ukuran },
+            update: { ukuran },
+          });
+        }
+      } else {
+        await tx.hydrantDetail.deleteMany({ where: { assetId: id } });
+      }
+
+      // Sync Stock
+      if (newLocationId && newLocationId !== oldLocationId) {
+        if (oldLocationId) {
+          await tx.stock.updateMany({
+            where: { itemId: asset.itemId, locationId: oldLocationId },
+            data: { quantity: { decrement: 1 } },
+          });
+        }
+        await tx.assetHistory.create({
+          data: {
+            assetId: id,
+            organizationId: activeOrgId,
+            userId: session.user.id,
+            action: 'TRANSFER_LOCATION',
+            field: 'locationId',
+            oldValue: oldLocationId || 'N/A',
+            newValue: newLocationId,
+            asset_info: `${result.kode_asset || id} - ${result.itemId}`,
+          },
+        });
+        await tx.stock.upsert({
+          where: {
+            itemId_locationId: {
+              itemId: result.itemId,
+              locationId: newLocationId,
+            },
+          },
+          create: {
             itemId: result.itemId,
             locationId: newLocationId,
+            organizationId: activeOrgId,
+            quantity: 1,
           },
-        },
-        create: {
-          itemId: result.itemId,
-          locationId: newLocationId,
-          organizationId: activeOrgId,
-          quantity: 1,
-        },
-        update: { quantity: { increment: 1 } },
-      });
-    }
+          update: { quantity: { increment: 1 } },
+        });
+      }
 
-    await createAuditLog({
-      userId: session.user.id,
-      organizationId: activeOrgId,
-      action: 'UPDATE',
-      entityType: 'ASSET',
-      entityId: id,
-      details: { message: 'Asset updated successfully' },
-      tx,
+      await createAuditLog({
+        userId: session.user.id,
+        organizationId: activeOrgId,
+        action: 'UPDATE',
+        entityType: 'ASSET',
+        entityId: id,
+        details: { message: 'Asset updated successfully' },
+        tx,
+      });
+
+      return result;
     });
 
-    return result;
-  });
+    revalidatePath('/assets');
+    return { success: true, data: updated };
 
-  revalidatePath('/assets');
-  return updated;
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        return {
+          success: false,
+          error: 'An asset with this serial number already exists in your organization. Please use a unique serial number.'
+        };
+      }
+    }
+
+    console.error('Failed to update asset:', error);
+    return {
+      success: false,
+      error: 'An unexpected error occurred while updating the asset.'
+    };
+  }
 }
-
 /* =======================
    DELETE ASSET
  ======================= */

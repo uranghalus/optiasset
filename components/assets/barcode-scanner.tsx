@@ -7,9 +7,7 @@ interface BarcodeScannerProps {
 }
 
 const videoConstraints: MediaTrackConstraints = {
-  facingMode: 'environment',
-  width: { ideal: 1920 },
-  height: { ideal: 1080 },
+  facingMode: 'environment'
 };
 
 export function BarcodeScanner({ onScanSuccess }: BarcodeScannerProps) {

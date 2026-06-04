@@ -11,7 +11,7 @@ import {
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAssetLookup } from "@/hooks/crud/use-assets";
 
 const BarcodeScanner = dynamic(
@@ -27,6 +27,16 @@ export function BarcodeScannerDialog() {
   const [processing, setProcessing] = useState(false);
   const [scanned, setScanned] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+
+  useEffect(() => {
+    if (open === "scan") {
+      const timer = setTimeout(() => setShowScanner(true), 300);
+      return () => clearTimeout(timer);
+    } else {
+      setShowScanner(false);
+      setScanned(false);
+    }
+  }, [open]);
   const handleScanSuccess = async (decodedText: string) => {
     if (scanned) return;
 
@@ -81,11 +91,6 @@ export function BarcodeScannerDialog() {
       onOpenChange={(val) => {
         if (!val) {
           setOpen(null);
-          setScanned(false);
-          setShowScanner(false); // Reset
-        } else {
-          // Kasih delay sedikit untuk animasi dialog
-          setTimeout(() => setShowScanner(true), 300);
         }
       }}
     >

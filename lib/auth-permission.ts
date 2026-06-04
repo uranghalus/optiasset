@@ -81,7 +81,7 @@ export const statement = {
     'cancel',
     'cross_department',
   ],
-
+  'asset.disposal': ['view', 'create', 'approve', 'complete', 'cancel'],
   /** Sidebar: Riwayat Aset */
   'asset.history': ['view'],
 
@@ -172,7 +172,7 @@ export const owner = ac.newRole({
     'cross_department',
   ],
   'asset.history': ['view'],
-
+  'asset.disposal': ['view', 'create', 'approve', 'complete', 'cancel'],
   // Inventory Control
   inventory: ['view', 'create', 'edit', 'delete'],
 

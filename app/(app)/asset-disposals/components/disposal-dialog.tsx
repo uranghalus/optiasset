@@ -3,6 +3,7 @@
 import { useDialog } from "@/context/dialog-provider";
 import { DisposalApprovalDialog } from "./disposal-approval-dialog";
 import { DisposalWithRelations } from "./disposal-column";
+import { DisposalActionDialog } from "./disposal-action-dialog";
 
 export default function DisposalDialog() {
     const {
@@ -19,6 +20,13 @@ export default function DisposalDialog() {
 
     return (
         <>
+            <DisposalActionDialog
+                open={open === "add-disposal"}
+                onOpenChange={(isOpen) => {
+                    if (!isOpen) handleClose();
+                }}
+            />
+
             <DisposalApprovalDialog
                 open={open === "approve-disposal"}
                 currentRow={currentRow as DisposalWithRelations}
@@ -27,6 +35,7 @@ export default function DisposalDialog() {
                     if (!isOpen) handleClose();
                 }}
             />
+
 
             <DisposalApprovalDialog
                 open={open === "reject-disposal"}

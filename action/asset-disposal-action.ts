@@ -1,10 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-'use server';
+"use server";
 
-import { getServerSession } from '@/lib/get-session';
-import { prisma } from '@/lib/prisma';
-import { revalidatePath } from 'next/cache';
-import { createAuditLog } from '@/lib/logger';
+import { getServerSession } from "@/lib/get-session";
+import { prisma } from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
+import { createAuditLog } from "@/lib/logger";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { isGlobalAccess } from "@/lib/filter";
 
 export type DisposalArgs = {
   page: number;
@@ -20,9 +23,14 @@ export async function getAllDisposals({
   status,
 }: DisposalArgs) {
   const session = await getServerSession();
-  if (!session) throw new Error('Unauthorized');
+  if (!session) throw new Error("Unauthorized");
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error('No active organizationId found');
+  if (!activeOrgId) throw new Error("No active organizationId found");
+
+  const roleRes = await auth.api.getActiveMemberRole({
+    headers: await headers(),
+  });
+  const role = roleRes?.role;
 
   const safePage = Math.max(1, page);
   const safePageSize = Math.max(1, pageSize);
@@ -35,12 +43,17 @@ export async function getAllDisposals({
     where.status = { in: status };
   }
 
+  // User biasa hanya bisa lihat disposal dari departemen mereka sendiri
+  if (!isGlobalAccess(role)) {
+    where.asset = { departmentId: session.user.departmentId };
+  }
+
   const [data, total] = await Promise.all([
     prisma.assetDisposal.findMany({
       where,
       skip,
       take,
-      orderBy: { disposalDate: 'desc' },
+      orderBy: { disposalDate: "desc" },
       include: {
         asset: {
           select: {
@@ -70,45 +83,45 @@ export async function getAllDisposals({
 
 export async function createDisposalAction(formData: FormData) {
   const session = await getServerSession();
-  if (!session) throw new Error('Unauthorized');
+  if (!session) throw new Error("Unauthorized");
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error('No active organizationId found');
+  if (!activeOrgId) throw new Error("No active organizationId found");
 
-  const assetId = formData.get('assetId')?.toString();
-  const reason = formData.get('reason')?.toString() || null;
+  const assetId = formData.get("assetId")?.toString();
+  const reason = formData.get("reason")?.toString() || null;
 
-  if (!assetId) throw new Error('Asset ID is required');
+  if (!assetId) throw new Error("Asset ID is required");
 
   const asset = await prisma.asset.findFirst({
     where: { id: assetId, organizationId: activeOrgId },
   });
 
-  if (!asset) throw new Error('Asset not found');
+  if (!asset) throw new Error("Asset not found");
 
   const result = await prisma.assetDisposal.create({
     data: {
       assetId,
       reason,
       requestedById: session.user.id,
-      status: 'PENDING_SPV',
+      status: "PENDING_SPV",
       organizationId: activeOrgId,
     },
   });
 
-  revalidatePath('/assets');
-  revalidatePath('/asset-disposals');
+  revalidatePath("/assets");
+  revalidatePath("/asset-disposals");
   return result;
 }
 
 export async function approveDisposalAction(
   id: string,
-  action: 'APPROVE' | 'REJECT',
+  action: "APPROVE" | "REJECT",
   role: string,
 ) {
   const session = await getServerSession();
-  if (!session) throw new Error('Unauthorized');
+  if (!session) throw new Error("Unauthorized");
   const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error('No active organizationId found');
+  if (!activeOrgId) throw new Error("No active organizationId found");
 
   const disposal = await prisma.assetDisposal.findUnique({
     where: { id },
@@ -116,46 +129,46 @@ export async function approveDisposalAction(
   });
 
   if (!disposal || disposal.organizationId !== activeOrgId) {
-    throw new Error('Disposal not found');
+    throw new Error("Disposal not found");
   }
 
-  if (disposal.status === 'APPROVED' || disposal.status === 'REJECTED') {
-    throw new Error('Disposal already processed');
+  if (disposal.status === "APPROVED" || disposal.status === "REJECTED") {
+    throw new Error("Disposal already processed");
   }
 
   const result = await prisma.$transaction(async (tx) => {
     let newStatus = disposal.status;
     const dataToUpdate: any = {};
 
-    const isSpv = role.toLowerCase() === 'spv';
-    const isStaff = role.toLowerCase() === 'staff aset';
+    const isSpv = role.toLowerCase() === "spv";
+    const isStaff = role.toLowerCase() === "staff aset";
 
-    if (action === 'REJECT') {
-      newStatus = 'REJECTED';
+    if (action === "REJECT") {
+      newStatus = "REJECTED";
       if (isSpv) dataToUpdate.spvApprovedById = session.user.id;
       if (isStaff) dataToUpdate.staffApprovedById = session.user.id;
-    } else if (action === 'APPROVE') {
-      if (isSpv && disposal.status === 'PENDING_SPV') {
-        newStatus = 'PENDING_STAFF';
+    } else if (action === "APPROVE") {
+      if (isSpv && disposal.status === "PENDING_SPV") {
+        newStatus = "PENDING_STAFF";
         dataToUpdate.spvApprovedById = session.user.id;
-      } else if (isStaff && disposal.status === 'PENDING_STAFF') {
-        newStatus = 'APPROVED';
+      } else if (isStaff && disposal.status === "PENDING_STAFF") {
+        newStatus = "APPROVED";
         // 👇 TAMBAHKAN INI UNTUK ASSET HISTORY 👇
         await tx.assetHistory.create({
           data: {
             assetId: disposal.assetId,
             organizationId: activeOrgId,
             userId: session.user.id,
-            action: 'DISPOSED',
-            field: 'status',
+            action: "DISPOSED",
+            field: "status",
             oldValue: disposal.asset.status,
-            newValue: 'DISPOSED',
-            asset_info: `[DISPOSAL APPROVED] Aset dihanguskan dengan alasan: ${disposal.reason || 'N/A'}`,
+            newValue: "DISPOSED",
+            asset_info: `[DISPOSAL APPROVED] Aset dihanguskan dengan alasan: ${disposal.reason || "N/A"}`,
           },
         });
         dataToUpdate.staffApprovedById = session.user.id;
       } else {
-        throw new Error('Invalid approval state for role');
+        throw new Error("Invalid approval state for role");
       }
     }
 
@@ -166,11 +179,11 @@ export async function approveDisposalAction(
       data: dataToUpdate,
     });
 
-    if (newStatus === 'APPROVED') {
+    if (newStatus === "APPROVED") {
       const updatedAsset = await tx.asset.update({
         where: { id: disposal.assetId },
         data: {
-          status: 'DISPOSED',
+          status: "DISPOSED",
           updatedAt: new Date(),
         },
       });
@@ -178,7 +191,7 @@ export async function approveDisposalAction(
       // Update Stock if available
       if (
         disposal.asset.locationId &&
-        disposal.asset.assignedStatus === 'AVAILABLE'
+        disposal.asset.assignedStatus === "AVAILABLE"
       ) {
         await tx.stock.updateMany({
           where: {
@@ -193,10 +206,10 @@ export async function approveDisposalAction(
       await createAuditLog({
         userId: session.user.id,
         organizationId: activeOrgId,
-        action: 'DISPOSAL_APPROVED',
-        entityType: 'ASSET',
+        action: "DISPOSAL_APPROVED",
+        entityType: "ASSET",
         entityId: disposal.assetId,
-        entityInfo: `${updatedAsset.kode_asset || 'N/A'} - ${updatedAsset.itemId || 'N/A'}`,
+        entityInfo: `${updatedAsset.kode_asset || "N/A"} - ${updatedAsset.itemId || "N/A"}`,
         details: {
           disposalId: id,
         },
@@ -207,7 +220,47 @@ export async function approveDisposalAction(
     return updatedDisposal;
   });
 
-  revalidatePath('/assets');
-  revalidatePath('/asset-disposals');
+  revalidatePath("/assets");
+  revalidatePath("/asset-disposals");
   return result;
+}
+
+export async function getAssetsForDisposalSelect() {
+  const session = await getServerSession();
+  if (!session) throw new Error("Unauthorized");
+  const activeOrgId = session.session?.activeOrganizationId;
+  if (!activeOrgId) throw new Error("No active organizationId found");
+
+  const roleRes = await auth.api.getActiveMemberRole({
+    headers: await headers(),
+  });
+  const role = roleRes?.role;
+
+  const where: any = {
+    organizationId: activeOrgId,
+    status: { not: "DISPOSED" },
+  };
+
+  // User biasa hanya bisa lihat asset dari departemen mereka sendiri
+  if (!isGlobalAccess(role)) {
+    where.departmentId = session.user.departmentId;
+  }
+
+  return prisma.asset.findMany({
+    where,
+    select: {
+      id: true,
+      kode_asset: true,
+      brand: true,
+      model: true,
+      item: {
+        select: {
+          name: true,
+        },
+      },
+    },
+    orderBy: {
+      kode_asset: "asc",
+    },
+  });
 }

@@ -1,18 +1,43 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use server';
 
+import { auth } from '@/lib/auth';
 import { getServerSession } from '@/lib/get-session';
 import { prisma } from '@/lib/prisma';
+import { headers } from 'next/headers';
 
 export async function getDashboardData() {
   const session = await getServerSession();
   if (!session) throw new Error('Unauthorized');
 
   const activeOrgId = session.session?.activeOrganizationId;
+  const deptId = session.user.departmentId;
+
   if (!activeOrgId)
     throw new Error('No active organizationId found in session');
 
-  // Fetch counts and stats
+  const { role } = await auth.api.getActiveMemberRole({
+    headers: await headers(),
+  });
+
+  // Menentukan sama ada data perlu ditapis mengikut jabatan.
+  // Jika role BUKAN 'staff_asset' dan BUKAN 'owner', maka tapis mengikut jabatan pengguna yang log masuk.
+  const shouldFilterByDept =
+    role !== ('staff_asset' as any) && role !== 'owner';
+
+  // 1. Tapisan umum (Untuk Asset, Item, dan Stock)
+  const baseWhere = {
+    organizationId: activeOrgId,
+    ...(shouldFilterByDept && deptId ? { departmentId: deptId } : {}),
+  };
+
+  // 2. Tapisan khusus untuk AuditLog
+  const auditWhere = {
+    organizationId: activeOrgId,
+    ...(shouldFilterByDept && deptId ? { user: { departmentId: deptId } } : {}),
+  };
+
+  // Mengambil kiraan dan statistik
   const [
     totalAssets,
     totalItems,
@@ -21,46 +46,52 @@ export async function getDashboardData() {
     recentAssets,
     lowStockItems,
   ] = await Promise.all([
-    // 1. Total Assets (Fixed Assets)
-    prisma.asset.count({ where: { organizationId: activeOrgId } }),
+    // 1. Jumlah Assets (Ditapis mengikut jabatan jika bukan staff_asset/owner)
+    prisma.asset.count({ where: baseWhere }),
 
-    // 2. Total Items (Catalog)
-    prisma.item.count({ where: { organizationId: activeOrgId } }),
+    // 2. Jumlah Items (Ditapis mengikut jabatan jika bukan staff_asset/owner)
+    prisma.item.count({ where: baseWhere }),
 
-    // 3. Stock Level (Sum of quantity for SUPPLY items)
+    // 3. Tahap Stok (Ditapis mengikut jabatan jika bukan staff_asset/owner)
     prisma.stock.aggregate({
-      where: { organizationId: activeOrgId },
+      where: baseWhere,
       _sum: {
         quantity: true,
       },
     }),
 
-    // 4. Category distribution (for chart)
+    // 4. Pengagihan Kategori
+    // Kategori adalah global, tetapi kiraan item di dalamnya mesti mengikut jabatan pengguna
     prisma.category.findMany({
       where: { organizationId: activeOrgId },
       include: {
         _count: {
-          select: { items: true },
+          select: {
+            items: {
+              where:
+                shouldFilterByDept && deptId ? { departmentId: deptId } : {},
+            },
+          },
         },
       },
     }),
 
-    // 5. Recent Activity from Audit Logs
+    // 5. Aktiviti Terkini dari Log Audit (Ditapis melalui departmentId pengguna)
     prisma.auditLog.findMany({
-      where: { organizationId: activeOrgId },
+      where: auditWhere,
       take: 10,
       orderBy: { createdAt: 'desc' },
       include: {
         user: {
-          select: { name: true, image: true },
+          select: { name: true, image: true, departmentId: true },
         },
       },
     }),
 
-    // 6. Low Stock Items (Supply with quantity < 5)
+    // 6. Barangan Stok Rendah (Ditapis mengikut jabatan jika bukan staff_asset/owner)
     prisma.stock.findMany({
       where: {
-        organizationId: activeOrgId,
+        ...baseWhere,
         quantity: { lt: 5 },
         item: {
           assetType: 'SUPPLY',
@@ -86,7 +117,10 @@ export async function getDashboardData() {
         name: cat.name,
         value: cat._count.items,
       }))
+      // Hanya tunjukkan kategori yang mempunyai item berdasarkan tapisan jabatan tadi
       .filter((c) => c.value > 0),
+
+    // Aktiviti Terkini
     recentActivity: recentAssets.map((log: any) => ({
       id: log.id,
       action: log.action,
@@ -95,6 +129,8 @@ export async function getDashboardData() {
       userName: log.user?.name || 'System',
       createdAt: log.createdAt,
     })),
+
+    // Barangan Stok Rendah
     lowStockItems: lowStockItems.map((s) => ({
       name: s.item.name,
       code: s.item.code,

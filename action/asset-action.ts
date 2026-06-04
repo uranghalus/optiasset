@@ -125,9 +125,9 @@ export async function getItemsForSelect() {
   if (!session) throw new Error('Unauthorized');
   const activeOrgId = session.session?.activeOrganizationId;
   if (!activeOrgId) return [];
-
+  const deptId = session.user.departmentId;
   return prisma.item.findMany({
-    where: { organizationId: activeOrgId },
+    where: { organizationId: activeOrgId, departmentId: deptId },
     select: {
       id: true,
       name: true,
@@ -432,30 +432,24 @@ export async function createAsset(formData: FormData) {
         ...(assetSubClusterId && {
           assetSubClusters: { connect: [{ id: assetSubClusterId }] },
         }),
+        ...(aparData && {
+          aparDetails: {
+            create: {
+              jenis: aparData.jenis,
+              size: new Prisma.Decimal(aparData.size || 0),
+            },
+          },
+        }),
+
+        ...(hydrantData && {
+          hydrantDetails: {
+            create: {
+              ukuran: hydrantData.ukuran,
+            },
+          },
+        }),
       },
     });
-
-    // Simpan Detail Terpisah jika Terdeteksi APAR / Hydrant
-    if (aparData) {
-      await tx.aparDetail.create({
-        data: {
-          assetId: newAsset.id,
-          organizationId: activeOrgId,
-          jenis: aparData.jenis,
-          size: aparData.size,
-        },
-      });
-    }
-
-    if (hydrantData) {
-      await tx.hydrantDetail.create({
-        data: {
-          assetId: newAsset.id,
-          organizationId: activeOrgId,
-          ukuran: hydrantData.ukuran,
-        },
-      });
-    }
 
     const locationId = formData.get('locationId')?.toString();
     if (locationId) {
@@ -1635,8 +1629,8 @@ export async function importAssetExcel(
               aparDetails: {
                 create: {
                   jenis: aparData.jenis,
-                  size: aparData.size,
-                  organizationId: aparData.organizationId,
+                  // WAJIB: Gunakan Prisma.Decimal dan sertakan organizationId
+                  size: new Prisma.Decimal(aparData.size || 0),
                 },
               },
             }),
@@ -1645,7 +1639,6 @@ export async function importAssetExcel(
               hydrantDetails: {
                 create: {
                   ukuran: hydrantData.ukuran,
-                  organizationId: hydrantData.organizationId,
                 },
               },
             }),

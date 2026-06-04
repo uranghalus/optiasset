@@ -23,6 +23,11 @@ export type AssetWithItem = Prisma.AssetGetPayload<{
         nama_department: true;
       };
     };
+    location: {
+      select: {
+        name: true;
+      }
+    }
   };
 }>;
 
@@ -85,12 +90,12 @@ export const assetColumn: ColumnDef<AssetWithItem>[] = [
   },
 
   {
-    accessorKey: "partNumber",
+    accessorKey: "location",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Part Number" />
+      <DataTableColumnHeader column={column} title="Lokasi" />
     ),
     cell: ({ row }) => (
-      <div className="ps-2">{row.original.partNumber || "-"}</div>
+      <div className="ps-2">{row.original.location?.name || "-"}</div>
     ),
     size: 150,
   },
@@ -98,14 +103,14 @@ export const assetColumn: ColumnDef<AssetWithItem>[] = [
     id: "departmentId",
     filterFn: "arrIncludesSome",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Department" />
+      <DataTableColumnHeader column={column} title="Department/PIC" />
     ),
     cell: ({ row }) => {
       const dept = row.original.department;
 
       return (
         <div className="ps-2 text-sm">
-          {dept?.nama_department ?? "No Department"}
+          {dept?.nama_department ?? "No Department"} | {row.original.PIC || "No PIC"}
         </div>
       );
     },

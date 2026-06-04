@@ -285,7 +285,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
 
   if (isFetching) {
     return (
-      <div className="flex flex-col items-center justify-center text-slate-500 space-y-2 py-12">
+      <div className="flex flex-col items-center justify-center text-slate-500 space-y-2 py-12 h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p>Memuat data aset...</p>
       </div>
@@ -337,7 +337,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                     }
                     renderText={(i) => i.name}
                     onChange={(i) => field.onChange(i.id)}
-                    disabled={isReadonly}
+
                   />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
@@ -368,7 +368,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                     }
                     renderText={(item) => `${item.code} - ${item.name}`}
                     onChange={(item) => field.onChange(item.id)}
-                    disabled={isReadonly}
+
                   />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
@@ -502,7 +502,6 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                     {...field}
                     value={field.value ?? ""}
                     placeholder="Lenovo / Yamato"
-                    readOnly={isReadonly}
                   />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
@@ -513,18 +512,10 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
             <Controller
               name="model"
               control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Model / Tipe</FieldLabel>
-                  <Input
-                    {...field}
-                    value={field.value ?? ""}
-                    placeholder="ThinkPad / Powder 4.5Kg"
-                    readOnly={isReadonly}
-                  />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
+              render={({ field }) => (
+                <Field>
+                  <FieldLabel>Model</FieldLabel>
+                  <Input {...field} />
                 </Field>
               )}
             />
@@ -534,33 +525,17 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>Part Number</FieldLabel>
-                  <Input
-                    {...field}
-                    value={field.value ?? ""}
-                    placeholder="P/N Code"
-                    readOnly={isReadonly}
-                  />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
+                  <Input {...field} />
                 </Field>
               )}
             />
             <Controller
               name="serialNumber"
               control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Serial Number (S/N)</FieldLabel>
-                  <Input
-                    {...field}
-                    value={field.value ?? ""}
-                    placeholder="Nomor Seri Unik Pabrik"
-                    readOnly={isReadonly}
-                  />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
+              render={({ field }) => (
+                <Field>
+                  <FieldLabel>Serial Number</FieldLabel>
+                  <Input {...field} />
                 </Field>
               )}
             />
@@ -573,7 +548,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                   <Select
                     value={field.value}
                     onValueChange={field.onChange}
-                    disabled={isReadonly}
+
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -619,7 +594,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                     }
                     renderText={(loc) => loc.name}
                     onChange={(loc) => field.onChange(loc.id)}
-                    disabled={isReadonly}
+
                   />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
@@ -657,7 +632,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                       }
                       renderText={(loc) => loc.nama_department}
                       onChange={(loc) => field.onChange(loc.id_department)}
-                      disabled={isReadonly}
+
                     />
                     {fieldState.invalid && (
                       <FieldError errors={[fieldState.error]} />
@@ -670,36 +645,20 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
             <Controller
               name="document_number"
               control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>No. Dokumen Kontrak / Berkas</FieldLabel>
-                  <Input
-                    {...field}
-                    value={field.value ?? ""}
-                    placeholder="DOC-001"
-                    readOnly={isReadonly}
-                  />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
+              render={({ field }) => (
+                <Field>
+                  <FieldLabel>No. Dokumen</FieldLabel>
+                  <Input {...field} />
                 </Field>
               )}
             />
             <Controller
               name="no_spb"
               control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>No. SPB (Surat Penyerahan Barang)</FieldLabel>
-                  <Input
-                    {...field}
-                    value={field.value ?? ""}
-                    placeholder="SPB-2024-001"
-                    readOnly={isReadonly}
-                  />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
+              render={({ field }) => (
+                <Field>
+                  <FieldLabel>No. SPB</FieldLabel>
+                  <Input {...field} />
                 </Field>
               )}
             />
@@ -711,16 +670,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
                     <FieldLabel>Tgl. Beli</FieldLabel>
-                    <Input
-                      type="date"
-                      {...field}
-                      value={field.value ?? ""}
-                      readOnly={isReadonly}
-                      className="text-xs"
-                    />
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
+                    <Input type="date" {...field} />
                   </Field>
                 )}
               />
@@ -735,7 +685,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                       {...field}
                       value={field.value ?? ""}
                       placeholder="0"
-                      readOnly={isReadonly}
+
                       className="text-xs"
                     />
                     {fieldState.invalid && (
@@ -750,42 +700,34 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
               <Controller
                 name="garansi_exp"
                 control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel>Garansi Toko</FieldLabel>
-                    <Input
-                      type="date"
-                      {...field}
-                      value={field.value ?? ""}
-                      readOnly={isReadonly}
-                      className="text-xs"
-                    />
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
-                )}
-              />
-              <Controller
-                name="vendorName"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel>Nama Vendor</FieldLabel>
-                    <Input
-                      {...field}
-                      value={field.value ?? ""}
-                      placeholder="PT Maju Bersama"
-                      readOnly={isReadonly}
-                      className="text-xs"
-                    />
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel>Garansi Selesai</FieldLabel>
+                    <Input type="date" {...field} />
                   </Field>
                 )}
               />
             </div>
+            <Controller
+              name="purchasePrice"
+              control={form.control}
+              render={({ field }) => (
+                <Field>
+                  <FieldLabel>Harga Beli</FieldLabel>
+                  <Input type="number" {...field} />
+                </Field>
+              )}
+            />
+            <Controller
+              name="vendorName"
+              control={form.control}
+              render={({ field }) => (
+                <Field>
+                  <FieldLabel>Vendor</FieldLabel>
+                  <Input {...field} />
+                </Field>
+              )}
+            />
           </div>
         </div>
 
@@ -809,7 +751,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                     <Select
                       value={field.value || undefined}
                       onValueChange={field.onChange}
-                      disabled={isReadonly}
+
                     >
                       <SelectTrigger className="bg-white border-red-200 focus:ring-red-500">
                         <SelectValue placeholder="Pilih Jenis Media..." />
@@ -845,7 +787,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                       {...field}
                       value={field.value ?? ""}
                       placeholder="Contoh: 4.5"
-                      disabled={isReadonly}
+
                       className="bg-white border-red-200 focus-visible:ring-red-500"
                     />
                     {fieldState.invalid && (
@@ -876,7 +818,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                       {...field}
                       value={field.value ?? ""}
                       placeholder="Contoh: 1.5 Inch atau 2.5 Inch"
-                      disabled={isReadonly}
+
                       className="bg-white border-blue-200 focus-visible:ring-blue-500"
                     />
                     {fieldState.invalid && (
@@ -941,19 +883,10 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
         <Controller
           name="notes"
           control={form.control}
-          render={({ field, fieldState }) => (
-            <Field data-invalid={fieldState.invalid}>
-              <FieldLabel>Catatan / Keterangan Kondisi Tambahan</FieldLabel>
-              <Textarea
-                {...field}
-                value={field.value ?? ""}
-                placeholder="Tulis catatan tambahan penempatan atau info teknis di sini..."
-                rows={3}
-                readOnly={isReadonly}
-              />
-              {fieldState.invalid && (
-                <FieldError errors={[fieldState.error]} />
-              )}
+          render={({ field }) => (
+            <Field>
+              <FieldLabel>Catatan</FieldLabel>
+              <Textarea {...field} rows={3} />
             </Field>
           )}
         />

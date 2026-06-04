@@ -42,3 +42,14 @@ export const ImportFormSchema = z.object({
 });
 
 export type ImportForm = z.infer<typeof ImportFormSchema>;
+
+// Schema untuk form edit: biarkan field detail (brand, model, partNumber, serialNumber)
+// bersifat opsional sehingga edit tidak wajib mengirim ulang semua detail.
+export const AssetEditFormSchema = AssetFormSchema.partial({
+  brand: true,
+  model: true,
+  partNumber: true,
+  serialNumber: true,
+});
+
+export type AssetEditForm = z.infer<typeof AssetEditFormSchema>;

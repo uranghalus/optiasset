@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Asset, Item, Location, department } from "@/generated/prisma/client";
 import { Button } from "@/components/ui/button";
@@ -9,31 +9,15 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useDialog } from "@/context/dialog-provider";
 import { usePermission } from "@/hooks/use-permission";
+
 import {
-    ArrowLeft,
-    Edit,
-    Trash2,
-    QrCode,
-    Move,
-    Handshake,
-    Calendar,
-    MapPin,
-    Building,
-    Package,
-    DollarSign,
-    FileText,
-    Camera,
-    Tag,
-    User,
-    AlertTriangle,
-    CheckCircle,
-    Clock,
-    XCircle
+    ArrowLeft, Edit, Trash2, QrCode, Move, Handshake, Calendar,
+    MapPin, Building, Package, DollarSign, FileText, Camera, Tag,
+    User, AlertTriangle, CheckCircle, Clock, XCircle
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
-import S3Image from "@/components/s3-image";
+import { getPrivateUrl } from "@/lib/s3-utils";
 
 interface AssetWithRelations extends Asset {
     item: Item;
@@ -54,7 +38,35 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
     const router = useRouter();
     const { setOpen, setCurrentRow } = useDialog();
     const { can } = usePermission();
+
+    // STATE UNTUK GAMBAR
     const [imageError, setImageError] = useState(false);
+    const [signedUrl, setSignedUrl] = useState<string | null>(null);
+    const [isLoadingImage, setIsLoadingImage] = useState(true);
+
+    // FETCH SIGNED URL DARI S3 SAAT KOMPONEN DI-MOUNT
+    useEffect(() => {
+        let isMounted = true;
+
+        async function fetchImageUrl() {
+            if (asset.photoUrl) {
+                setIsLoadingImage(true);
+                const url = await getPrivateUrl(asset.photoUrl);
+                if (isMounted) {
+                    setSignedUrl(url);
+                    setIsLoadingImage(false);
+                }
+            } else {
+                if (isMounted) setIsLoadingImage(false);
+            }
+        }
+
+        fetchImageUrl();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [asset.photoUrl]);
 
     const getConditionBadge = (condition: string) => {
         const variants = {
@@ -156,13 +168,24 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            {asset.photoUrl && !imageError ? (
+                            {isLoadingImage ? (
+                                <div className="flex items-center justify-center w-full h-64 border-2 border-dashed rounded-lg bg-muted/50">
+                                    <div className="text-center animate-pulse">
+                                        <Camera className="h-12 w-12 mx-auto text-muted-foreground mb-2 opacity-50" />
+                                        <p className="text-sm text-muted-foreground">
+                                            Memuat foto dari server...
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : signedUrl && !imageError ? (
                                 <div className="relative w-full max-w-md mx-auto">
+                                    {/* Menggunakan tag img standar agar tidak terkendala konfigurasi domain next/image */}
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <S3Image
-                                        imageKey={asset.photoUrl || null}
+                                    <img
+                                        src={signedUrl}
                                         alt={`Foto ${asset.item?.name || 'Aset'}`}
-                                        className="max-h-[300px] object-contain shadow-sm border border-gray-100"
+                                        className="max-h-[300px] w-full object-contain shadow-sm border border-gray-100 rounded-md"
+                                        onError={() => setImageError(true)}
                                     />
                                 </div>
                             ) : (
@@ -170,7 +193,7 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
                                     <div className="text-center">
                                         <Camera className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
                                         <p className="text-sm text-muted-foreground">
-                                            {asset.photoUrl ? "Foto tidak dapat dimuat" : "Tidak ada foto"}
+                                            {asset.photoUrl ? "Foto tidak dapat dimuat atau sesi kadaluarsa" : "Tidak ada foto"}
                                         </p>
                                     </div>
                                 </div>
@@ -191,6 +214,7 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* ... [KODE INFORMASI ASSET ANDA TETAP SAMA] ... */}
                                 <div className="space-y-2">
                                     <div className="flex items-center gap-2 text-sm font-medium">
                                         <Tag className="h-4 w-4" />
@@ -260,7 +284,6 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
                                 </div>
                             </div>
 
-                            {/* Additional Details */}
                             <Separator />
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
@@ -354,6 +377,7 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
+                            {/* ... [KODE INFORMASI PEMBELIAN ANDA TETAP SAMA] ... */}
                             <div className="space-y-2">
                                 <div className="flex items-center gap-2 text-sm font-medium">
                                     <Calendar className="h-4 w-4" />
@@ -425,6 +449,7 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-2">
+                            {/* ... [KODE AKSI CEPAT ANDA TETAP SAMA] ... */}
                             {can('asset', ['scan-code']) && (
                                 <Button
                                     variant="outline"

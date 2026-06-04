@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { getPrivateUrl } from "@/lib/s3-utils";
+import { getS3SignedUrlAction } from "@/action/s3-action";
 
 interface AssetWithRelations extends Asset {
     item: Item;
@@ -51,7 +51,7 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
         async function fetchImageUrl() {
             if (asset.photoUrl) {
                 setIsLoadingImage(true);
-                const url = await getPrivateUrl(asset.photoUrl);
+                const url = await getS3SignedUrlAction(asset.photoUrl);
                 if (isMounted) {
                     setSignedUrl(url);
                     setIsLoadingImage(false);

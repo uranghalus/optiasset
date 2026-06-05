@@ -1,5 +1,8 @@
 "use client";
 
+import { getPrivateUrl } from "@/lib/s3-utils";
+import { useEffect, useState } from "react";
+
 interface S3ImageProps {
     imageKey: string | null;
     alt: string;
@@ -7,31 +10,43 @@ interface S3ImageProps {
 }
 
 export default function S3Image({ imageKey, alt, className = "" }: S3ImageProps) {
-    // Tampilan saat key kosong
-    if (!imageKey) {
+    const [imageUrl, setImageUrl] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState<boolean>(true);
+    useEffect(() => {
+        async function fetchUrl() {
+            if (!imageKey) {
+                setIsLoading(false);
+                return;
+            }
+
+            try {
+                const url = await getPrivateUrl(imageKey);
+                setImageUrl(url);
+            } catch (error) {
+                console.error("Gagal memuat URL gambar", error);
+            } finally {
+                setIsLoading(false);
+            }
+        }
+
+        fetchUrl();
+    }, [imageKey]);
+    if (isLoading) {
+        return <div className={`animate-pulse bg-gray-200 rounded ${className}`}>Memuat Gambar</div>;
+    }
+    if (!imageUrl) {
         return (
-            <div className={`flex items-center justify-center bg-gray-100 border border-dashed border-gray-300 rounded-lg p-4 text-sm text-red-600 ${className}`}>
-                ❌ Key gambar tidak tersedia.
+            <div className={`flex items-center justify-center bg-gray-100 text-gray-500 rounded border border-dashed p-4 ${className}`}>
+                Gambar tidak tersedia
             </div>
         );
     }
 
-    // Menggunakan API route lokal untuk proxy image dari S3 
-    // Ini menyelesaikan masalah Mixed Content (HTTP S3 di web HTTPS), 
-    // masalah CORS, dan menghindari error pemanggilan Server Action di Client.
-    const imageUrl = `/api/image?key=${encodeURIComponent(imageKey)}`;
-
-    // Tampilan saat berhasil
     return (
-        // eslint-disable-next-line @next/next/no-img-element
         <img
             src={imageUrl}
             alt={alt}
-            className={`w-full h-auto object-cover rounded ${className}`}
-            onError={(e) => {
-                // Fallback sederhana jika gambar gagal dimuat dari API route
-                (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZWVlIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZmlsbD0iIzk5OSI+SW1hZ2Ugbm90IGZvdW5kPC90ZXh0Pjwvc3ZnPg==';
-            }}
+            className={`object-cover rounded-md ${className}`}
         />
     );
 }

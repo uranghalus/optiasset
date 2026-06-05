@@ -1,7 +1,7 @@
-"use client"; // Tambahkan ini agar aman digunakan di komponen klien
+"use client";
 
-import { useEffect, useState } from "react";
 import { getPrivateUrl } from "@/lib/s3-utils";
+import { useEffect, useState } from "react";
 
 interface S3ImageProps {
     imageKey: string | null;
@@ -12,72 +12,41 @@ interface S3ImageProps {
 export default function S3Image({ imageKey, alt, className = "" }: S3ImageProps) {
     const [imageUrl, setImageUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
-
     useEffect(() => {
-        let isMounted = true;
-
-        async function fetchImage() {
+        async function fetchUrl() {
             if (!imageKey) {
                 setIsLoading(false);
                 return;
             }
 
             try {
-                // Memanggil Server Action dari Client Component
                 const url = await getPrivateUrl(imageKey);
-                if (isMounted) {
-                    setImageUrl(url);
-                    setIsLoading(false);
-                }
+                setImageUrl(url);
             } catch (error) {
-                console.error("Gagal mengambil gambar:", error);
-                if (isMounted) {
-                    setIsLoading(false);
-                }
+                console.error("Gagal memuat URL gambar", error);
+            } finally {
+                setIsLoading(false);
             }
         }
 
-        fetchImage();
-
-        return () => {
-            isMounted = false; // Cleanup untuk menghindari memory leak
-        };
+        fetchUrl();
     }, [imageKey]);
-
-    // Tampilan saat key kosong
-    if (!imageKey) {
-        return (
-            <div className={`flex items-center justify-center bg-gray-100 border border-dashed border-gray-300 rounded-lg p-4 text-sm text-red-600 ${className}`}>
-                ❌ Key gambar tidak tersedia.
-            </div>
-        );
-    }
-
-    // Tampilan saat sedang loading URL dari server
     if (isLoading) {
-        return (
-            <div className={`flex items-center justify-center bg-gray-100 border border-dashed border-gray-300 rounded-lg p-4 text-sm text-gray-500 animate-pulse ${className}`}>
-                Memuat gambar...
-            </div>
-        );
+        return <div className={`animate-pulse bg-gray-200 rounded ${className}`}>Memuat Gambar</div>;
     }
-
-    // Tampilan saat URL gagal didapatkan (misal error S3)
     if (!imageUrl) {
         return (
-            <div className={`flex items-center justify-center bg-gray-100 border border-dashed border-gray-300 rounded-lg p-4 text-sm text-red-600 ${className}`}>
-                ❌ Gagal memuat url gambar.
+            <div className={`flex items-center justify-center bg-gray-100 text-gray-500 rounded border border-dashed p-4 ${className}`}>
+                Gambar tidak tersedia
             </div>
         );
     }
 
-    // Tampilan saat berhasil
     return (
-        // eslint-disable-next-line @next/next/no-img-element
         <img
             src={imageUrl}
             alt={alt}
-            className={`w-full h-auto object-cover rounded ${className}`}
+            className={`object-cover rounded-md ${className}`}
         />
     );
 }

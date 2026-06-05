@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { Camera, X, Loader2 } from "lucide-react";
 
-import { AssetForm, AssetFormSchema } from "@/schema/asset-schema";
+import { AssetForm, AssetFormSchema, AssetEditForm, AssetEditFormSchema } from "@/schema/asset-schema";
 import { getAssetFormAccess, isValidImageFile } from "@/lib/utils";
 import { AssetType } from "@/generated/prisma/client";
 
@@ -65,8 +65,8 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
     organizationId: activeOrgId,
   });
 
-  const form = useForm<AssetForm>({
-    resolver: zodResolver(AssetFormSchema),
+  const form = useForm<AssetEditForm>({
+    resolver: zodResolver(AssetEditFormSchema),
     defaultValues: {
       itemId: "",
       purchaseDate: "",
@@ -261,7 +261,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
 
   // Handle Submit
   const isPending = updateMutation.isPending;
-  const onSubmit = async (values: AssetForm) => {
+  const onSubmit = async (values: AssetEditForm) => {
     const formData = new FormData();
     for (const [key, value] of Object.entries(values)) {
       if (value !== null && value !== undefined && value !== "") {
@@ -839,7 +839,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
               <div className="relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={imagePreview}
+                  src={imagePreview.startsWith('data:') ? imagePreview : `/api/image?key=${encodeURIComponent(imagePreview)}`}
                   alt="Asset preview"
                   className="h-40 w-40 object-cover rounded-lg border bg-white shadow-sm"
                 />

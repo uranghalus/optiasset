@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { Camera, X, Loader2 } from "lucide-react";
 
-import { AssetForm, AssetFormSchema, AssetEditForm, AssetEditFormSchema } from "@/schema/asset-schema";
+import { type AssetEditForm, AssetEditFormSchema } from "@/schema/asset-schema";
 import { getAssetFormAccess, isValidImageFile } from "@/lib/utils";
 import { AssetType } from "@/generated/prisma/client";
 

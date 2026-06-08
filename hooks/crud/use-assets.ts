@@ -117,8 +117,15 @@ export function useCreateAsset() {
 export function useUpdateAsset() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, formData }: { id: string; formData: FormData }) =>
-      updateAsset(id, formData),
+    mutationFn: async ({ id, formData }: { id: string; formData: FormData }) => {
+      const result = await updateAsset(id, formData);
+      // Server action mengembalikan objek {success, data/error}
+      // Jika gagal, lempar error agar onError dipanggil
+      if (result && 'success' in result && !result.success) {
+        throw new Error((result as any).error || 'Gagal memperbarui data aset');
+      }
+      return result;
+    },
     onMutate: () => {
       // Munculkan toast loading dengan ID khusus
       toast.loading('Menyimpan data aset...', {
@@ -126,14 +133,16 @@ export function useUpdateAsset() {
         description: 'Proses penyimpanan sedang berlangsung.',
       });
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       // Timpa loading menjadi success menggunakan ID yang sama
       toast.success('Berhasil!', {
         id: 'update-asset-toast',
         description: 'Data aset berhasil diupdate.',
       });
 
+      // Invalidate daftar asset DAN data detail asset yang baru diupdate
       queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.invalidateQueries({ queryKey: ['asset', variables.id] });
     },
     onError: (error: any) => {
       // Timpa loading menjadi error menggunakan ID yang sama

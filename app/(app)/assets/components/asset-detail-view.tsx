@@ -43,9 +43,7 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
     const { data: userRole } = useActiveMemberRole()
     const { data: session } = authClient.useSession();
     const isSameDepartemen = session?.user.departmentId === asset.department?.id_department;
-    // Logika Edit (Dinamis)
     const showEditButton = can('asset', ['edit']) && (userRole === "owner" || isSameDepartemen);
-    // Logika Hapus (Dinamis)
     const showDeleteButton = can('asset', ['delete']) && (userRole === "owner" || isSameDepartemen);
 
     const getConditionBadge = (condition: string) => {

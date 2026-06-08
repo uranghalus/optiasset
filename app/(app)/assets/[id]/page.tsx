@@ -50,8 +50,7 @@ export default async function AssetDetailPage({
         return (
             <DialogProvider>
                 <div className="flex flex-col gap-6 pb-10">
-                    <AssetDetailView asset={asset} />
-                    {/* Wrapper untuk Tabel History */}
+                    <AssetDetailView asset={asset as any} />
                     <div className="rounded-xl border bg-card text-card-foreground shadow">
                         <div className="p-6 flex flex-col space-y-1.5 border-b">
                             <h3 className="font-semibold leading-none tracking-tight text-lg">

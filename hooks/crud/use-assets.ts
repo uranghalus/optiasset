@@ -60,8 +60,8 @@ export function useAssetLookup() {
         throw new Error(res?.message || 'Asset tidak ditemukan');
       }
 
-      // Mengembalikan Full UUID dari asset tersebut
-      return res.data.id;
+      // Mengembalikan data asset
+      return res.data;
     },
   });
 }

@@ -362,7 +362,7 @@ export async function createAsset(formData: FormData) {
       lowerUnitName.includes('apar') ||
       lowerUnitName.includes('fire extinguisher')
     ) {
-      let jenis = formData.get('aparJenis')?.toString() as
+      let jenis = formData.get('jenisApar')?.toString() as
         | 'CO2'
         | 'Powder'
         | 'Foam'
@@ -379,8 +379,8 @@ export async function createAsset(formData: FormData) {
           jenis = 'Air';
       }
 
-      let size = formData.get('aparSize')
-        ? parseFloat(formData.get('aparSize') as string)
+      let size = formData.get('sizeApar')
+        ? parseFloat(formData.get('sizeApar') as string)
         : null;
       if (!size || isNaN(size)) {
         const sizeMatch = lowerUnitName.match(/(\d+(\.\d+)?)\s*(kg|liter|l)/i);
@@ -391,7 +391,7 @@ export async function createAsset(formData: FormData) {
 
     let hydrantData: any = null;
     if (lowerUnitName.includes('hydrant')) {
-      let ukuran = formData.get('hydrantUkuran')?.toString();
+      let ukuran = formData.get('ukuranHydrant')?.toString();
       if (!ukuran) {
         const sizeMatch = lowerUnitName.match(
           /(\d+(\.\d+)?)\s*(inch|in|"|cm)/i,
@@ -614,6 +614,11 @@ export async function updateAsset(id: string, formData: FormData) {
             }
           }
         }
+      } else {
+        if (formData.has('assetGroupId')) assetGroupId = formData.get('assetGroupId')?.toString() || null;
+        if (formData.has('assetCategoryId')) assetCategoryId = formData.get('assetCategoryId')?.toString() || null;
+        if (formData.has('assetClusterId')) assetClusterId = formData.get('assetClusterId')?.toString() || null;
+        if (formData.has('assetSubClusterId')) assetSubClusterId = formData.get('assetSubClusterId')?.toString() || null;
       }
 
       const result = await tx.asset.update({
@@ -670,14 +675,12 @@ export async function updateAsset(id: string, formData: FormData) {
           assetClusterId,
           assetSubClusterId,
 
-          ...(newItemId !== asset.itemId && {
-            assetSubClusters: {
-              set: [],
-              ...(assetSubClusterId
-                ? { connect: [{ id: assetSubClusterId }] }
-                : {}),
-            },
-          }),
+          assetSubClusters: {
+            set: [],
+            ...(assetSubClusterId
+              ? { connect: [{ id: assetSubClusterId }] }
+              : {}),
+          },
         },
       });
 
@@ -690,14 +693,14 @@ export async function updateAsset(id: string, formData: FormData) {
         lowerUnitName.includes('apar') ||
         lowerUnitName.includes('fire extinguisher')
       ) {
-        let jenis = formData.get('aparJenis')?.toString() as
+        let jenis = formData.get('jenisApar')?.toString() as
           | 'CO2'
           | 'Powder'
           | 'Foam'
           | 'Air'
           | undefined;
-        let size = formData.get('aparSize')
-          ? parseFloat(formData.get('aparSize') as string)
+        let size = formData.get('sizeApar')
+          ? parseFloat(formData.get('sizeApar') as string)
           : null;
 
         if (newItemId !== asset.itemId) {
@@ -732,7 +735,7 @@ export async function updateAsset(id: string, formData: FormData) {
 
       // 2. HYDRANT
       if (lowerUnitName.includes('hydrant')) {
-        let ukuran = formData.get('hydrantUkuran')?.toString();
+        let ukuran = formData.get('ukuranHydrant')?.toString();
         if (newItemId !== asset.itemId && !ukuran) {
           const sizeMatch = lowerUnitName.match(
             /(\d+(\.\d+)?)\s*(inch|in|"|cm)/i,

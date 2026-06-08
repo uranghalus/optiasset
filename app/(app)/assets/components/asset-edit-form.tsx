@@ -264,7 +264,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
   const onSubmit = async (values: AssetEditForm) => {
     const formData = new FormData();
     for (const [key, value] of Object.entries(values)) {
-      if (value !== null && value !== undefined && value !== "") {
+      if (value !== null && value !== undefined) {
         if (key === "photo" && value instanceof File) {
           formData.append(key, value);
         } else {

@@ -94,6 +94,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
       jenisApar: undefined,
       sizeApar: undefined,
       ukuranHydrant: "",
+      PIC: "",
     },
   } as any);
 
@@ -165,6 +166,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
         jenisApar: aparInfo?.jenis || undefined,
         sizeApar: aparInfo?.size ? Number(aparInfo.size) : undefined,
         ukuranHydrant: hydrantInfo?.ukuran || "",
+        PIC: (assetData as any).PIC || "",
 
         photo: null,
       });
@@ -263,15 +265,19 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
   const isPending = updateMutation.isPending;
   const onSubmit = async (values: AssetEditForm) => {
     const formData = new FormData();
+
+    // 👇 PERBAIKAN DI SINI 👇
+    // Pastikan field yang dikosongkan tetap terkirim sebagai string kosong 
+    // agar server mendeteksi perubahan.
     for (const [key, value] of Object.entries(values)) {
-      if (value !== null && value !== undefined) {
-        if (key === "photo" && value instanceof File) {
-          formData.append(key, value);
-        } else {
-          formData.append(key, value as string | Blob);
-        }
+      if (key === "photo") {
+        if (value instanceof File) formData.append(key, value);
+      } else {
+        // Jika null / undefined, kirimkan "", jika tidak kirimkan nilainya
+        formData.append(key, value === null || value === undefined ? "" : String(value));
       }
     }
+
     // Flag jika foto lama dihapus
     if (!imagePreview && assetData?.photoUrl) {
       formData.append("removePhoto", "true");
@@ -337,7 +343,6 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                     }
                     renderText={(i) => i.name}
                     onChange={(i) => field.onChange(i.id)}
-
                   />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
@@ -368,7 +373,6 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                     }
                     renderText={(item) => `${item.code} - ${item.name}`}
                     onChange={(item) => field.onChange(item.id)}
-
                   />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
@@ -519,26 +523,39 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                 </Field>
               )}
             />
+
+            {/* 👇 PERBAIKAN: Part Number Opsional 👇 */}
             <Controller
               name="partNumber"
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>Part Number</FieldLabel>
-                  <Input {...field} />
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    placeholder="Opsional (Isi - jika tidak ada)"
+                  />
                 </Field>
               )}
             />
+
+            {/* 👇 PERBAIKAN: Serial Number Opsional 👇 */}
             <Controller
               name="serialNumber"
               control={form.control}
               render={({ field }) => (
                 <Field>
                   <FieldLabel>Serial Number</FieldLabel>
-                  <Input {...field} />
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    placeholder="Opsional (Isi - jika tidak ada)"
+                  />
                 </Field>
               )}
             />
+
             <Controller
               name="condition"
               control={form.control}
@@ -548,7 +565,6 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                   <Select
                     value={field.value}
                     onValueChange={field.onChange}
-
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -594,7 +610,6 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                     }
                     renderText={(loc) => loc.name}
                     onChange={(loc) => field.onChange(loc.id)}
-
                   />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
@@ -632,7 +647,6 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                       }
                       renderText={(loc) => loc.nama_department}
                       onChange={(loc) => field.onChange(loc.id_department)}
-
                     />
                     {fieldState.invalid && (
                       <FieldError errors={[fieldState.error]} />
@@ -648,7 +662,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
               render={({ field }) => (
                 <Field>
                   <FieldLabel>No. Dokumen</FieldLabel>
-                  <Input {...field} />
+                  <Input {...field} value={field.value ?? ""} />
                 </Field>
               )}
             />
@@ -658,7 +672,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
               render={({ field }) => (
                 <Field>
                   <FieldLabel>No. SPB</FieldLabel>
-                  <Input {...field} />
+                  <Input {...field} value={field.value ?? ""} />
                 </Field>
               )}
             />
@@ -685,7 +699,6 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                       {...field}
                       value={field.value ?? ""}
                       placeholder="0"
-
                       className="text-xs"
                     />
                     {fieldState.invalid && (
@@ -708,23 +721,28 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                 )}
               />
             </div>
-            <Controller
-              name="purchasePrice"
-              control={form.control}
-              render={({ field }) => (
-                <Field>
-                  <FieldLabel>Harga Beli</FieldLabel>
-                  <Input type="number" {...field} />
-                </Field>
-              )}
-            />
+
             <Controller
               name="vendorName"
               control={form.control}
               render={({ field }) => (
                 <Field>
                   <FieldLabel>Vendor</FieldLabel>
-                  <Input {...field} />
+                  <Input {...field} value={field.value ?? ""} />
+                </Field>
+              )}
+            />
+            <Controller
+              name="PIC"
+              control={form.control}
+              render={({ field }) => (
+                <Field>
+                  <FieldLabel>PIC (Person in Charge)</FieldLabel>
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    placeholder="Nama penanggung jawab aset"
+                  />
                 </Field>
               )}
             />
@@ -751,7 +769,6 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                     <Select
                       value={field.value || undefined}
                       onValueChange={field.onChange}
-
                     >
                       <SelectTrigger className="bg-white border-red-200 focus:ring-red-500">
                         <SelectValue placeholder="Pilih Jenis Media..." />
@@ -787,7 +804,6 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                       {...field}
                       value={field.value ?? ""}
                       placeholder="Contoh: 4.5"
-
                       className="bg-white border-red-200 focus-visible:ring-red-500"
                     />
                     {fieldState.invalid && (
@@ -818,7 +834,6 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                       {...field}
                       value={field.value ?? ""}
                       placeholder="Contoh: 1.5 Inch atau 2.5 Inch"
-
                       className="bg-white border-blue-200 focus-visible:ring-blue-500"
                     />
                     {fieldState.invalid && (
@@ -886,7 +901,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
           render={({ field }) => (
             <Field>
               <FieldLabel>Catatan</FieldLabel>
-              <Textarea {...field} rows={3} />
+              <Textarea {...field} value={field.value ?? ""} rows={3} />
             </Field>
           )}
         />

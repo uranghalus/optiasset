@@ -10,9 +10,22 @@ export const AssetFormSchema = z.object({
   notes: z.string().optional(),
   brand: z.string().min(1, 'Brand is required'),
   model: z.string().min(1, 'Model is required'),
-  partNumber: z.string().min(1, 'Part Number is required'),
+
+  // 👇 UBAH BAGIAN INI 👇
+  // Jika diisi "-" atau dikosongkan, otomatis dianggap tidak ada (null/undefined)
+  partNumber: z
+    .string()
+    .optional()
+    .transform((val) => (val === '-' || val?.trim() === '' ? null : val)),
+
   condition: z.string().min(1, 'Condition is required'),
-  serialNumber: z.string().min(1, 'Serial Number is required'),
+
+  // 👇 UBAH BAGIAN INI 👇
+  serialNumber: z
+    .string()
+    .optional()
+    .transform((val) => (val === '-' || val?.trim() === '' ? null : val)),
+
   no_spb: z.string().optional(),
   document_number: z.string().optional(),
   kode_asset: z.string().optional(),
@@ -30,10 +43,12 @@ export const AssetFormSchema = z.object({
   assetCategoryId: z.string().optional(),
   assetClusterId: z.string().optional(),
   assetSubClusterId: z.string().optional(),
+  PIC: z.string().optional(),
   photo: z.instanceof(File).optional().nullable(),
 });
 
 export type AssetForm = z.infer<typeof AssetFormSchema>;
+
 export const ImportFormSchema = z.object({
   categoryId: z.string().min(1, 'Kategori Item wajib dipilih'),
   file: z

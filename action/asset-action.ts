@@ -413,8 +413,17 @@ export async function createAsset(formData: FormData) {
         locationId: formData.get('locationId')?.toString() || null,
         brand: formData.get('brand')?.toString() || null,
         model: formData.get('model')?.toString() || null,
-        partNumber: formData.get('partNumber')?.toString() || null,
-        serialNumber: formData.get('serialNumber')?.toString() || null,
+
+        // 👇 PERBAIKAN DI SINI UNTUK PART NUMBER 👇
+        partNumber: formData.get('partNumber')?.toString().trim() === '-' || formData.get('partNumber')?.toString().trim() === ''
+          ? null
+          : formData.get('partNumber')?.toString() || null,
+
+        // 👇 PERBAIKAN DI SINI UNTUK SERIAL NUMBER 👇
+        serialNumber: formData.get('serialNumber')?.toString().trim() === '-' || formData.get('serialNumber')?.toString().trim() === ''
+          ? null
+          : formData.get('serialNumber')?.toString() || null,
+
         document_number: formData.get('document_number')?.toString() || null,
         no_spb: formData.get('no_spb')?.toString() || null,
         departmentId: finalDepartmentId,
@@ -643,12 +652,19 @@ export async function updateAsset(id: string, formData: FormData) {
           model: formData.has('model')
             ? formData.get('model')?.toString() || null
             : asset.model,
+
+          // 👇 KODE INI SUDAH BENAR 👇
           partNumber: formData.has('partNumber')
-            ? formData.get('partNumber')?.toString() || null
+            ? (formData.get('partNumber')?.toString().trim() === '-' || formData.get('partNumber')?.toString().trim() === ''
+              ? null
+              : formData.get('partNumber')?.toString() || null)
             : asset.partNumber,
           serialNumber: formData.has('serialNumber')
-            ? formData.get('serialNumber')?.toString() || null
+            ? (formData.get('serialNumber')?.toString().trim() === '-' || formData.get('serialNumber')?.toString().trim() === ''
+              ? null
+              : formData.get('serialNumber')?.toString() || null)
             : asset.serialNumber,
+
           document_number: formData.has('document_number')
             ? formData.get('document_number')?.toString() || null
             : asset.document_number,
@@ -666,6 +682,9 @@ export async function updateAsset(id: string, formData: FormData) {
           garansi_exp: formData.has('garansi_exp')
             ? parseDateOrNull('garansi_exp')
             : asset.garansi_exp,
+          PIC: formData.has('PIC')
+            ? formData.get('PIC')?.toString() || null
+            : (asset as any).PIC,
           photoUrl: finalPhotoUrl,
           updatedAt: new Date(),
           kode_asset: finalKodeAsset,
@@ -1486,8 +1505,8 @@ export async function importAssetExcel(
 
         let condition =
           col.rusak !== -1 &&
-          row[col.rusak] &&
-          String(row[col.rusak]).trim() !== ''
+            row[col.rusak] &&
+            String(row[col.rusak]).trim() !== ''
             ? 'RUSAK'
             : 'BAIK';
         const modelName =

@@ -804,6 +804,8 @@ export async function updateAsset(id: string, formData: FormData) {
     });
 
     revalidatePath('/assets');
+    revalidatePath(`/assets/${id}`);
+    revalidatePath('/', 'layout');
     return { success: true, data: updated };
 
   } catch (error) {

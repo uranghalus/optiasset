@@ -1018,7 +1018,7 @@ export async function scanAssetCode(scannedCode: string) {
           { id: { startsWith: scannedCode.toLowerCase() } },
         ],
       },
-      select: { id: true },
+      select: { id: true, kode_asset: true, item: { select: { name: true } } },
     });
 
     if (!asset) {

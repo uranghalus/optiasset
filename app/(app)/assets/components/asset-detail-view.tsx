@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { authClient } from "@/lib/auth-client";
+import { useActiveMemberRole } from "@/hooks/use-active-member";
 
 interface AssetWithRelations extends Asset {
     item: Item;
@@ -26,7 +28,7 @@ interface AssetWithRelations extends Asset {
     assignedUser?: {
         name: string;
         email: string;
-        department?: { nama_department: string } | null;
+        department?: { nama_department: string, id_department: string } | null;
     } | null;
 }
 
@@ -38,8 +40,13 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
     const router = useRouter();
     const { setOpen, setCurrentRow } = useDialog();
     const { can } = usePermission();
-
-    console.log('Data:', asset);
+    const { data: userRole } = useActiveMemberRole()
+    const { data: session } = authClient.useSession();
+    const isSameDepartemen = session?.user.departmentId === asset.department?.id_department;
+    // Logika Edit (Dinamis)
+    const showEditButton = can('asset', ['edit']) && (userRole === "owner" || isSameDepartemen);
+    // Logika Hapus (Dinamis)
+    const showDeleteButton = can('asset', ['delete']) && (userRole === "owner" || isSameDepartemen);
 
     const getConditionBadge = (condition: string) => {
         const variants = {
@@ -100,7 +107,7 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
                 </div>
 
                 <div className="flex gap-2">
-                    {can('asset', ['edit']) && (
+                    {showEditButton && (
                         <Button
                             variant="outline"
                             onClick={() => {
@@ -113,7 +120,7 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
                             Edit
                         </Button>
                     )}
-                    {can('asset', ['delete']) && (
+                    {showDeleteButton && (
                         <Button
                             variant="destructive"
                             onClick={() => {

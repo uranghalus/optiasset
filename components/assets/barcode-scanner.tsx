@@ -6,8 +6,11 @@ interface BarcodeScannerProps {
   onScanSuccess: (decodedText: string) => void;
 }
 
-const videoConstraints: MediaTrackConstraints = {
-  facingMode: 'environment'
+const videoConstraints: any = {
+  facingMode: 'environment',
+  width: { ideal: 1280 },
+  height: { ideal: 720 },
+  advanced: [{ focusMode: "continuous" }]
 };
 
 export function BarcodeScanner({ onScanSuccess }: BarcodeScannerProps) {

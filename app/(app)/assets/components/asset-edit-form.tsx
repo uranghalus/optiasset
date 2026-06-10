@@ -910,7 +910,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.push("/assets")}
+            onClick={() => router.back()}
             disabled={isPending}
             className="w-full md:w-auto"
           >

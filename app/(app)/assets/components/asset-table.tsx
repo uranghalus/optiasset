@@ -3,7 +3,7 @@
 
 import { useAssets } from "@/hooks/crud/use-assets";
 import { useActiveMemberRole } from "@/hooks/use-active-member";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react"; // Hapus useEffect dan useRef
 import { assetColumn } from "./asset-column";
 import { useDataTable } from "@/hooks/use-data-table";
 import { DataTableToolbar } from "@/components/datatable/datatable-toolbar";
@@ -35,7 +35,7 @@ import { AssetBulkAction } from "./asset-bulk-action";
 import { useSelectDepartment } from "@/hooks/crud/use-department";
 import { useDebounce } from "@/hooks/use-debounce";
 
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 
 export default function AssetTable() {
   const { setOpen } = useDialog();
@@ -43,13 +43,43 @@ export default function AssetTable() {
   const { data: role } = useActiveMemberRole();
   const { data: departments = [] } = useSelectDepartment();
 
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const categoryId = searchParams.get("categoryId") || undefined;
 
-  const [pagination, setPagination] = useState({
-    pageIndex: 0,
-    pageSize: 10,
-  });
+  // ==========================================
+  // PERUBAHAN BESAR: TANPA useState & useEffect
+  // Baca langsung dari URL
+  // ==========================================
+  const pageParam = searchParams.get("page");
+  const pageIndex = pageParam ? Number(pageParam) - 1 : 0;
+
+  // Jadikan ini sebagai objek pagination yang diteruskan ke tabel
+  const pagination = useMemo(
+    () => ({
+      pageIndex,
+      pageSize: 10,
+    }),
+    [pageIndex]
+  );
+
+  // Handler jika tombol Next / Previous di klik pada tabel
+  const handlePaginationChange = (updater: any) => {
+    // TanStack table mengirimkan function atau value langsung
+    const newPagination = typeof updater === "function" ? updater(pagination) : updater;
+
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (newPagination.pageIndex > 0) {
+      params.set("page", (newPagination.pageIndex + 1).toString());
+    } else {
+      params.delete("page");
+    }
+
+    // Update URL langsung, otomatis komponen akan re-render mengambil pageIndex baru
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
 
   const [columnFilters, setColumnFilters] = useState<any[]>([]);
 
@@ -72,6 +102,7 @@ export default function AssetTable() {
     search: debouncedSearch,
   });
   const isLoading = assetLoading || isFetching;
+
   /* =======================
      FILTER CONFIG
   ======================= */
@@ -108,20 +139,19 @@ export default function AssetTable() {
     rowCount: data?.total ?? 0,
     manualPagination: true,
     manualFilter: true,
-    pagination,
-    onPaginationChange: setPagination,
+    pagination, // Pass nilai yang murni berasal dari URL
+    onPaginationChange: handlePaginationChange, // Arahkan ke handler fungsi URL kita
     columnFilters,
     onColumnFiltersChange: (updater) => {
       setColumnFilters(updater);
+      // Jika filter diubah, paksa URL kembali ke halaman 1 dengan menghapus param page
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("page");
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     },
   });
 
-  useEffect(() => {
-    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-  }, [columnFilters]);
-
   return (
-    // Tambahkan overflow-hidden pada wrapper utama untuk mencegah horizontal scroll di body
     <div className="p-3 rounded-md border space-y-4 w-full overflow-hidden">
       <DataTableToolbar
         table={table}
@@ -130,10 +160,12 @@ export default function AssetTable() {
         searchValue={search}
         onSearchChange={(value) => {
           setSearch(value);
-          setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+          // Jika melakukan pencarian, paksa URL kembali ke halaman 1
+          const params = new URLSearchParams(searchParams.toString());
+          params.delete("page");
+          router.replace(`${pathname}?${params.toString()}`, { scroll: false });
         }}
       >
-        {/* PERBAIKAN STACK BERSUSUN DI MOBILE */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mt-3 sm:mt-0 w-full sm:w-auto">
           {can("asset", ["create"]) && (
             <Button className="gap-2 w-full sm:w-auto justify-center" asChild>
@@ -144,7 +176,6 @@ export default function AssetTable() {
             </Button>
           )}
 
-          {/* ButtonGroup dibuat full width di mobile, tapi tetap proporsional */}
           <ButtonGroup className="flex w-full sm:w-auto">
             {can("asset", ["scan-code"]) && (
               <Button
@@ -200,7 +231,6 @@ export default function AssetTable() {
         </div>
       </DataTableToolbar>
 
-      {/* Pastikan DataTable di dalamnya dibungkus overflow-x-auto */}
       <DataTable table={table} loading={isLoading} />
       <AssetBulkAction table={table} />
       <DataTablePagination table={table} pageCount={data?.pageCount ?? 0} />

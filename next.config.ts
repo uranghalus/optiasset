@@ -10,6 +10,11 @@ const nextConfig: NextConfig = {
     '172.18.24.152',
     '10.84.193.47'
   ],
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '5mb',
+    },
+  },
 };
 
 export default nextConfig;

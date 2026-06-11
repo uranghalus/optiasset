@@ -85,6 +85,7 @@ export async function getAllAssets({
         model: true,
         photoUrl: true,
         departmentId: true,
+        PIC: true,
         item: {
           select: {
             name: true,

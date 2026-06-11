@@ -29,7 +29,7 @@ export type AssetWithItem = Prisma.AssetGetPayload<{
       }
     }
   };
-}>;
+}> & { PIC: string | null };
 
 /* =======================
    BASE COLUMNS (TANPA DEPARTMENT)

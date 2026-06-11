@@ -26,11 +26,6 @@ interface AssetWithRelations extends Asset {
     item: Item;
     location: Location | null;
     department: department | null;
-    assignedUser?: {
-        name: string;
-        email: string;
-        department?: { nama_department: string, id_department: string } | null;
-    } | null;
 }
 
 interface AssetDetailViewProps {
@@ -245,12 +240,7 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
                                         PIC (Penanggung Jawab)
                                     </div>
                                     <p className="text-sm text-muted-foreground pl-6">
-                                        {asset.assignedUser ? (
-                                            <>
-                                                {asset.assignedUser.name}
-                                                {asset.assignedUser.department?.nama_department && ` - ${asset.assignedUser.department.nama_department}`}
-                                            </>
-                                        ) : (asset.assignedUserId ? "Assigned" : "Not Assigned")}
+                                        {asset.PIC || "Tidak Ada PIC"}
                                     </p>
                                 </div>
                             </div>

@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use server';
 
+import sharp from 'sharp';
 import PDFDocument from 'pdfkit';
 import { getServerSession } from '@/lib/get-session';
 import { prisma } from '@/lib/prisma';
@@ -276,9 +277,38 @@ export async function createAsset(formData: FormData) {
   const photoFile = formData.get('photo') as File | null;
   let photoUrl = null;
   if (photoFile && photoFile.size > 0) {
-    photoUrl = await uploadToS3(photoFile, 'asset-photos');
-  }
+    try {
+      const arrayBuffer = await photoFile.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
 
+      // Kompresi gambar: mengubah ke format WebP (sangat ringan) atau JPEG dengan kualitas 80% (visually lossless)
+      const compressedBuffer = await sharp(buffer)
+        .jpeg({ quality: 80, mozjpeg: true }) // Kualitas 80% tidak merubah kejernihan secara kasat mata
+        .toBuffer();
+
+      // Rekonstruksi kembali menjadi File object standar agar bisa diterima oleh fungsi uploadToS3 Anda
+      const compressedFile = new File(
+        [new Uint8Array(compressedBuffer)],
+        photoFile.name,
+        {
+          type: 'image/jpeg',
+        },
+      );
+
+      photoUrl = await uploadToS3(compressedFile, 'asset-photos');
+    } catch (error) {
+      console.error('Error compressing image:', error);
+      // Jika kompresi gagal (misal file korup), tetap upload file aslinya sebagai fallback
+      photoUrl = await uploadToS3(photoFile, 'asset-photos');
+    }
+  }
+  // 👇 2. UPLOAD DOCUMENT (Tanpa Kompresi Backend) 👇
+  // Seperti yang dibahas, kompresi PDF/Doc di backend Node.js tidak disarankan.
+  const documentFile = formData.get('document') as File | null;
+  let documentUrl = null;
+  if (documentFile && documentFile.size > 0) {
+    documentUrl = await uploadToS3(documentFile, 'asset-documents');
+  }
   const formDepartmentId = formData.get('departmentId')?.toString();
   const isAdminOrOwner = role === 'staff_asset' || role === 'owner';
   const finalDepartmentId =
@@ -415,14 +445,18 @@ export async function createAsset(formData: FormData) {
         model: formData.get('model')?.toString() || null,
 
         // 👇 PERBAIKAN DI SINI UNTUK PART NUMBER 👇
-        partNumber: formData.get('partNumber')?.toString().trim() === '-' || formData.get('partNumber')?.toString().trim() === ''
-          ? null
-          : formData.get('partNumber')?.toString() || null,
+        partNumber:
+          formData.get('partNumber')?.toString().trim() === '-' ||
+          formData.get('partNumber')?.toString().trim() === ''
+            ? null
+            : formData.get('partNumber')?.toString() || null,
 
         // 👇 PERBAIKAN DI SINI UNTUK SERIAL NUMBER 👇
-        serialNumber: formData.get('serialNumber')?.toString().trim() === '-' || formData.get('serialNumber')?.toString().trim() === ''
-          ? null
-          : formData.get('serialNumber')?.toString() || null,
+        serialNumber:
+          formData.get('serialNumber')?.toString().trim() === '-' ||
+          formData.get('serialNumber')?.toString().trim() === ''
+            ? null
+            : formData.get('serialNumber')?.toString() || null,
 
         document_number: formData.get('document_number')?.toString() || null,
         no_spb: formData.get('no_spb')?.toString() || null,
@@ -432,7 +466,8 @@ export async function createAsset(formData: FormData) {
         vendorName: formData.get('vendorName')?.toString() || null,
         garansi_exp: parseDateOrNull('garansi_exp'),
         photoUrl,
-
+        // 👇 PENAMBAHAN FIELD PIC 👇
+        PIC: formData.get('PIC')?.toString() || null,
         assetGroupId,
         assetCategoryId,
         assetClusterId,
@@ -528,6 +563,7 @@ export async function updateAsset(id: string, formData: FormData) {
     return val ? parseFloat(val) : null;
   };
 
+  // 👇 LOGIKA UPDATE FOTO DENGAN KOMPRESI SHARP 👇
   const removePhoto = formData.get('removePhoto') === 'true';
   const photoFile = formData.get('photo') as File | null;
   let finalPhotoUrl = asset.photoUrl;
@@ -537,9 +573,42 @@ export async function updateAsset(id: string, formData: FormData) {
     finalPhotoUrl = null;
   } else if (photoFile && photoFile.size > 0) {
     if (asset.photoUrl) await deleteS3File(asset.photoUrl);
-    finalPhotoUrl = await uploadToS3(photoFile, 'asset-photos');
-    // Cek apakah hasil upload me-return nama file/URL yang benar
-    console.log('2. HASIL UPLOAD S3:', finalPhotoUrl);
+
+    try {
+      const arrayBuffer = await photoFile.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      const compressedBuffer = await sharp(buffer)
+        .jpeg({ quality: 80, mozjpeg: true })
+        .toBuffer();
+
+      const compressedFile = new File(
+        [new Uint8Array(compressedBuffer)],
+        photoFile.name,
+        {
+          type: 'image/jpeg',
+        },
+      );
+
+      finalPhotoUrl = await uploadToS3(compressedFile, 'asset-photos');
+      console.log('2. HASIL UPLOAD S3 (COMPRESSED):', finalPhotoUrl);
+    } catch (error) {
+      console.error('Error compressing image during update:', error);
+      finalPhotoUrl = await uploadToS3(photoFile, 'asset-photos');
+    }
+  }
+
+  // 👇 LOGIKA UPDATE DOKUMEN 👇
+  const removeDocument = formData.get('removeDocument') === 'true';
+  const documentFile = formData.get('document') as File | null;
+  let finalDocumentUrl = asset.documentUrl;
+
+  if (removeDocument) {
+    if (asset.documentUrl) await deleteS3File(asset.documentUrl);
+    finalDocumentUrl = null;
+  } else if (documentFile && documentFile.size > 0) {
+    if (asset.documentUrl) await deleteS3File(asset.documentUrl);
+    finalDocumentUrl = await uploadToS3(documentFile, 'asset-documents');
   }
 
   const newItemId = formData.get('itemId')?.toString() || asset.itemId;
@@ -624,10 +693,15 @@ export async function updateAsset(id: string, formData: FormData) {
           }
         }
       } else {
-        if (formData.has('assetGroupId')) assetGroupId = formData.get('assetGroupId')?.toString() || null;
-        if (formData.has('assetCategoryId')) assetCategoryId = formData.get('assetCategoryId')?.toString() || null;
-        if (formData.has('assetClusterId')) assetClusterId = formData.get('assetClusterId')?.toString() || null;
-        if (formData.has('assetSubClusterId')) assetSubClusterId = formData.get('assetSubClusterId')?.toString() || null;
+        if (formData.has('assetGroupId'))
+          assetGroupId = formData.get('assetGroupId')?.toString() || null;
+        if (formData.has('assetCategoryId'))
+          assetCategoryId = formData.get('assetCategoryId')?.toString() || null;
+        if (formData.has('assetClusterId'))
+          assetClusterId = formData.get('assetClusterId')?.toString() || null;
+        if (formData.has('assetSubClusterId'))
+          assetSubClusterId =
+            formData.get('assetSubClusterId')?.toString() || null;
       }
 
       const result = await tx.asset.update({
@@ -653,16 +727,17 @@ export async function updateAsset(id: string, formData: FormData) {
             ? formData.get('model')?.toString() || null
             : asset.model,
 
-          // 👇 KODE INI SUDAH BENAR 👇
           partNumber: formData.has('partNumber')
-            ? (formData.get('partNumber')?.toString().trim() === '-' || formData.get('partNumber')?.toString().trim() === ''
+            ? formData.get('partNumber')?.toString().trim() === '-' ||
+              formData.get('partNumber')?.toString().trim() === ''
               ? null
-              : formData.get('partNumber')?.toString() || null)
+              : formData.get('partNumber')?.toString() || null
             : asset.partNumber,
           serialNumber: formData.has('serialNumber')
-            ? (formData.get('serialNumber')?.toString().trim() === '-' || formData.get('serialNumber')?.toString().trim() === ''
+            ? formData.get('serialNumber')?.toString().trim() === '-' ||
+              formData.get('serialNumber')?.toString().trim() === ''
               ? null
-              : formData.get('serialNumber')?.toString() || null)
+              : formData.get('serialNumber')?.toString() || null
             : asset.serialNumber,
 
           document_number: formData.has('document_number')
@@ -685,7 +760,10 @@ export async function updateAsset(id: string, formData: FormData) {
           PIC: formData.has('PIC')
             ? formData.get('PIC')?.toString() || null
             : (asset as any).PIC,
+
           photoUrl: finalPhotoUrl,
+          documentUrl: finalDocumentUrl, // 👈 MENYIMPAN URL DOKUMEN KE DB
+
           updatedAt: new Date(),
           kode_asset: finalKodeAsset,
 
@@ -704,7 +782,9 @@ export async function updateAsset(id: string, formData: FormData) {
       });
 
       // INTELEJEN UPSERT/CLEANUP UNTUK APAR & HYDRANT
-      const currentItem = await tx.item.findUnique({ where: { id: newItemId } });
+      const currentItem = await tx.item.findUnique({
+        where: { id: newItemId },
+      });
       const lowerUnitName = String(currentItem?.name || '').toLowerCase();
 
       // 1. APAR
@@ -826,13 +906,13 @@ export async function updateAsset(id: string, formData: FormData) {
     revalidatePath(`/assets/${id}`);
     revalidatePath('/', 'layout');
     return { success: true, data: updated };
-
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2002') {
         return {
           success: false,
-          error: 'An asset with this serial number already exists in your organization. Please use a unique serial number.'
+          error:
+            'An asset with this serial number already exists in your organization. Please use a unique serial number.',
         };
       }
     }
@@ -840,7 +920,7 @@ export async function updateAsset(id: string, formData: FormData) {
     console.error('Failed to update asset:', error);
     return {
       success: false,
-      error: 'An unexpected error occurred while updating the asset.'
+      error: 'An unexpected error occurred while updating the asset.',
     };
   }
 }
@@ -1505,8 +1585,8 @@ export async function importAssetExcel(
 
         let condition =
           col.rusak !== -1 &&
-            row[col.rusak] &&
-            String(row[col.rusak]).trim() !== ''
+          row[col.rusak] &&
+          String(row[col.rusak]).trim() !== ''
             ? 'RUSAK'
             : 'BAIK';
         const modelName =

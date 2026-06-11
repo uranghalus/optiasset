@@ -9,12 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useDialog } from "@/context/dialog-provider";
 import { usePermission } from "@/hooks/use-permission";
-import S3Image from "@/components/s3-image"; // <-- IMPORT S3 IMAGE DI SINI
+import S3Image from "@/components/s3-image";
 
+// 👇 Tambahkan icon Download di sini
 import {
     ArrowLeft, Edit, Trash2, QrCode, Move, Handshake, Calendar,
     MapPin, Building, Package, DollarSign, FileText, Camera, Tag,
-    User, AlertTriangle, CheckCircle, Clock, XCircle
+    User, AlertTriangle, CheckCircle, Clock, XCircle, Download
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -42,9 +43,14 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
     const { can } = usePermission();
     const { data: userRole } = useActiveMemberRole()
     const { data: session } = authClient.useSession();
+
+    // Logika Akses Tombol
     const isSameDepartemen = session?.user.departmentId === asset.department?.id_department;
-    const showEditButton = can('asset', ['edit']) && (userRole === "owner" || isSameDepartemen);
-    const showDeleteButton = can('asset', ['delete']) && (userRole === "owner" || isSameDepartemen);
+    const isOwner = userRole === "owner";
+    const isStaffAsset = userRole === "staff_asset" as any;
+
+    const showEditButton = can('asset', ['edit']) && (isSameDepartemen || isOwner || isStaffAsset);
+    const showDeleteButton = can('asset', ['delete']) && (isOwner || (isSameDepartemen && !isStaffAsset));
 
     const getConditionBadge = (condition: string) => {
         const variants = {
@@ -146,7 +152,6 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            {/* MEMANGGIL KOMPONEN S3 IMAGE DI SINI */}
                             {asset.photoUrl ? (
                                 <div className="relative w-full max-w-md mx-auto">
                                     <S3Image
@@ -311,6 +316,29 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
                                         {asset.document_number || "-"}
                                     </p>
                                 </div>
+
+                                {/* 👇 FITUR DOWNLOAD DOKUMEN 👇 */}
+                                {(asset as any).documentUrl && (
+                                    <div className="space-y-2 col-span-1 md:col-span-2 mt-2">
+                                        <div className="flex items-center gap-2 text-sm font-medium">
+                                            <Download className="h-4 w-4" />
+                                            Lampiran Berkas / Dokumen
+                                        </div>
+                                        <div className="pl-6">
+                                            <Button variant="outline" size="sm" className="gap-2" asChild>
+                                                <a
+                                                    href={(asset as any).documentUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    download
+                                                >
+                                                    <Download className="h-3.5 w-3.5" />
+                                                    Unduh Dokumen
+                                                </a>
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Notes */}

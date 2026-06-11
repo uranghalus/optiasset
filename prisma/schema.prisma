@@ -265,6 +265,7 @@ model Asset {
   PIC             String?               @db.Char(100)
   notes           String?
   photoUrl        String?               @db.Text
+  documentUrl     String?               @db.Text
   createdAt       DateTime              @default(now())
   updatedAt       DateTime?             @updatedAt
   kode_asset      String?               @db.Char(100)

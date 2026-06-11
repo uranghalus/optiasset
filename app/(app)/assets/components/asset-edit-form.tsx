@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { Camera, X, Loader2 } from "lucide-react";
+import { Camera, X, Loader2, FileText } from "lucide-react"; // 👈 Tambah FileText
 
 import { type AssetEditForm, AssetEditFormSchema } from "@/schema/asset-schema";
 import { getAssetFormAccess, isValidImageFile } from "@/lib/utils";
@@ -44,8 +44,14 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
   const { data: session } = authClient.useSession();
   const activeOrgId = session?.session?.activeOrganizationId || "";
   const router = useRouter();
+
+  // State untuk Foto
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
+
+  // 👇 State untuk Dokumen 👇
+  const [documentName, setDocumentName] = useState<string | null>(null);
+  const [hasExistingDocument, setHasExistingDocument] = useState<boolean>(false);
 
   // Flag agar saat pre-fill awal, dropdown anak tidak ter-reset
   const isPreFilling = useRef(true);
@@ -80,6 +86,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
       vendorName: "",
       garansi_exp: "",
       photo: null,
+      documentUrl: null, // 👈 Tambahkan inisialisasi form document
       brand: "",
       model: "",
       partNumber: "",
@@ -169,9 +176,20 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
         PIC: (assetData as any).PIC || "",
 
         photo: null,
+        documentUrl: null,
       });
 
       if (assetData.photoUrl) setImagePreview(assetData.photoUrl);
+
+      // 👇 Pre-fill UI Document jika exist dari database
+      if ((assetData as any).documentUrl) {
+        // Ambil nama file dari URL S3 (mengambil text setelah slash terakhir)
+        const docUrl = (assetData as any).documentUrl as string;
+        const decodedUrl = decodeURIComponent(docUrl);
+        const fileName = decodedUrl.substring(decodedUrl.lastIndexOf('/') + 1);
+        setDocumentName(fileName);
+        setHasExistingDocument(true);
+      }
 
       // Matikan kunci setelah render selesai agar user bisa mengganti dropdown
       setTimeout(() => {
@@ -261,27 +279,61 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
     if (fileInput) fileInput.value = "";
   };
 
+  // 👇 Handle Dokumen 👇
+  const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setDocumentName(
+        hasExistingDocument && (assetData as any).documentUrl
+          ? decodeURIComponent((assetData as any).documentUrl).split('/').pop() || "Dokumen Tersimpan"
+          : null
+      );
+      form.setValue("documentUrl", null);
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Ukuran dokumen maksimal 5MB.");
+      e.target.value = "";
+      return;
+    }
+
+    form.setValue("documentUrl", file);
+    setDocumentName(file.name);
+  };
+
+  const handleRemoveDocument = () => {
+    setDocumentName(null);
+    setHasExistingDocument(false);
+    form.setValue("documentUrl", null);
+    const fileInput = document.getElementById(
+      "document-input",
+    ) as HTMLInputElement;
+    if (fileInput) fileInput.value = "";
+  };
+
   // Handle Submit
   const isPending = updateMutation.isPending;
   const onSubmit = async (values: AssetEditForm) => {
     const formData = new FormData();
 
-    // 👇 PERBAIKAN DI SINI 👇
-    // Pastikan field yang dikosongkan tetap terkirim sebagai string kosong 
-    // agar server mendeteksi perubahan.
     for (const [key, value] of Object.entries(values)) {
-      if (key === "photo") {
-        if (value instanceof File) formData.append(key, value);
+      // 👇 Mencegah bug typeof untuk File object 👇
+      if ((key === "photo" || key === "documentUrl") && value instanceof File) {
+        formData.append(key, value);
       } else {
-        // Jika null / undefined, kirimkan "", jika tidak kirimkan nilainya
         formData.append(key, value === null || value === undefined ? "" : String(value));
       }
     }
 
-    // Flag jika foto lama dihapus
+    // Flag hapus file existing ke API
     if (!imagePreview && assetData?.photoUrl) {
       formData.append("removePhoto", "true");
     }
+    if (!documentName && (assetData as any)?.documentUrl) {
+      formData.append("removeDocument", "true");
+    }
+
     updateMutation.mutate({ id: assetId, formData });
   };
 
@@ -519,12 +571,11 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
               render={({ field }) => (
                 <Field>
                   <FieldLabel>Model</FieldLabel>
-                  <Input {...field} />
+                  <Input {...field} value={field.value ?? ""} />
                 </Field>
               )}
             />
 
-            {/* 👇 PERBAIKAN: Part Number Opsional 👇 */}
             <Controller
               name="partNumber"
               control={form.control}
@@ -540,7 +591,6 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
               )}
             />
 
-            {/* 👇 PERBAIKAN: Serial Number Opsional 👇 */}
             <Controller
               name="serialNumber"
               control={form.control}
@@ -661,7 +711,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
               control={form.control}
               render={({ field }) => (
                 <Field>
-                  <FieldLabel>No. Dokumen</FieldLabel>
+                  <FieldLabel>No. Dokumen Kontrak</FieldLabel>
                   <Input {...field} value={field.value ?? ""} />
                 </Field>
               )}
@@ -846,52 +896,103 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
           </div>
         )}
 
-        {/* PHOTO SECTION */}
-        <div className="space-y-4 border rounded-lg p-4 bg-slate-50 mt-6">
-          <h3 className="font-semibold text-sm">Lampiran Foto Fisik Unit</h3>
-          {imagePreview && (
-            <div className="relative w-full flex justify-center">
-              <div className="relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={imagePreview.startsWith('data:') ? imagePreview : `/api/image?key=${encodeURIComponent(imagePreview)}`}
-                  alt="Asset preview"
-                  className="h-40 w-40 object-cover rounded-lg border bg-white shadow-sm"
+        {/* UPLOAD SECTION: PHOTO & DOCUMENT */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+          {/* PHOTO SECTION */}
+          <div className="space-y-4 border rounded-lg p-4 bg-slate-50">
+            <h3 className="font-semibold text-sm">Lampiran Foto Fisik Unit</h3>
+            {imagePreview && (
+              <div className="relative w-full flex justify-center">
+                <div className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imagePreview.startsWith('data:') ? imagePreview : `/api/image?key=${encodeURIComponent(imagePreview)}`}
+                    alt="Asset preview"
+                    className="h-40 w-40 object-cover rounded-lg border bg-white shadow-sm"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full shadow-md"
+                    onClick={handleRemoveImage}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            )}
+            {imageError && (
+              <p className="text-sm text-red-500 bg-red-50 p-2 rounded">
+                {imageError}
+              </p>
+            )}
+            <div className="flex items-center gap-2">
+              <label htmlFor="photo-input" className="flex-1">
+                <div className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-100 bg-white transition-colors">
+                  <Camera className="h-4 w-4 text-slate-500" />
+                  <span className="text-sm text-slate-600 font-medium">
+                    {imagePreview ? "Klik ubah foto" : "Pilih dokumen foto aset"}
+                  </span>
+                </div>
+                <input
+                  id="photo-input"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageChange}
+                  disabled={updateMutation.isPending}
                 />
+              </label>
+            </div>
+          </div>
+
+          {/* 👇 DOCUMENT SECTION 👇 */}
+          <div className="space-y-4 border rounded-lg p-4 bg-slate-50">
+            <h3 className="font-semibold text-sm">Lampiran Dokumen (Opsional)</h3>
+            {documentName && (
+              <div className="flex items-center justify-between p-3 bg-white border rounded-lg shadow-sm">
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <FileText className="h-5 w-5 text-blue-500 flex-shrink-0" />
+                  <span className="text-sm text-slate-700 truncate font-medium" title={documentName}>
+                    {documentName}
+                  </span>
+                </div>
                 <Button
                   type="button"
-                  variant="destructive"
+                  variant="ghost"
                   size="icon"
-                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full shadow-md"
-                  onClick={handleRemoveImage}
+                  className="h-8 w-8 text-slate-400 hover:text-red-500 flex-shrink-0"
+                  onClick={handleRemoveDocument}
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-4 w-4" />
                 </Button>
               </div>
-            </div>
-          )}
-          {imageError && (
-            <p className="text-sm text-red-500 bg-red-50 p-2 rounded">
-              {imageError}
-            </p>
-          )}
-          <div className="flex items-center gap-2">
-            <label htmlFor="photo-input" className="flex-1">
-              <div className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-100 bg-white transition-colors">
-                <Camera className="h-4 w-4 text-slate-500" />
-                <span className="text-sm text-slate-600 font-medium">
-                  {imagePreview ? "Klik ubah foto" : "Pilih dokumen foto aset"}
-                </span>
+            )}
+
+            {!documentName && (
+              <div className="flex items-center gap-2">
+                <label htmlFor="document-input" className="flex-1">
+                  <div className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-100 bg-white transition-colors h-[52px]">
+                    <FileText className="h-4 w-4 text-slate-500" />
+                    <span className="text-sm text-slate-600 font-medium">
+                      Unggah file dokumen baru
+                    </span>
+                  </div>
+                  <input
+                    id="document-input"
+                    type="file"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx"
+                    className="hidden"
+                    onChange={handleDocumentChange}
+                    disabled={updateMutation.isPending}
+                  />
+                </label>
               </div>
-              <input
-                id="photo-input"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageChange}
-                disabled={updateMutation.isPending}
-              />
-            </label>
+            )}
+            <p className="text-[11px] text-slate-500">
+              Format didukung: PDF, Word, Excel. Maksimal 5MB.
+            </p>
           </div>
         </div>
 

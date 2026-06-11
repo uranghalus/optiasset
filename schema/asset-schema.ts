@@ -45,6 +45,7 @@ export const AssetFormSchema = z.object({
   assetSubClusterId: z.string().optional(),
   PIC: z.string().optional(),
   photo: z.instanceof(File).optional().nullable(),
+  documentUrl: z.instanceof(File).optional().nullable(),
 });
 
 export type AssetForm = z.infer<typeof AssetFormSchema>;

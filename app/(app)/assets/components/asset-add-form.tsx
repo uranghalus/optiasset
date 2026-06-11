@@ -25,13 +25,19 @@ import {
 import { Field, FieldLabel, FieldError } from "@/components/ui/field";
 import { Combobox } from "@/components/ui/combobox";
 import { AssetType } from "@/generated/prisma/client";
-import { Camera, X, Info } from "lucide-react";
+// 👇 Tambahkan icon FileText untuk dokumen
+import { Camera, X, Info, FileText } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSelectDepartment } from "@/hooks/crud/use-department";
 
 export default function AssetAddForm() {
+  // State untuk Foto
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
+
+  // 👇 State untuk Dokumen 👇
+  const [documentName, setDocumentName] = useState<string | null>(null);
+
   const router = useRouter();
   const createMutation = useCreateAsset();
   const { data: role } = useActiveMemberRole();
@@ -60,27 +66,24 @@ export default function AssetAddForm() {
       assetClusterId: "",
       assetSubClusterId: "",
       photo: null,
+      documentUrl: null, // 👈 Tambahkan nilai default untuk dokumen
       brand: "",
       model: "",
       partNumber: "",
       serialNumber: "",
       document_number: "",
       no_spb: "",
-      // PERBAIKAN: Gunakan undefined, bukan string kosong agar lolos validasi Zod Enum
       isAparOrHydrant: "NONE",
       jenisApar: undefined,
       sizeApar: undefined,
       ukuranHydrant: "",
+      PIC: "", // 👈 Field PIC sudah ada di defaultValues Anda
     },
   } as any);
 
-  // 1. Pantau perubahan Master Item yang dipilih
   const selectedItemId = form.watch("itemId");
-
-  // 2. STATE UNTUK MENAMPUNG KODE KATEGORI AKTIF
   const [activeCategoryCode, setActiveCategoryCode] = useState<string>("");
 
-  // 3. EFFECT UNTUK MENDETEKSI KATEGORI ITEM DAN AUTO-FILL VALUES KEDALAM FORM
   useEffect(() => {
     if (!selectedItemId || !items) {
       setActiveCategoryCode("");
@@ -114,7 +117,6 @@ export default function AssetAddForm() {
     }
   }, [selectedItemId, items, form]);
 
-  // 4. GENERATE KODE OTOMATIS
   const { data: generatedCode } = useGenerateAssetCode(activeCategoryCode);
 
   useEffect(() => {
@@ -122,9 +124,6 @@ export default function AssetAddForm() {
     form.setValue("kode_asset", generatedCode, { shouldDirty: true });
   }, [generatedCode, form]);
 
-  // =========================================================================
-  // DETEKSI APAR & HYDRANT LOGIC
-  // =========================================================================
   const activeItemDetails = items?.find((item) => item.id === selectedItemId);
   const itemName = activeItemDetails?.name?.toLowerCase() || "";
   const categoryName =
@@ -141,13 +140,11 @@ export default function AssetAddForm() {
       form.setValue("isAparOrHydrant", "HYDRANT");
     } else {
       form.setValue("isAparOrHydrant", "NONE");
-      // PERBAIKAN: Reset ke undefined, bukan string kosong
       form.setValue("jenisApar", undefined as any);
       form.setValue("sizeApar", undefined as any);
       form.setValue("ukuranHydrant", "");
     }
   }, [isApar, isHydrant, form]);
-  // =========================================================================
 
   // Handle Image
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -186,13 +183,43 @@ export default function AssetAddForm() {
     if (fileInput) fileInput.value = "";
   };
 
+  // 👇 Handle Document Upload 👇
+  const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setDocumentName(null);
+      form.setValue("documentUrl", null);
+      return;
+    }
+
+    // Optional: Validasi ukuran file (misal max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Ukuran dokumen maksimal 5MB.");
+      e.target.value = "";
+      return;
+    }
+
+    form.setValue("documentUrl", file);
+    setDocumentName(file.name);
+  };
+
+  const handleRemoveDocument = () => {
+    setDocumentName(null);
+    form.setValue("documentUrl", null);
+    const fileInput = document.getElementById(
+      "document-input",
+    ) as HTMLInputElement;
+    if (fileInput) fileInput.value = "";
+  };
+
   // Submit Data
   const onSubmit = async (values: AssetForm) => {
     const formData = new FormData();
 
     for (const [key, value] of Object.entries(values)) {
       if (value !== undefined && value !== null && value !== "") {
-        if (key === "photo" && value instanceof File) {
+        // 👇 PERBAIKAN: Pastikan document juga diperlakukan sebagai File saat append 👇
+        if ((key === "photo" || key === "documentUrl") && value instanceof File) {
           formData.append(key, value);
         } else {
           formData.append(key, value as string | Blob);
@@ -205,6 +232,7 @@ export default function AssetAddForm() {
       form.reset();
       setImagePreview(null);
       setImageError(null);
+      setDocumentName(null);
       router.push("/assets");
     } catch (error: any) {
       console.error(error);
@@ -507,6 +535,26 @@ export default function AssetAddForm() {
               />
             )}
 
+            {/* 👇 PENAMBAHAN FIELD PIC DI SINI 👇 */}
+            <Controller
+              name="PIC"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel>PIC (Person In Charge)</FieldLabel>
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    placeholder="Nama Penanggung Jawab Aset"
+                    readOnly={isReadonly}
+                  />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
+            />
+
             <Controller
               name="document_number"
               control={form.control}
@@ -731,53 +779,104 @@ export default function AssetAddForm() {
         )}
         {/* ===================================================================== */}
 
-        {/* PHOTO UPLOAD SECTION */}
-        <div className="space-y-4 border rounded-lg p-4 bg-slate-50 mt-6">
-          <h3 className="font-semibold text-sm">Lampiran Foto Fisik Unit</h3>
-          {imagePreview && (
-            <div className="relative w-full flex justify-center">
-              <div className="relative">
-                <img
-                  src={imagePreview}
-                  alt="Asset preview"
-                  className="h-40 w-40 object-cover rounded-lg border shadow-sm"
+        {/* UPLOAD SECTION: PHOTO & DOCUMENT */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+          {/* PHOTO UPLOAD */}
+          <div className="space-y-4 border rounded-lg p-4 bg-slate-50">
+            <h3 className="font-semibold text-sm">Lampiran Foto Fisik Unit</h3>
+            {imagePreview && (
+              <div className="relative w-full flex justify-center">
+                <div className="relative">
+                  <img
+                    src={imagePreview}
+                    alt="Asset preview"
+                    className="h-40 w-40 object-cover rounded-lg border shadow-sm"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full shadow-md"
+                    onClick={handleRemoveImage}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            )}
+            {imageError && (
+              <p className="text-sm text-red-500 bg-red-50 p-2 rounded">
+                {imageError}
+              </p>
+            )}
+            <div className="flex items-center gap-2">
+              <label htmlFor="photo-input" className="flex-1">
+                <div className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors">
+                  <Camera className="h-4 w-4 text-slate-500" />
+                  <span className="text-sm text-slate-600 font-medium">
+                    {imagePreview
+                      ? "Ubah foto lampiran"
+                      : "Pilih foto aset"}
+                  </span>
+                </div>
+                <input
+                  id="photo-input"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageChange}
+                  disabled={isPending}
                 />
+              </label>
+            </div>
+          </div>
+
+          {/* 👇 PENAMBAHAN DOCUMENT UPLOAD 👇 */}
+          <div className="space-y-4 border rounded-lg p-4 bg-slate-50">
+            <h3 className="font-semibold text-sm">Lampiran Dokumen (Opsional)</h3>
+            {documentName && (
+              <div className="flex items-center justify-between p-3 bg-white border rounded-lg shadow-sm">
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <FileText className="h-5 w-5 text-blue-500 shrink-0" />
+                  <span className="text-sm text-slate-700 truncate font-medium">
+                    {documentName}
+                  </span>
+                </div>
                 <Button
                   type="button"
-                  variant="destructive"
+                  variant="ghost"
                   size="icon"
-                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full shadow-md"
-                  onClick={handleRemoveImage}
+                  className="h-8 w-8 text-slate-400 hover:text-red-500 flex-shrink-0"
+                  onClick={handleRemoveDocument}
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-4 w-4" />
                 </Button>
               </div>
-            </div>
-          )}
-          {imageError && (
-            <p className="text-sm text-red-500 bg-red-50 p-2 rounded">
-              {imageError}
-            </p>
-          )}
-          <div className="flex items-center gap-2">
-            <label htmlFor="photo-input" className="flex-1">
-              <div className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors">
-                <Camera className="h-4 w-4 text-slate-500" />
-                <span className="text-sm text-slate-600 font-medium">
-                  {imagePreview
-                    ? "Ubah foto lampiran"
-                    : "Pilih dokumen foto aset"}
-                </span>
+            )}
+
+            {!documentName && (
+              <div className="flex items-center gap-2">
+                <label htmlFor="document-input" className="flex-1">
+                  <div className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors h-[52px]">
+                    <FileText className="h-4 w-4 text-slate-500" />
+                    <span className="text-sm text-slate-600 font-medium">
+                      Unggah file dokumen
+                    </span>
+                  </div>
+                  <input
+                    id="document-input"
+                    type="file"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx"
+                    className="hidden"
+                    onChange={handleDocumentChange}
+                    disabled={isPending}
+                  />
+                </label>
               </div>
-              <input
-                id="photo-input"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageChange}
-                disabled={isPending}
-              />
-            </label>
+            )}
+            <p className="text-[11px] text-slate-500">
+              Format didukung: PDF, Word, Excel. Maksimal 5MB.
+            </p>
           </div>
         </div>
 

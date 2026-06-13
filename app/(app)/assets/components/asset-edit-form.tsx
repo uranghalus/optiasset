@@ -533,7 +533,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                   <Input
                     {...field}
                     value={field.value ?? ""}
-                    readOnly
+                    // readOnly
                     className="font-mono bg-slate-50 font-semibold"
                   />
                   {fieldState.invalid && (

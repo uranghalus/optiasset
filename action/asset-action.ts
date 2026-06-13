@@ -304,8 +304,8 @@ export async function createAsset(formData: FormData) {
     }
   }
   // 👇 2. UPLOAD DOCUMENT (Tanpa Kompresi Backend) 👇
-  // Seperti yang dibahas, kompresi PDF/Doc di backend Node.js tidak disarankan.
-  const documentFile = formData.get('document') as File | null;
+  // Ubah 'document' menjadi 'documentUrl'
+  const documentFile = formData.get('documentUrl') as File | null;
   let documentUrl = null;
   if (documentFile && documentFile.size > 0) {
     documentUrl = await uploadToS3(documentFile, 'asset-documents');
@@ -467,6 +467,7 @@ export async function createAsset(formData: FormData) {
         vendorName: formData.get('vendorName')?.toString() || null,
         garansi_exp: parseDateOrNull('garansi_exp'),
         photoUrl,
+        documentUrl, // 👈 TAMBAHKAN BARIS INI DI SINI
         // 👇 PENAMBAHAN FIELD PIC 👇
         PIC: formData.get('PIC')?.toString() || null,
         assetGroupId,
@@ -601,7 +602,7 @@ export async function updateAsset(id: string, formData: FormData) {
 
   // 👇 LOGIKA UPDATE DOKUMEN 👇
   const removeDocument = formData.get('removeDocument') === 'true';
-  const documentFile = formData.get('document') as File | null;
+  const documentFile = formData.get('documentUrl') as File | null;
   let finalDocumentUrl = asset.documentUrl;
 
   if (removeDocument) {

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Asset, Item, Location, department } from "@/generated/prisma/client";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { useDialog } from "@/context/dialog-provider";
 import { usePermission } from "@/hooks/use-permission";
 import S3Image from "@/components/s3-image";
+import S3DocumentLink from "@/components/s3-document-link";
 
 // 👇 Tambahkan icon Download di sini
 import {
@@ -18,7 +18,6 @@ import {
     User, AlertTriangle, CheckCircle, Clock, XCircle, Download
 } from "lucide-react";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
 import { authClient } from "@/lib/auth-client";
 import { useActiveMemberRole } from "@/hooks/use-active-member";
 
@@ -26,6 +25,7 @@ interface AssetWithRelations extends Asset {
     item: Item;
     location: Location | null;
     department: department | null;
+    documentUrl: string | null;
 }
 
 interface AssetDetailViewProps {
@@ -308,27 +308,22 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
                                 </div>
 
                                 {/* 👇 FITUR DOWNLOAD DOKUMEN 👇 */}
-                                {(asset as any).documentUrl && (
-                                    <div className="space-y-2 col-span-1 md:col-span-2 mt-2">
-                                        <div className="flex items-center gap-2 text-sm font-medium">
-                                            <Download className="h-4 w-4" />
-                                            Lampiran Berkas / Dokumen
-                                        </div>
-                                        <div className="pl-6">
-                                            <Button variant="outline" size="sm" className="gap-2" asChild>
-                                                <a
-                                                    href={(asset as any).documentUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    download
-                                                >
-                                                    <Download className="h-3.5 w-3.5" />
-                                                    Unduh Dokumen
-                                                </a>
-                                            </Button>
-                                        </div>
+                                <div className="space-y-2 col-span-1 md:col-span-2 mt-2">
+                                    <div className="flex items-center gap-2 text-sm font-medium">
+                                        <Download className="h-4 w-4" />
+                                        Lampiran Berkas / Dokumen
                                     </div>
-                                )}
+                                    <div className="pl-6">
+                                        {asset.documentUrl ? (
+                                            <S3DocumentLink documentKey={asset.documentUrl} />
+                                        ) : (
+                                            <Button variant="outline" size="sm" className="gap-2" disabled>
+                                                <Download className="h-3.5 w-3.5" />
+                                                Tidak ada dokumen
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
 
                             {/* Notes */}

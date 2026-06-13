@@ -443,6 +443,7 @@ export default function AssetAddForm() {
                       <SelectItem value="REPAIR">Dalam Perbaikan</SelectItem>
                       <SelectItem value="BROKEN">Rusak (Broken)</SelectItem>
                       <SelectItem value="LOST">Hilang</SelectItem>
+                      <SelectItem value="SOLD">Terjual</SelectItem>
                     </SelectContent>
                   </Select>
                   {fieldState.invalid && (

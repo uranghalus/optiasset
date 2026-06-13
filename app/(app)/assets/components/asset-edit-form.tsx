@@ -186,7 +186,8 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
         // Ambil nama file dari URL S3 (mengambil text setelah slash terakhir)
         const docUrl = (assetData as any).documentUrl as string;
         const decodedUrl = decodeURIComponent(docUrl);
-        const fileName = decodedUrl.substring(decodedUrl.lastIndexOf('/') + 1);
+        const urlWithoutQuery = decodedUrl.split('?')[0]; // 👈 Buang query string S3
+        const fileName = urlWithoutQuery.substring(urlWithoutQuery.lastIndexOf('/') + 1);
         setDocumentName(fileName);
         setHasExistingDocument(true);
       }

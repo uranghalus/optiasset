@@ -240,7 +240,7 @@ export async function generateAssetCode(categoryCode?: string) {
     }
   }
 
-  const seq = String(nextSequence).padStart(4, '0');
+  const seq = String(nextSequence).padStart(3, '0');
   return `${prefix}.${seq}`;
 }
 
@@ -613,7 +613,9 @@ export async function updateAsset(id: string, formData: FormData) {
     finalDocumentUrl = await uploadToS3(documentFile, 'asset-documents');
   }
 
-  const newItemId = formData.get('itemId')?.toString() || asset.itemId;
+  const newItemIdRaw = formData.get('itemId')?.toString();
+  const newItemId = newItemIdRaw?.trim() || asset.itemId;
+  const itemChanged = newItemIdRaw !== undefined && newItemId !== asset.itemId;
 
   try {
     const updated = await prisma.$transaction(async (tx) => {
@@ -626,7 +628,7 @@ export async function updateAsset(id: string, formData: FormData) {
       let assetClusterId = asset.assetClusterId || null;
       let assetSubClusterId = asset.assetSubClusterId || null;
 
-      if (newItemId !== asset.itemId) {
+      if (itemChanged) {
         const itemMaster = await tx.item.findUnique({
           where: { id: newItemId },
           include: { category: true },

@@ -6,17 +6,19 @@ import {
   exportBarcodeToPDF,
   generateAssetCode,
   getAllAssets,
+  getAssetBatchInfo,
   getAssetById,
+  getCategoriesForFilter,
   getItemsForSelect,
   getLocationsForSelect,
   importAssetExcel,
   scanAssetCode,
   updateAsset,
-} from '@/action/asset-action';
-import { AssetWithItem } from '@/app/(app)/assets/components/asset-column';
-import { PaginationState } from '@/types';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+} from "@/action/asset-action";
+import { AssetWithItem } from "@/app/(app)/assets/components/asset-column";
+import { PaginationState } from "@/types";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 // Get all assets
 export function useAssets({
@@ -28,9 +30,24 @@ export function useAssets({
   search,
 }: PaginationState) {
   return useQuery({
-    queryKey: ['assets', page, pageSize, condition, departmentId, categoryId, search],
+    queryKey: [
+      "assets",
+      page,
+      pageSize,
+      condition,
+      departmentId,
+      categoryId,
+      search,
+    ],
     queryFn: () =>
-      getAllAssets({ page, pageSize, condition, departmentId, categoryId, search }),
+      getAllAssets({
+        page,
+        pageSize,
+        condition,
+        departmentId,
+        categoryId,
+        search,
+      }),
   });
 }
 interface UseAssetByIdProps {
@@ -40,9 +57,9 @@ interface UseAssetByIdProps {
 
 export function useAssetById({ id, organizationId }: UseAssetByIdProps) {
   return useQuery({
-    queryKey: ['asset', id, organizationId],
+    queryKey: ["asset", id, organizationId],
     queryFn: () => {
-      if (!id) throw new Error('Asset ID is required');
+      if (!id) throw new Error("Asset ID is required");
       return getAssetById(id);
     },
     enabled: !!id, // hanya jalan kalau ada id
@@ -57,7 +74,7 @@ export function useAssetLookup() {
 
       // Tangkap error jika asset tidak ada di database
       if (!res || !res.success || !res.data) {
-        throw new Error(res?.message || 'Asset tidak ditemukan');
+        throw new Error(res?.message || "Asset tidak ditemukan");
       }
 
       // Mengembalikan data asset
@@ -68,7 +85,7 @@ export function useAssetLookup() {
 // Get items for select
 export function useItemsForSelect() {
   return useQuery({
-    queryKey: ['items-for-select'],
+    queryKey: ["items-for-select"],
     queryFn: () => getItemsForSelect(),
   });
 }
@@ -76,7 +93,7 @@ export function useItemsForSelect() {
 // Get locations for select
 export function useLocationsForSelect() {
   return useQuery({
-    queryKey: ['locations-for-select'],
+    queryKey: ["locations-for-select"],
     queryFn: () => getLocationsForSelect(),
   });
 }
@@ -89,25 +106,25 @@ export function useCreateAsset() {
     mutationFn: (formData: FormData) => createAsset(formData),
     onMutate: () => {
       // Munculkan toast loading dengan ID khusus
-      toast.loading('Menyimpan data aset...', {
-        id: 'create-asset-toast',
-        description: 'Proses penyimpanan sedang berlangsung.',
+      toast.loading("Menyimpan data aset...", {
+        id: "create-asset-toast",
+        description: "Proses penyimpanan sedang berlangsung.",
       });
     },
     onSuccess: () => {
       // Timpa loading menjadi success menggunakan ID yang sama
-      toast.success('Berhasil!', {
-        id: 'create-asset-toast',
-        description: 'Data aset berhasil ditambahkan.',
+      toast.success("Berhasil!", {
+        id: "create-asset-toast",
+        description: "Data aset berhasil ditambahkan.",
       });
 
-      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
     },
     onError: (error: any) => {
       // Timpa loading menjadi error menggunakan ID yang sama
-      toast.error('Gagal menyimpan data', {
-        id: 'create-asset-toast',
-        description: error?.message || 'Terjadi kesalahan yang tidak terduga.',
+      toast.error("Gagal menyimpan data", {
+        id: "create-asset-toast",
+        description: error?.message || "Terjadi kesalahan yang tidak terduga.",
       });
     },
   });
@@ -117,38 +134,44 @@ export function useCreateAsset() {
 export function useUpdateAsset() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, formData }: { id: string; formData: FormData }) => {
+    mutationFn: async ({
+      id,
+      formData,
+    }: {
+      id: string;
+      formData: FormData;
+    }) => {
       const result = await updateAsset(id, formData);
       // Server action mengembalikan objek {success, data/error}
       // Jika gagal, lempar error agar onError dipanggil
-      if (result && 'success' in result && !result.success) {
-        throw new Error((result as any).error || 'Gagal memperbarui data aset');
+      if (result && "success" in result && !result.success) {
+        throw new Error((result as any).error || "Gagal memperbarui data aset");
       }
       return result;
     },
     onMutate: () => {
       // Munculkan toast loading dengan ID khusus
-      toast.loading('Menyimpan data aset...', {
-        id: 'update-asset-toast',
-        description: 'Proses penyimpanan sedang berlangsung.',
+      toast.loading("Menyimpan data aset...", {
+        id: "update-asset-toast",
+        description: "Proses penyimpanan sedang berlangsung.",
       });
     },
     onSuccess: (_data, variables) => {
       // Timpa loading menjadi success menggunakan ID yang sama
-      toast.success('Berhasil!', {
-        id: 'update-asset-toast',
-        description: 'Data aset berhasil diupdate.',
+      toast.success("Berhasil!", {
+        id: "update-asset-toast",
+        description: "Data aset berhasil diupdate.",
       });
 
       // Invalidate daftar asset DAN data detail asset yang baru diupdate
-      queryClient.invalidateQueries({ queryKey: ['assets'] });
-      queryClient.invalidateQueries({ queryKey: ['asset', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
+      queryClient.invalidateQueries({ queryKey: ["asset", variables.id] });
     },
     onError: (error: any) => {
       // Timpa loading menjadi error menggunakan ID yang sama
-      toast.error('Gagal menyimpan data', {
-        id: 'update-asset-toast',
-        description: error?.message || 'Terjadi kesalahan yang tidak terduga.',
+      toast.error("Gagal menyimpan data", {
+        id: "update-asset-toast",
+        description: error?.message || "Terjadi kesalahan yang tidak terduga.",
       });
     },
   });
@@ -161,25 +184,25 @@ export function useDeleteAsset() {
     mutationFn: (id: string) => deleteAsset(id),
     onMutate: () => {
       // Munculkan toast loading dengan ID khusus
-      toast.loading('Menghapus data aset...', {
-        id: 'delete-asset-toast',
-        description: 'Proses penghapusan sedang berlangsung.',
+      toast.loading("Menghapus data aset...", {
+        id: "delete-asset-toast",
+        description: "Proses penghapusan sedang berlangsung.",
       });
     },
     onSuccess: () => {
       // Timpa loading menjadi success menggunakan ID yang sama
-      toast.success('Berhasil!', {
-        id: 'delete-asset-toast',
-        description: 'Data aset berhasil dihapus.',
+      toast.success("Berhasil!", {
+        id: "delete-asset-toast",
+        description: "Data aset berhasil dihapus.",
       });
 
-      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
     },
     onError: (error: any) => {
       // Timpa loading menjadi error menggunakan ID yang sama
-      toast.error('Gagal menghapus data', {
-        id: 'delete-asset-toast',
-        description: error?.message || 'Terjadi kesalahan yang tidak terduga.',
+      toast.error("Gagal menghapus data", {
+        id: "delete-asset-toast",
+        description: error?.message || "Terjadi kesalahan yang tidak terduga.",
       });
     },
   });
@@ -193,7 +216,7 @@ export function useExportAssets() {
       dateTo,
       organizationId,
     }: {
-      type: 'all' | 'latest' | 'range';
+      type: "all" | "latest" | "range";
       dateFrom?: Date;
       dateTo?: Date;
       organizationId: string;
@@ -210,7 +233,7 @@ export function useExportAssets() {
 // LINK generate asset code
 export function useGenerateAssetCode(categoryCode?: string) {
   return useQuery({
-    queryKey: ['generate-asset-code', categoryCode],
+    queryKey: ["generate-asset-code", categoryCode],
 
     // Kirim string kode kategori langsung ke server action dinamis kita
     queryFn: () => generateAssetCode(categoryCode),
@@ -233,9 +256,9 @@ export function useImportAsset() {
     }) => importAssetExcel(formData, organizationId),
     onMutate: () => {
       // Munculkan toast loading dengan ID khusus
-      toast.loading('Mengimpor data aset dari Excel...', {
-        id: 'import-asset-toast',
-        description: 'Mohon tunggu, proses ini mungkin membutuhkan waktu.',
+      toast.loading("Mengimpor data aset dari Excel...", {
+        id: "import-asset-toast",
+        description: "Mohon tunggu, proses ini mungkin membutuhkan waktu.",
       });
     },
     onSuccess: (result) => {
@@ -243,30 +266,30 @@ export function useImportAsset() {
 
       if (result.failed > 0) {
         // Timpa loading menjadi warning jika ada baris yang gagal
-        toast.warning('Import selesai dengan peringatan!', {
-          id: 'import-asset-toast',
+        toast.warning("Import selesai dengan peringatan!", {
+          id: "import-asset-toast",
           description: `Berhasil: ${result.success} baris. Gagal: ${result.failed} baris.`,
         });
       } else {
         // Timpa loading menjadi success jika semua baris berhasil
-        toast.success('Import Berhasil!', {
-          id: 'import-asset-toast',
+        toast.success("Import Berhasil!", {
+          id: "import-asset-toast",
           description: `${result.success} data aset berhasil ditambahkan.`,
         });
       }
 
       // Refresh data tabel asset
-      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
       // Anda juga bisa menambahkan invalidation untuk item dan location jika diperlukan
       // queryClient.invalidateQueries({ queryKey: ["items"] });
       // queryClient.invalidateQueries({ queryKey: ["locations"] });
     },
     onError: (error: any) => {
       // Timpa loading menjadi error menggunakan ID yang sama
-      toast.error('Gagal mengimpor data', {
-        id: 'import-asset-toast',
+      toast.error("Gagal mengimpor data", {
+        id: "import-asset-toast",
         description:
-          error?.message || 'Terjadi kesalahan format Excel atau sistem.',
+          error?.message || "Terjadi kesalahan format Excel atau sistem.",
       });
     },
   });
@@ -278,25 +301,25 @@ export function useDeleteManyAsset() {
     mutationFn: (ids: string[]) => deleteManyAsset(ids),
     onMutate: () => {
       // Munculkan toast loading dengan ID khusus
-      toast.loading('Menghapus data aset...', {
-        id: 'delete-many-asset-toast',
-        description: 'Proses penghapusan sedang berlangsung.',
+      toast.loading("Menghapus data aset...", {
+        id: "delete-many-asset-toast",
+        description: "Proses penghapusan sedang berlangsung.",
       });
     },
     onSuccess: () => {
       // Timpa loading menjadi success menggunakan ID yang sama
-      toast.success('Berhasil!', {
-        id: 'delete-many-asset-toast',
-        description: 'Data aset berhasil dihapus.',
+      toast.success("Berhasil!", {
+        id: "delete-many-asset-toast",
+        description: "Data aset berhasil dihapus.",
       });
 
-      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
     },
     onError: (error: any) => {
       // Timpa loading menjadi error menggunakan ID yang sama
-      toast.error('Gagal menghapus data', {
-        id: 'delete-many-asset-toast',
-        description: error?.message || 'Terjadi kesalahan yang tidak terduga.',
+      toast.error("Gagal menghapus data", {
+        id: "delete-many-asset-toast",
+        description: error?.message || "Terjadi kesalahan yang tidak terduga.",
       });
     },
   });
@@ -307,7 +330,7 @@ export function useExportBarcode() {
       const response = await exportBarcodeToPDF(assets);
 
       if (!response.success || !response.data) {
-        throw new Error(response.error || 'Gagal men-generate PDF');
+        throw new Error(response.error || "Gagal men-generate PDF");
       }
 
       return response.data; // Mengembalikan string Base64
@@ -322,11 +345,11 @@ export function useExportBarcode() {
       const byteArray = new Uint8Array(byteNumbers);
 
       // 2. Buat Blob dari array tersebut
-      const blob = new Blob([byteArray], { type: 'application/pdf' });
+      const blob = new Blob([byteArray], { type: "application/pdf" });
 
       // 3. Trigger Download
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = `Batch-Barcodes-${new Date().getTime()}.pdf`;
       document.body.appendChild(a);
@@ -335,11 +358,41 @@ export function useExportBarcode() {
       window.URL.revokeObjectURL(url);
     },
     onError: (error) => {
-      console.error('Export failed:', error);
+      console.error("Export failed:", error);
       // Di sini Anda bisa men-trigger toast notification (contoh: toast.error("Gagal cetak"))
-      toast.error('Gagal mengekspor barcode ke PDF', {
-        description: error?.message || 'Terjadi kesalahan saat mengekspor.',
+      toast.error("Gagal mengekspor barcode ke PDF", {
+        description: error?.message || "Terjadi kesalahan saat mengekspor.",
       });
     },
+  });
+}
+// LINK Batch Info
+interface UseAssetBatchInfoProps {
+  categoryId?: string;
+  batchSize?: number;
+}
+
+// Hook untuk mengambil kalkulasi batch berdasarkan kategori
+export function useAssetBatchInfo({
+  categoryId,
+  batchSize = 120,
+}: UseAssetBatchInfoProps = {}) {
+  return useQuery({
+    // queryKey ini memastikan cache otomatis ter-reset/fetch ulang ketika categoryId berubah
+    queryKey: ["assetBatchInfo", categoryId, batchSize],
+    queryFn: () => {
+      return getAssetBatchInfo(batchSize, categoryId);
+    },
+    retry: 1, // biar tidak spam query jika gagal
+  });
+}
+// LINK Categories For Filter
+export function useCategoriesForFilter() {
+  return useQuery({
+    queryKey: ["categoriesForFilter"],
+    queryFn: () => {
+      return getCategoriesForFilter();
+    },
+    retry: 1,
   });
 }

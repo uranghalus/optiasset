@@ -13,6 +13,7 @@ import { AssetWithItem } from "./asset-column";
 import AssetAssignDialog from "./asset-assign-dialog";
 import ImportAssetDialog from "./import-asset-dialog";
 import { AssetBarcodeDialog } from "./asset-barcode-dialog";
+import { BarcodeBatchPrintDialog } from "./asset-barcode-batch-dialog";
 
 export default function AssetDialogs() {
   const { currentRow, open, setCurrentRow, setOpen } = useDialog();
@@ -25,6 +26,7 @@ export default function AssetDialogs() {
       />
       <BarcodeScannerDialog />
       <AssetPrintDialog />
+      <BarcodeBatchPrintDialog />
       {currentRow && (
         <>
           <AssetAssignDialog

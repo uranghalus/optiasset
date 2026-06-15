@@ -61,13 +61,14 @@ export default function AssetTable() {
       pageIndex,
       pageSize: 10,
     }),
-    [pageIndex]
+    [pageIndex],
   );
 
   // Handler jika tombol Next / Previous di klik pada tabel
   const handlePaginationChange = (updater: any) => {
     // TanStack table mengirimkan function atau value langsung
-    const newPagination = typeof updater === "function" ? updater(pagination) : updater;
+    const newPagination =
+      typeof updater === "function" ? updater(pagination) : updater;
 
     const params = new URLSearchParams(searchParams.toString());
 
@@ -93,7 +94,11 @@ export default function AssetTable() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 500);
 
-  const { data, isLoading: assetLoading, isFetching } = useAssets({
+  const {
+    data,
+    isLoading: assetLoading,
+    isFetching,
+  } = useAssets({
     page: pagination.pageIndex + 1,
     pageSize: pagination.pageSize,
     departmentId: selectedDept,
@@ -217,6 +222,12 @@ export default function AssetTable() {
                     <DropdownMenuItem onClick={() => setOpen("print-pdf")}>
                       <Printer className="h-4 w-4 me-2" />
                       Cetak PDF
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setOpen("print-barcode-batch")}
+                    >
+                      <Printer className="h-4 w-4 me-2" />
+                      Cetak Batch Barcode
                     </DropdownMenuItem>
                     <DropdownMenuItem>
                       <FileDown className="h-4 w-4 me-2" />

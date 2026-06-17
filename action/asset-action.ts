@@ -1908,7 +1908,8 @@ export async function exportBarcodeToPDF(assets: AssetWithItem[]) {
             asset.kode_asset || asset.id.split('-')[0].toUpperCase();
           const itemName = asset.item?.name || 'Unknown Item';
           const deptName =
-            (asset as any).department?.name?.substring(0, 3) || 'Eng';
+            (asset as any).department?.nama_department?.substring(0, 3) ||
+            'No Dept';
 
           doc
             .lineWidth(0.5)
@@ -1965,6 +1966,7 @@ export async function exportBarcodeToPDF(assets: AssetWithItem[]) {
 export async function getAssetBatchInfo(
   batchSize: number = 120,
   categoryId?: string,
+  departmentId?: string, // ✅ Tambahan Baru
 ) {
   try {
     const session = await getServerSession(); // Pastikan tambah argumen authOptions jika pakai NextAuth
@@ -1981,7 +1983,10 @@ export async function getAssetBatchInfo(
         categoryId: categoryId,
       };
     }
-
+    // ✅ Filter Department Baru
+    if (departmentId) {
+      whereCondition.departmentId = departmentId;
+    }
     // Ambil SEMUA kode aset saja (ringan karena hanya 1 kolom teks), urutkan sesuai urutan cetak PDF!
     // Sesuaikan 'assetCode' dengan nama field di skema Prisma-mu (misal: kodeAset)
     const allAssets = await prisma.asset.findMany({
@@ -2017,6 +2022,7 @@ export async function exportBarcodeBatchToPDF(
   batchIndex: number,
   batchSize: number = 120,
   categoryId?: string,
+  departmentId?: string, // <--- TAMBAHAN BARU
 ) {
   try {
     const session = await getServerSession();
@@ -2033,7 +2039,10 @@ export async function exportBarcodeBatchToPDF(
         categoryId: categoryId,
       };
     }
-
+    // ✅ TAMBAHAN BARU: Tambahkan kondisi filter department ke Prisma
+    if (departmentId) {
+      whereCondition.departmentId = departmentId;
+    }
     // Ambil data asset ter-filter
     const assets = await prisma.asset.findMany({
       where: whereCondition,
@@ -2171,6 +2180,36 @@ export async function getCategoriesForFilter() {
 
     return { success: true, data: categories };
   } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+// LINK getDepartmentsForFilter
+export async function getDepartmentsForFilter() {
+  try {
+    // Sesuaikan argumen getServerSession dengan konfigurasi authOptions milikmu jika perlu
+    const session = await getServerSession();
+
+    if (!session || !session.session?.activeOrganizationId) {
+      throw new Error('Unauthorized');
+    }
+
+    const departments = await prisma.department.findMany({
+      where: {
+        organization_id: session.session.activeOrganizationId,
+        deleted_at: null, // Mengabaikan department yang sudah dihapus (soft delete)
+      },
+      select: {
+        id_department: true,
+        nama_department: true,
+      },
+      orderBy: {
+        nama_department: 'asc', // Diurutkan berdasarkan abjad
+      },
+    });
+
+    return { success: true, data: departments };
+  } catch (error: any) {
+    console.error('Error fetching departments:', error);
     return { success: false, error: error.message };
   }
 }

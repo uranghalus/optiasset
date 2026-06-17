@@ -184,8 +184,11 @@ export function BarcodeBatchPrintDialog() {
                             <span className="font-semibold">
                               Unduh Batch {index + 1}
                             </span>
-                            <span className="text-xs font-normal text-muted-foreground">
-                              ({startItem} - {endItem})
+                            {/* Menggunakan label dari database, fallback ke angka jika loading/error */}
+                            <span className="text-[10px] sm:text-xs whitespace-normal break-words font-normal text-muted-foreground text-center px-1">
+                              {batchInfo.batchLabels && batchInfo.batchLabels[index]
+                                ? batchInfo.batchLabels[index]
+                                : `(${startItem} - ${endItem})`}
                             </span>
                           </>
                         )}

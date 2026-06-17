@@ -8,12 +8,11 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-// Memberikan fallback atau validasi yang lebih aman
 const BUCKET_NAME = process.env.AWS_BUCKET || 'website-aset';
 
 const s3Client = new S3Client({
   region: process.env.AWS_DEFAULT_REGION || 'us-east-1',
-  endpoint: process.env.AWS_ENDPOINT, // http://20.20.20.233:9000/
+  endpoint: process.env.AWS_ENDPOINT, // Pastikan formatnya: http://20.20.20.233:9000
   forcePathStyle: true,
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
@@ -27,7 +26,6 @@ export async function uploadToS3(file: File, folder: string = 'assets') {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Sanitasi: Hanya mengizinkan huruf, angka, titik, dan mengganti sisanya dengan '-'
     const safeFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '-');
     const fileName = `${Date.now()}-${safeFileName}`;
     const key = `${folder}/${fileName}`;
@@ -42,9 +40,33 @@ export async function uploadToS3(file: File, folder: string = 'assets') {
     );
 
     return key;
-  } catch (error) {
-    console.error('S3 Upload Error:', error);
-    // Melempar error agar komponen UI bisa menangkap pesan gagal
+  } catch (error: any) {
+    // 1. Tangani Error 522 (Connection Timed Out dari Proxy/Cloudflare)
+    if (error.$metadata?.httpStatusCode === 522) {
+      console.error(
+        '❌ S3 Upload Error [522]: Koneksi ke server S3/MinIO terputus (Connection Timed Out).',
+      );
+      throw new Error(
+        'Server penyimpanan tidak merespons (Error 522). Silakan coba lagi nanti atau hubungi admin jaringan.',
+      );
+    }
+
+    // 2. Tangani Deserialization Error ("char 'e' is not expected")
+    if (
+      error.message?.includes("char 'e' is not expected") ||
+      error.name === 'SerializationException'
+    ) {
+      console.error(
+        '❌ S3 Parsing Error: Menerima HTML/Teks dari proxy, bukan respons XML S3.',
+        error.message,
+      );
+      throw new Error(
+        'Gagal terhubung ke penyimpanan. Pastikan server S3 aktif dan tidak terhalang firewall.',
+      );
+    }
+
+    // 3. Error lainnya (Fallback)
+    console.error('❌ S3 Upload Error Umum:', error);
     throw new Error('Gagal mengunggah file ke server penyimpanan.');
   }
 }
@@ -59,8 +81,8 @@ export async function deleteS3File(key: string | null) {
         Key: key,
       }),
     );
-    return true; // Return true agar pemanggil tahu proses berhasil
-  } catch (error) {
+    return true;
+  } catch (error: any) {
     console.error('S3 Delete Error:', error);
     throw new Error('Gagal menghapus file.');
   }
@@ -74,10 +96,9 @@ export async function getPrivateUrl(key: string | null) {
       Bucket: BUCKET_NAME,
       Key: key,
     });
-    // Menghasilkan URL dengan masa aktif 900 detik (15 menit)
     return await getSignedUrl(s3Client, command, { expiresIn: 900 });
   } catch (error) {
     console.error('S3 Get URL Error:', error);
-    return null; // Mengembalikan null lebih aman di sini agar UI bisa merender placeholder/gambar default
+    return null;
   }
 }

@@ -1853,6 +1853,7 @@ export async function deleteManyAsset(ids: string[]) {
  ======================= */
 // LINK exportBarcodeToPDF
 export async function exportBarcodeToPDF(assets: AssetWithItem[]) {
+  // Pastikan type assets mencakup relasi location jika ada
   try {
     const session = await getServerSession();
     if (!assets || assets.length === 0) throw new Error('Tidak ada asset');
@@ -1911,6 +1912,12 @@ export async function exportBarcodeToPDF(assets: AssetWithItem[]) {
             (asset as any).department?.nama_department?.substring(0, 3) ||
             'No Dept';
 
+          // ✅ TAMBAHAN: Mengambil nama lokasi
+          const locationName =
+            (asset as any).location?.nama_lokasi ||
+            (asset as any).location?.name ||
+            'No Loc';
+
           doc
             .lineWidth(0.5)
             .strokeColor('#a1a1aa')
@@ -1918,6 +1925,8 @@ export async function exportBarcodeToPDF(assets: AssetWithItem[]) {
             .rect(x, y, boxWidth, boxHeight)
             .stroke()
             .undash();
+
+          // Baris Atas
           doc
             .fillColor('#64748b')
             .fontSize(9)
@@ -1927,6 +1936,7 @@ export async function exportBarcodeToPDF(assets: AssetWithItem[]) {
             align: 'right',
           });
 
+          // Generate Barcode
           const barcodeBuffer = await bwipjs.toBuffer({
             bcid: 'code128',
             text: assetCode,
@@ -1939,15 +1949,39 @@ export async function exportBarcodeToPDF(assets: AssetWithItem[]) {
             width: boxWidth - 10,
             height: 35,
           });
+
+          // ✅ TAMBAHAN: Baris Bawah (Nama Item Kiri, Lokasi Kanan)
+          // ✅ PERBAIKAN: Baris Bawah (Nama Item Kiri, Lokasi Kanan)
+          // 1. Perkecil font dari 10 menjadi 8 agar muat lebih banyak huruf
+          doc.fillColor('#1f2937').font(fontBold).fontSize(8);
+          // --- BARIS BAWAH: NAMA ITEM DAN LOKASI (VERTIKAL) ---
+          const textPadding = 5;
+          const fullTextWidth = boxWidth - 10; // Menggunakan hampir seluruh lebar kotak
+
+          // 1. Cetak Nama Item (Bold, Ukuran 9)
           doc
             .fillColor('#1f2937')
             .font(fontBold)
-            .fontSize(10)
-            .text(itemName, x + 5, y + 58, {
-              width: boxWidth - 10,
+            .fontSize(9)
+            .text(itemName, x + textPadding, y + 54, {
+              width: fullTextWidth,
               align: 'center',
               lineBreak: false,
+              ellipsis: true,
             });
+
+          // 2. Cetak Nama Lokasi di bawahnya (Regular, Ukuran 7.5, pakai tanda kurung)
+          doc
+            .fillColor('#64748b') // Warna abu-abu yang lebih lembut untuk lokasi
+            .font(fontRegular)
+            .fontSize(7.5)
+            .text(`(${locationName})`, x + textPadding, y + 64, {
+              width: fullTextWidth,
+              align: 'center',
+              lineBreak: false,
+              ellipsis: true,
+            });
+
           doc.font(fontRegular);
           currentItemOnPage++;
         }
@@ -2043,12 +2077,14 @@ export async function exportBarcodeBatchToPDF(
     if (departmentId) {
       whereCondition.departmentId = departmentId;
     }
+
     // Ambil data asset ter-filter
     const assets = await prisma.asset.findMany({
       where: whereCondition,
       include: {
         item: true,
         department: true,
+        location: true, // ✅ TAMBAHAN BARU: Include data relasi lokasi
       },
       skip: batchIndex * batchSize,
       take: batchSize,
@@ -2111,6 +2147,12 @@ export async function exportBarcodeBatchToPDF(
             (asset as any).department?.nama_department?.substring(0, 3) ||
             'No Dept';
 
+          // ✅ TAMBAHAN BARU: Variabel nama lokasi (sesuaikan properti dengan skema Prisma Anda)
+          const locationName =
+            (asset as any).location?.nama_lokasi ||
+            (asset as any).location?.name ||
+            'No Loc';
+
           doc
             .lineWidth(0.5)
             .strokeColor('#a1a1aa')
@@ -2119,6 +2161,7 @@ export async function exportBarcodeBatchToPDF(
             .stroke()
             .undash();
 
+          // Baris Atas (Departemen & Kode Asset)
           doc
             .fillColor('#64748b')
             .fontSize(9)
@@ -2129,6 +2172,7 @@ export async function exportBarcodeBatchToPDF(
             align: 'right',
           });
 
+          // Generate Barcode
           const barcodeBuffer = await bwipjs.toBuffer({
             bcid: 'code128',
             text: assetCode,
@@ -2141,14 +2185,38 @@ export async function exportBarcodeBatchToPDF(
             width: boxWidth - 10,
             height: 35,
           });
+
+          // ✅ PERBAIKAN: Baris Bawah (Nama Item Kiri, Lokasi Kanan)
+          // 1. Perkecil font dari 10 menjadi 8 agar muat lebih banyak huruf
+          doc.fillColor('#1f2937').font(fontBold).fontSize(8);
+
+          // 2. Beri jarak aman (padding) di tengah agar tidak saling tabrak
+          // --- BARIS BAWAH: NAMA ITEM DAN LOKASI (VERTIKAL) ---
+          const textPadding = 5;
+          const fullTextWidth = boxWidth - 10; // Menggunakan hampir seluruh lebar kotak
+
+          // 1. Cetak Nama Item (Bold, Ukuran 9)
           doc
             .fillColor('#1f2937')
             .font(fontBold)
-            .fontSize(10)
-            .text(itemName, x + 5, y + 58, {
-              width: boxWidth - 10,
+            .fontSize(9)
+            .text(itemName, x + textPadding, y + 54, {
+              width: fullTextWidth,
               align: 'center',
               lineBreak: false,
+              ellipsis: true,
+            });
+
+          // 2. Cetak Nama Lokasi di bawahnya (Regular, Ukuran 7.5, pakai tanda kurung)
+          doc
+            .fillColor('#64748b') // Warna abu-abu yang lebih lembut untuk lokasi
+            .font(fontRegular)
+            .fontSize(7.5)
+            .text(`(${locationName})`, x + textPadding, y + 64, {
+              width: fullTextWidth,
+              align: 'center',
+              lineBreak: false,
+              ellipsis: true,
             });
           doc.font(fontRegular);
           currentItemOnPage++;

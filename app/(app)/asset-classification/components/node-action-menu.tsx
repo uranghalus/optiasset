@@ -5,7 +5,15 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+
+import {
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 
 import {
   useDeleteAssetGroup,
@@ -18,13 +26,10 @@ function getChildLevel(level: string) {
   switch (level) {
     case "group":
       return "category";
-
     case "category":
       return "cluster";
-
     case "cluster":
       return "subcluster";
-
     default:
       throw new Error();
   }
@@ -32,31 +37,24 @@ function getChildLevel(level: string) {
 
 export function NodeActionMenu({ node, level, editor }: any) {
   const deleteGroup = useDeleteAssetGroup();
-
   const deleteCategory = useDeleteAssetCategory();
-
   const deleteCluster = useDeleteAssetCluster();
-
   const deleteSubCluster = useDeleteAssetSubCluster();
 
   function handleDelete() {
     const ok = window.confirm(`Hapus ${node.name}?`);
-
     if (!ok) return;
 
     switch (level) {
       case "group":
         deleteGroup.mutate(node.id);
         break;
-
       case "category":
         deleteCategory.mutate(node.id);
         break;
-
       case "cluster":
         deleteCluster.mutate(node.id);
         break;
-
       case "subcluster":
         deleteSubCluster.mutate(node.id);
         break;
@@ -66,22 +64,24 @@ export function NodeActionMenu({ node, level, editor }: any) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button onClick={(e) => e.stopPropagation()}>•••</button>
+        <button
+          onClick={(e) => e.stopPropagation()}
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <MoreHorizontal size={14} />
+        </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent>
+      <DropdownMenuContent align="end" className="w-44">
         <DropdownMenuItem
           onSelect={(e) => {
             e.preventDefault();
             e.stopPropagation();
-
-            editor.editNode({
-              id: node.id,
-              level,
-              data: node,
-            });
+            editor.editNode({ id: node.id, level, data: node });
           }}
+          className="gap-2"
         >
+          <Pencil className="h-4 w-4 text-muted-foreground" />
           Edit
         </DropdownMenuItem>
 
@@ -90,24 +90,27 @@ export function NodeActionMenu({ node, level, editor }: any) {
             onSelect={(e) => {
               e.preventDefault();
               e.stopPropagation();
-
               editor.createChild(getChildLevel(level), node.id);
             }}
+            className="gap-2"
           >
-            Add Child
+            <Plus className="h-4 w-4 text-muted-foreground" />
+            Tambah Anak
           </DropdownMenuItem>
         )}
 
+        <DropdownMenuSeparator />
+
         <DropdownMenuItem
-          className="text-red-500"
+          className="gap-2 text-destructive focus:text-destructive"
           onSelect={(e) => {
             e.preventDefault();
             e.stopPropagation();
-
             handleDelete();
           }}
         >
-          Delete
+          <Trash2 className="h-4 w-4" />
+          Hapus
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

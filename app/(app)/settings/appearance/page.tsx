@@ -263,7 +263,7 @@ export default function AppearancePage() {
                 key={opt.value}
                 onClick={() => setTheme(opt.value)}
                 className={cn(
-                  "group flex flex-col gap-2 rounded-xl border-2 p-3 text-left transition-all hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                  "group flex flex-col gap-2 rounded-lg border-2 p-3 text-left transition-all hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                   isActive
                     ? "border-primary bg-primary/5"
                     : "border-border hover:border-border/80",
@@ -347,7 +347,7 @@ export default function AppearancePage() {
                 key={opt.value}
                 onClick={() => setFont(opt.value)}
                 className={cn(
-                  "flex items-center justify-between rounded-xl border-2 px-4 py-3 text-left transition-all hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                  "flex items-center justify-between rounded-lg border-2 px-4 py-3 text-left transition-all hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                   isActive
                     ? "border-primary bg-primary/5"
                     : "border-border hover:border-border/80",
@@ -401,7 +401,7 @@ export default function AppearancePage() {
                 key={opt.value}
                 onClick={() => setVariant(opt.value)}
                 className={cn(
-                  "group flex flex-col gap-2 rounded-xl border-2 p-3 transition-all hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                  "group flex flex-col gap-2 rounded-lg border-2 p-3 transition-all hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                   isActive
                     ? "border-primary bg-primary/5"
                     : "border-border hover:border-border/80",
@@ -442,7 +442,7 @@ export default function AppearancePage() {
                 key={opt.value}
                 onClick={() => setCollapsible(opt.value)}
                 className={cn(
-                  "flex items-center justify-between rounded-xl border-2 px-4 py-3 text-left transition-all hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                  "flex items-center justify-between rounded-lg border-2 px-4 py-3 text-left transition-all hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                   isActive
                     ? "border-primary bg-primary/5"
                     : "border-border hover:border-border/80",

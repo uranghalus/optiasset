@@ -9,8 +9,8 @@ export const metadata: Metadata = {
 
 export default function StockTransactionsPage() {
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-2">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-2 border-b border-border/50 pb-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Transaksi Stok</h2>
           <p className="text-muted-foreground">

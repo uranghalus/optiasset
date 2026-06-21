@@ -20,7 +20,7 @@ export function BarcodeScanner({ onScanSuccess }: BarcodeScannerProps) {
     <div className="flex flex-col items-center gap-4 w-full">
 
       {/* 1. AREA KAMERA (Dipotong Ekstrem menjadi 150px) */}
-      <div className="relative w-full h-[150px] flex items-center justify-center bg-black overflow-hidden rounded-xl shadow-inner">
+      <div className="relative w-full h-[150px] flex items-center justify-center bg-black overflow-hidden rounded-lg shadow-inner">
 
         {/* Wrapper Scanner untuk mempertahankan rasio kamera dan memusatkannya */}
         <div className="absolute top-1/2 left-1/2 w-full min-w-[100%] min-h-[100%] -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">

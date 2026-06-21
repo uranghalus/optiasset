@@ -7,8 +7,8 @@ interface LogoProps {
 }
 export default function Logo({ className }: LogoProps) {
     return (
-        <div className={cn('flex items-center justify-center p-2.5 bg-primary rounded-lg text-white', className)}>
-            <Combine className='size-5' />
+        <div className={cn('flex items-center justify-center p-3 bg-gradient-to-br from-primary to-primary/70 rounded-lg text-white shadow-lg shadow-primary/25', className)}>
+            <Combine className='size-6' />
         </div>
     )
 }

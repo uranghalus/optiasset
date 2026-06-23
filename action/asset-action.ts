@@ -539,93 +539,93 @@ export async function createAsset(formData: FormData) {
 
 /* =======================
    UPDATE ASSET
- ======================= */
+  ======================= */
 // LINK updateAsset
 export async function updateAsset(id: string, formData: FormData) {
-  const session = await getServerSession();
-  if (!session) throw new Error('Unauthorized');
-
-  const activeOrgId = session.session?.activeOrganizationId;
-  if (!activeOrgId) throw new Error('No active organizationId found');
-
-  const asset = await prisma.asset.findFirst({
-    where: { id, organizationId: activeOrgId },
-  });
-  if (!asset) throw new Error('Asset not found');
-
-  const memberRole = await auth.api.getActiveMemberRole({
-    headers: await headers(),
-  });
-  const role = memberRole.role as string;
-  const isAdminOrOwner = role === 'staff_asset' || role === 'owner';
-  const sessionDeptId = session.user.departmentId;
-
-  const formDepartmentId = formData.get('departmentId')?.toString();
-  const finalDepartmentId =
-    isAdminOrOwner && formDepartmentId ? formDepartmentId : asset.departmentId;
-
-  const parseDateOrNull = (key: string) => {
-    const val = formData.get(key)?.toString();
-    return val ? new Date(val) : null;
-  };
-  const parseFloatOrNull = (key: string) => {
-    const val = formData.get(key)?.toString();
-    return val ? parseFloat(val) : null;
-  };
-
-  // 👇 LOGIKA UPDATE FOTO DENGAN KOMPRESI SHARP 👇
-  const removePhoto = formData.get('removePhoto') === 'true';
-  const photoFile = formData.get('photo') as File | null;
-  let finalPhotoUrl = asset.photoUrl;
-
-  if (removePhoto) {
-    if (asset.photoUrl) await deleteS3File(asset.photoUrl);
-    finalPhotoUrl = null;
-  } else if (photoFile && photoFile.size > 0) {
-    if (asset.photoUrl) await deleteS3File(asset.photoUrl);
-
-    try {
-      const arrayBuffer = await photoFile.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-
-      const compressedBuffer = await sharp(buffer)
-        .jpeg({ quality: 80, mozjpeg: true })
-        .toBuffer();
-
-      const compressedFile = new File(
-        [new Uint8Array(compressedBuffer)],
-        photoFile.name,
-        {
-          type: 'image/jpeg',
-        },
-      );
-
-      finalPhotoUrl = await uploadToS3(compressedFile, 'asset-photos');
-      console.log('2. HASIL UPLOAD S3 (COMPRESSED):', finalPhotoUrl);
-    } catch (error) {
-      console.error('Error compressing image during update:', error);
-      finalPhotoUrl = await uploadToS3(photoFile, 'asset-photos');
-    }
-  }
-
-  // 👇 LOGIKA UPDATE DOKUMEN 👇
-  const removeDocument = formData.get('removeDocument') === 'true';
-  const documentFile = formData.get('documentUrl') as File | null;
-  let finalDocumentUrl = asset.documentUrl;
-
-  if (removeDocument) {
-    if (asset.documentUrl) await deleteS3File(asset.documentUrl);
-    finalDocumentUrl = null;
-  } else if (documentFile && documentFile.size > 0) {
-    if (asset.documentUrl) await deleteS3File(asset.documentUrl);
-    finalDocumentUrl = await uploadToS3(documentFile, 'asset-documents');
-  }
-
-  const newItemIdRaw = formData.get('itemId')?.toString();
-  const newItemId = newItemIdRaw?.trim() || asset.itemId;
-  const itemChanged = newItemIdRaw !== undefined && newItemId !== asset.itemId;
-
   try {
+    const session = await getServerSession();
+    if (!session) throw new Error('Unauthorized');
+
+    const activeOrgId = session.session?.activeOrganizationId;
+    if (!activeOrgId) throw new Error('No active organizationId found');
+
+    const asset = await prisma.asset.findFirst({
+      where: { id, organizationId: activeOrgId },
+    });
+    if (!asset) throw new Error('Asset not found');
+
+    const memberRole = await auth.api.getActiveMemberRole({
+      headers: await headers(),
+    });
+    const role = memberRole.role as string;
+    const isAdminOrOwner = role === 'staff_asset' || role === 'owner';
+    const sessionDeptId = session.user.departmentId;
+
+    const formDepartmentId = formData.get('departmentId')?.toString();
+    const finalDepartmentId =
+      isAdminOrOwner && formDepartmentId ? formDepartmentId : asset.departmentId;
+
+    const parseDateOrNull = (key: string) => {
+      const val = formData.get(key)?.toString();
+      return val ? new Date(val) : null;
+    };
+    const parseFloatOrNull = (key: string) => {
+      const val = formData.get(key)?.toString();
+      return val ? parseFloat(val) : null;
+    };
+
+    // 👇 LOGIKA UPDATE FOTO DENGAN KOMPRESI SHARP 👇
+    const removePhoto = formData.get('removePhoto') === 'true';
+    const photoFile = formData.get('photo') as File | null;
+    let finalPhotoUrl = asset.photoUrl;
+
+    if (removePhoto) {
+      if (asset.photoUrl) await deleteS3File(asset.photoUrl);
+      finalPhotoUrl = null;
+    } else if (photoFile && photoFile.size > 0) {
+      if (asset.photoUrl) await deleteS3File(asset.photoUrl);
+
+      try {
+        const arrayBuffer = await photoFile.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        const compressedBuffer = await sharp(buffer)
+          .jpeg({ quality: 80, mozjpeg: true })
+          .toBuffer();
+
+        const compressedFile = new File(
+          [new Uint8Array(compressedBuffer)],
+          photoFile.name,
+          {
+            type: 'image/jpeg',
+          },
+        );
+
+        finalPhotoUrl = await uploadToS3(compressedFile, 'asset-photos');
+        console.log('2. HASIL UPLOAD S3 (COMPRESSED):', finalPhotoUrl);
+      } catch (error) {
+        console.error('Error compressing image during update:', error);
+        finalPhotoUrl = await uploadToS3(photoFile, 'asset-photos');
+      }
+    }
+
+    // 👇 LOGIKA UPDATE DOKUMEN 👇
+    const removeDocument = formData.get('removeDocument') === 'true';
+    const documentFile = formData.get('documentUrl') as File | null;
+    let finalDocumentUrl = asset.documentUrl;
+
+    if (removeDocument) {
+      if (asset.documentUrl) await deleteS3File(asset.documentUrl);
+      finalDocumentUrl = null;
+    } else if (documentFile && documentFile.size > 0) {
+      if (asset.documentUrl) await deleteS3File(asset.documentUrl);
+      finalDocumentUrl = await uploadToS3(documentFile, 'asset-documents');
+    }
+
+    const newItemIdRaw = formData.get('itemId')?.toString();
+    const newItemId = newItemIdRaw?.trim() || asset.itemId;
+    const itemChanged = newItemIdRaw !== undefined && newItemId !== asset.itemId;
+
     const updated = await prisma.$transaction(async (tx) => {
       const newLocationId = formData.get('locationId')?.toString();
       const oldLocationId = asset.locationId;

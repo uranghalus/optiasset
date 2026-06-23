@@ -77,7 +77,7 @@ export function OrganizationSwitcher() {
                 </div>
               ) : (
                 <>
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 text-sidebar-primary-foreground shadow-md shadow-primary/20">
                     <Combine className="size-4" />
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">

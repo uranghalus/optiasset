@@ -57,7 +57,7 @@ export function DataTablePagination<TData>({
               table.setPageIndex(0);
             }}
           >
-            <SelectTrigger className="h-8 w-[70px]">
+            <SelectTrigger className="h-9 w-[70px] rounded-lg">
               <SelectValue />
             </SelectTrigger>
             <SelectContent side="top">
@@ -80,7 +80,7 @@ export function DataTablePagination<TData>({
         {/* First Page (Desktop Only) */}
         <Button
           variant="outline"
-          className="hidden size-8 p-0 lg:flex"
+          className="hidden size-9 p-0 lg:flex rounded-lg"
           onClick={() => table.setPageIndex(0)}
           disabled={!canPrevious}
         >
@@ -90,7 +90,7 @@ export function DataTablePagination<TData>({
         {/* Previous */}
         <Button
           variant="outline"
-          className="size-8 p-0"
+          className="size-9 p-0 rounded-lg"
           onClick={() => table.setPageIndex(pageIndex - 1)}
           disabled={!canPrevious}
         >
@@ -113,7 +113,7 @@ export function DataTablePagination<TData>({
                 variant={page === currentPage ? "default" : "outline"}
                 // Logika responsive: hanya tampilkan halaman aktif dan tetangganya di mobile
                 className={cn(
-                  "h-8 min-w-8 px-2 text-xs sm:text-sm",
+                  "h-9 min-w-9 px-2 text-xs sm:text-sm rounded-lg",
                   page !== currentPage && "hidden md:inline-flex",
                 )}
                 onClick={() => table.setPageIndex((page as number) - 1)}
@@ -127,7 +127,7 @@ export function DataTablePagination<TData>({
         {/* Next */}
         <Button
           variant="outline"
-          className="size-8 p-0"
+          className="size-9 p-0 rounded-lg"
           onClick={() => table.setPageIndex(pageIndex + 1)}
           disabled={!canNext}
         >
@@ -137,7 +137,7 @@ export function DataTablePagination<TData>({
         {/* Last Page (Desktop Only) */}
         <Button
           variant="outline"
-          className="hidden size-8 p-0 lg:flex"
+          className="hidden size-9 p-0 lg:flex rounded-lg"
           onClick={() => table.setPageIndex(totalPages - 1)}
           disabled={!canNext}
         >

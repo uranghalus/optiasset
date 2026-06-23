@@ -41,7 +41,7 @@ export default function SettingLayout({ children }: Props) {
 
   return (
     <Main fixed>
-      <div className="space-y-0.5">
+      <div className="space-y-1 border-b border-border/50 pb-4">
         <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
           Pengaturan
         </h1>

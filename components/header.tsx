@@ -26,11 +26,11 @@ export function Header({ className, fixed, children, ...props }: HeaderProps) {
   return (
     <header
       className={cn(
-        "z-50 h-16 transition-shadow duration-300",
+        "z-50 h-16 transition-all duration-300 backdrop-blur-xl bg-background/70",
         fixed && "sticky top-0 w-full",
         isScrolled
-          ? "shadow-md backdrop-blur-md bg-background/80"
-          : "shadow-none",
+          ? "shadow-lg border-b border-border/50"
+          : "shadow-none border-b border-transparent",
         className,
       )}
       {...props}
@@ -38,12 +38,13 @@ export function Header({ className, fixed, children, ...props }: HeaderProps) {
       <div
         className={cn("relative flex h-full items-center gap-3 p-4 sm:gap-4")}
       >
-        <SidebarTrigger variant="outline" className="max-md:scale-125" />
+        <SidebarTrigger variant="ghost" className="max-md:scale-125 rounded-lg" />
         <Separator orientation="vertical" className="h-6" />
         {/* <Search /> */}
         {/* <NotificationCenter /> */}
         {children}
       </div>
+      <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
     </header>
   );
 }

@@ -87,27 +87,29 @@ export default function LoginForm() {
     }
 
     return (
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:px-4 px-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 sm:px-4 px-4">
 
             {/* GLOBAL ERROR */}
             {form.formState.errors.root?.message && (
-                <p className="text-sm text-red-500">
-                    {form.formState.errors.root.message}
-                </p>
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+                    <p className="text-sm text-destructive font-medium">
+                        {form.formState.errors.root.message}
+                    </p>
+                </div>
             )}
 
             <FieldGroup>
-                <div className="flex flex-col items-center gap-2 text-center">
+                <div className="flex flex-col items-center gap-3 text-center pb-2">
                     <a
                         href="#"
-                        className="flex flex-col items-center gap-2 font-medium"
+                        className="flex flex-col items-center gap-2 font-medium lg:hidden"
                     >
                         <Logo />
                         <span className="sr-only">Acme Inc.</span>
                     </a>
-                    <h1 className="text-xl font-bold">Welcome to OptimaAsset</h1>
+                    <h1 className="text-2xl font-bold tracking-tight">Welcome Back</h1>
                     <FieldDescription>
-                        Don&apos;t have an account? <a href="#">Sign up</a>
+                        Sign in to your account to continue
                     </FieldDescription>
                 </div>
                 <Controller
@@ -166,12 +168,17 @@ export default function LoginForm() {
                     )}
                 />
                 <Field>
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                        {isLoading ? 'Loading...' : 'Login'}
+                    <Button type="submit" className="w-full h-10 text-sm" disabled={isLoading}>
+                        {isLoading ? (
+                            <span className="flex items-center gap-2">
+                                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                Logging in...
+                            </span>
+                        ) : 'Sign In'}
                     </Button>
                 </Field>
             </FieldGroup>
-            <FieldDescription className="px-6 text-center">
+            <FieldDescription className="px-6 text-center text-[11px]">
                 By clicking continue, you agree to our <a href="#">Terms of Service</a>{" "}
                 and <a href="#">Privacy Policy</a>.
             </FieldDescription>

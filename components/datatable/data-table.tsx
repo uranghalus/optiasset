@@ -29,7 +29,7 @@ export function DataTable<TData>({
     const columnCount = table.getAllColumns().length
 
     return (
-        <div className="overflow-hidden rounded-md border">
+        <div className="overflow-hidden rounded-lg border shadow-sm">
             <div className="relative w-full overflow-x-auto">
 
                 <Table style={{ width: table.getCenterTotalSize() }}>

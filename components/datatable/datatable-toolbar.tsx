@@ -72,7 +72,7 @@ export function DataTableToolbar<TData>({
                 table.setGlobalFilter(value);
               }
             }}
-            className="h-8 w-full sm:w-[200px] lg:w-[300px]"
+            className="h-9 w-full sm:w-[200px] lg:w-[300px] rounded-lg"
           />
           {/* Tombol Reset kecil di dalam search jika ada filter (opsional/estetika) */}
         </div>
@@ -85,12 +85,12 @@ export function DataTableToolbar<TData>({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 flex-1 sm:flex-none"
+                  className="h-9 flex-1 sm:flex-none rounded-lg border-primary/20 hover:border-primary/40"
                 >
                   <SlidersHorizontal className="mr-2 h-4 w-4" />
                   Filter
                   {isFiltered && (
-                    <span className="ml-2 rounded-full bg-primary w-2 h-2" />
+                    <span className="ml-2 rounded-full bg-gradient-to-r from-primary to-primary/70 w-2 h-2" />
                   )}
                 </Button>
               </PopoverTrigger>

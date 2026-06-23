@@ -84,7 +84,7 @@ export function NavGroup({ title, items }: NavGroupProps) {
  * Badge kecil untuk item nav
  */
 function NavBadge({ children }: { children: ReactNode }) {
-  return <Badge className="rounded-full px-1 py-0 text-xs">{children}</Badge>;
+  return <Badge className="rounded-full px-1.5 py-0 text-[10px]">{children}</Badge>;
 }
 
 /**

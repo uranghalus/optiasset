@@ -63,11 +63,12 @@ export const assetColumn: ColumnDef<AssetWithItem>[] = [
       <DataTableColumnHeader column={column} title="Kode Aset/Tag" />
     ),
     cell: ({ cell }) => (
-      <div className="ps-2 font-mono text-xs">
+      <div className="ps-2 font-mono text-xs break-words whitespace-normal">
         {(cell.getValue() as string) || "-"}
       </div>
     ),
     size: 140,
+    minSize: 120,
   },
 
   {
@@ -78,15 +79,16 @@ export const assetColumn: ColumnDef<AssetWithItem>[] = [
     cell: ({ row }) => {
       const asset = row.original;
       return (
-        <div className="ps-2 flex flex-col">
-          <span className="font-medium">{asset.item.name}</span>
-          <span className="text-xs text-muted-foreground italic">
+        <div className="ps-2 flex flex-col min-w-[200px]">
+          <span className="font-medium break-words whitespace-normal">{asset.item.name}</span>
+          <span className="text-xs text-muted-foreground italic break-words whitespace-normal">
             {[asset.brand, asset.model].filter(Boolean).join(" ") || "-"}
           </span>
         </div>
       );
     },
     size: 250,
+    minSize: 200,
   },
 
   {
@@ -95,9 +97,13 @@ export const assetColumn: ColumnDef<AssetWithItem>[] = [
       <DataTableColumnHeader column={column} title="Lokasi" />
     ),
     cell: ({ row }) => (
-      <div className="ps-2">{row.original.location?.name || "-"}</div>
+      <div className="ps-2 break-words whitespace-normal min-w-[150px]">
+        {row.original.location?.name || "-"}
+      </div>
     ),
-    size: 150,
+    size: 200,
+    minSize: 150,
+    maxSize: 300,
   },
   {
     id: "departmentId",
@@ -107,13 +113,17 @@ export const assetColumn: ColumnDef<AssetWithItem>[] = [
     ),
     cell: ({ row }) => {
       const dept = row.original.department;
+      const displayText = `${dept?.nama_department ?? "No Department"} | ${row.original.PIC || "No PIC"}`;
 
       return (
-        <div className="ps-2 text-sm">
-          {dept?.nama_department ?? "No Department"} | {row.original.PIC || "No PIC"}
+        <div className="ps-2 text-sm break-words whitespace-normal min-w-[200px]">
+          {displayText}
         </div>
       );
     },
+    size: 250,
+    minSize: 200,
+    maxSize: 350,
   },
   {
     accessorKey: "condition",

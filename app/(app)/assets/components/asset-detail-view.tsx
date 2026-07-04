@@ -23,6 +23,12 @@ import { format } from "date-fns";
 import { authClient } from "@/lib/auth-client";
 import { useActiveMemberRole } from "@/hooks/use-active-member";
 
+interface ClassificationNode {
+  id: string;
+  name: string;
+  code: string | null;
+}
+
 interface AssetWithRelations extends Asset {
   item: Item & { category?: { name: string; code: string } | null };
   location: Location | null;
@@ -30,6 +36,10 @@ interface AssetWithRelations extends Asset {
   documentUrl: string | null;
   aparDetails?: { jenis: string; size: number }[];
   hydrantDetails?: { ukuran: string }[];
+  assetGroup: ClassificationNode | null;
+  assetCategory: ClassificationNode | null;
+  assetCluster: ClassificationNode | null;
+  assetSubCluster: ClassificationNode | null;
 }
 
 interface AssetDetailViewProps {
@@ -311,13 +321,33 @@ export function AssetDetailView({ asset }: AssetDetailViewProps) {
           </DataCard>
 
           {/* Klasifikasi Asset */}
-          {(asset.assetGroupId || asset.assetCategoryId || asset.assetClusterId || asset.assetSubClusterId) && (
+          {(asset.assetGroup || asset.assetCategory || asset.assetCluster || asset.assetSubCluster) && (
             <DataCard title="Klasifikasi Asset" icon={Layers}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                {asset.assetGroupId && <InfoRow icon={Layers} label="Golongan">{asset.assetGroupId}</InfoRow>}
-                {asset.assetCategoryId && <InfoRow icon={Layers} label="Kategori">{asset.assetCategoryId}</InfoRow>}
-                {asset.assetClusterId && <InfoRow icon={Layers} label="Cluster">{asset.assetClusterId}</InfoRow>}
-                {asset.assetSubClusterId && <InfoRow icon={Layers} label="Sub Cluster">{asset.assetSubClusterId}</InfoRow>}
+                {asset.assetGroup && (
+                  <InfoRow icon={Layers} label="Golongan">
+                    <span className="font-medium">{asset.assetGroup.name}</span>
+                    {asset.assetGroup.code && <span className="text-muted-foreground text-xs ml-1">({asset.assetGroup.code})</span>}
+                  </InfoRow>
+                )}
+                {asset.assetCategory && (
+                  <InfoRow icon={Layers} label="Kategori">
+                    <span className="font-medium">{asset.assetCategory.name}</span>
+                    {asset.assetCategory.code && <span className="text-muted-foreground text-xs ml-1">({asset.assetCategory.code})</span>}
+                  </InfoRow>
+                )}
+                {asset.assetCluster && (
+                  <InfoRow icon={Layers} label="Cluster">
+                    <span className="font-medium">{asset.assetCluster.name}</span>
+                    {asset.assetCluster.code && <span className="text-muted-foreground text-xs ml-1">({asset.assetCluster.code})</span>}
+                  </InfoRow>
+                )}
+                {asset.assetSubCluster && (
+                  <InfoRow icon={Layers} label="Sub Cluster">
+                    <span className="font-medium">{asset.assetSubCluster.name}</span>
+                    {asset.assetSubCluster.code && <span className="text-muted-foreground text-xs ml-1">({asset.assetSubCluster.code})</span>}
+                  </InfoRow>
+                )}
               </div>
             </DataCard>
           )}

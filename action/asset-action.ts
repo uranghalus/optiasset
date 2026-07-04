@@ -1053,8 +1053,12 @@ export async function getAssetById(id: string) {
         item: { include: { category: true } },
         location: true,
         department: true,
-        aparDetails: true, // 👈 Opsional tapi bagus agar frontend tahu detailnya
-        hydrantDetails: true, // 👈 Sama seperti di atas
+        aparDetails: true,
+        hydrantDetails: true,
+        assetGroup: { select: { id: true, name: true, code: true } },
+        assetCategory: { select: { id: true, name: true, code: true } },
+        assetCluster: { select: { id: true, name: true, code: true } },
+        assetSubCluster: { select: { id: true, name: true, code: true } },
       },
     });
 
@@ -1072,50 +1076,61 @@ export async function getAssetById(id: string) {
       });
     }
 
-    let assetGroupId = asset.assetGroupId || null;
-    let assetCategoryId = asset.assetCategoryId || null;
-    let assetClusterId = asset.assetClusterId || null;
-    let assetSubClusterId = asset.assetSubClusterId || null;
+    let resolvedGroup = asset.assetGroup;
+    let resolvedCategory = asset.assetCategory;
+    let resolvedCluster = asset.assetCluster;
+    let resolvedSubCluster = asset.assetSubCluster;
 
-    if (!assetGroupId && asset.item?.category?.classificationType) {
+    if (!resolvedGroup && asset.item?.category?.classificationType) {
       const targetId = asset.item.category.classificationId;
       const type = asset.item.category.classificationType;
 
       if (type === 'SUBCLUSTER' && targetId) {
         const sub = await prisma.assetSubCluster.findUnique({
           where: { id: targetId },
-          include: { assetCluster: { include: { assetCategory: true } } },
+          include: {
+            assetCluster: { include: { assetCategory: { include: { assetGroup: { select: { id: true, name: true, code: true } } } } } },
+          },
         });
-        assetSubClusterId = targetId;
-        assetClusterId = sub?.assetClusterId || null;
-        assetCategoryId = sub?.assetCluster?.assetCategoryId || null;
-        assetGroupId = sub?.assetCluster?.assetCategory?.assetGroupId || null;
+        resolvedSubCluster = sub ? { id: sub.id, name: sub.name, code: sub.code } : null;
+        resolvedCluster = sub?.assetCluster ? { id: sub.assetCluster.id, name: sub.assetCluster.name, code: sub.assetCluster.code } : null;
+        resolvedCategory = sub?.assetCluster?.assetCategory ? { id: sub.assetCluster.assetCategory.id, name: sub.assetCluster.assetCategory.name, code: sub.assetCluster.assetCategory.code } : null;
+        resolvedGroup = sub?.assetCluster?.assetCategory?.assetGroup || null;
       } else if (type === 'CLUSTER' && targetId) {
         const clust = await prisma.assetCluster.findUnique({
           where: { id: targetId },
-          include: { assetCategory: true },
+          include: { assetCategory: { include: { assetGroup: { select: { id: true, name: true, code: true } } } } },
         });
-        assetClusterId = targetId;
-        assetCategoryId = clust?.assetCategoryId || null;
-        assetGroupId = clust?.assetCategory?.assetGroupId || null;
+        resolvedCluster = clust ? { id: clust.id, name: clust.name, code: clust.code } : null;
+        resolvedCategory = clust?.assetCategory ? { id: clust.assetCategory.id, name: clust.assetCategory.name, code: clust.assetCategory.code } : null;
+        resolvedGroup = clust?.assetCategory?.assetGroup || null;
       } else if (type === 'CATEGORY' && targetId) {
         const cat = await prisma.assetCategory.findUnique({
           where: { id: targetId },
+          include: { assetGroup: { select: { id: true, name: true, code: true } } },
         });
-        assetCategoryId = targetId;
-        assetGroupId = cat?.assetGroupId || null;
+        resolvedCategory = cat ? { id: cat.id, name: cat.name, code: cat.code } : null;
+        resolvedGroup = cat?.assetGroup || null;
       } else if (type === 'GROUP' && targetId) {
-        assetGroupId = targetId;
+        const grp = await prisma.assetGroup.findUnique({
+          where: { id: targetId },
+          select: { id: true, name: true, code: true },
+        });
+        resolvedGroup = grp || null;
       }
     }
 
     return {
       ...asset,
       assignedUser,
-      assetGroupId,
-      assetCategoryId,
-      assetClusterId,
-      assetSubClusterId,
+      assetGroup: resolvedGroup,
+      assetCategory: resolvedCategory,
+      assetCluster: resolvedCluster,
+      assetSubCluster: resolvedSubCluster,
+      assetGroupId: resolvedGroup?.id || null,
+      assetCategoryId: resolvedCategory?.id || null,
+      assetClusterId: resolvedCluster?.id || null,
+      assetSubClusterId: resolvedSubCluster?.id || null,
     };
   } catch (error) {
     console.error(error);

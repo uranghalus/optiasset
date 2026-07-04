@@ -17,6 +17,7 @@ import * as XLSX from 'xlsx';
 import { getColumnIndex, ASSET_MAPPER } from '@/lib/excel-mapper';
 import bwipjs from 'bwip-js';
 import { deleteS3File, uploadToS3 } from '@/lib/s3-utils';
+import { parsePhotoUrls, serializePhotoUrls } from '@/schema/asset-schema';
 import { AssetWithItem } from '@/app/(app)/assets/components/asset-column';
 import { Prisma } from '@/generated/prisma';
 
@@ -274,50 +275,43 @@ export async function createAsset(formData: FormData) {
 
   const activeOrgId = session.session?.activeOrganizationId;
   if (!activeOrgId) throw new Error('No active organizationId found');
-  let photoUploadPromise: Promise<string | null> = Promise.resolve(null);
+  let photoUploadPromises: Promise<string | null>[] = [];
   let documentUploadPromise: Promise<string | null> = Promise.resolve(null);
-  const photoFile = formData.get('photo') as File | null;
-  if (photoFile && photoFile.size > 0) {
-    try {
-      const arrayBuffer = await photoFile.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
 
-      // Kompresi gambar: mengubah ke format WebP (sangat ringan) atau JPEG dengan kualitas 80% (visually lossless)
-      const compressedBuffer = await sharp(buffer)
-        .jpeg({ quality: 80, mozjpeg: true }) // Kualitas 80% tidak merubah kejernihan secara kasat mata
-        .toBuffer();
-
-      // Rekonstruksi kembali menjadi File object standar agar bisa diterima oleh fungsi uploadToS3 Anda
-      const compressedFile = new File(
-        [new Uint8Array(compressedBuffer)],
-        photoFile.name,
-        {
-          type: 'image/jpeg',
-        },
-      );
-
-      photoUploadPromise = uploadToS3(compressedFile, 'asset-photos').catch(
-        async (err) => {
-          console.error('Error compressing/uploading image:', err);
-          // Fallback
-          return uploadToS3(photoFile, 'asset-photos');
-        },
-      );
-    } catch (error) {
-      console.error('Error compressing image:', error);
-    }
+  const photoFiles = formData.getAll('photos') as File[];
+  if (photoFiles.length > 0) {
+    photoUploadPromises = photoFiles
+      .filter((f) => f.size > 0)
+      .map(async (file) => {
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          const compressedBuffer = await sharp(buffer)
+            .jpeg({ quality: 80, mozjpeg: true })
+            .toBuffer();
+          const compressedFile = new File(
+            [new Uint8Array(compressedBuffer)],
+            file.name,
+            { type: 'image/jpeg' },
+          );
+          return await uploadToS3(compressedFile, 'asset-photos').catch(
+            async () => uploadToS3(file, 'asset-photos'),
+          );
+        } catch {
+          return await uploadToS3(file, 'asset-photos');
+        }
+      });
   }
-  // 👇 2. UPLOAD DOCUMENT (Tanpa Kompresi Backend) 👇
-  // Ubah 'document' menjadi 'documentUrl'
+
   const documentFile = formData.get('documentUrl') as File | null;
   if (documentFile && documentFile.size > 0) {
     documentUploadPromise = uploadToS3(documentFile, 'asset-documents');
   }
-  // 3. JALANKAN BERSAMAAN
-  const [photoUrl, documentUrl] = await Promise.all([
-    photoUploadPromise,
+  const [uploadedPhotoUrls, documentUrl] = await Promise.all([
+    Promise.all(photoUploadPromises),
     documentUploadPromise,
   ]);
+  const photoUrl = serializePhotoUrls(uploadedPhotoUrls.filter(Boolean) as string[]);
   const formDepartmentId = formData.get('departmentId')?.toString();
   const isAdminOrOwner = role === 'staff_asset' || role === 'owner';
   const finalDepartmentId =
@@ -574,40 +568,52 @@ export async function updateAsset(id: string, formData: FormData) {
       return val ? parseFloat(val) : null;
     };
 
-    // 👇 LOGIKA UPDATE FOTO DENGAN KOMPRESI SHARP 👇
-    const removePhoto = formData.get('removePhoto') === 'true';
-    const photoFile = formData.get('photo') as File | null;
-    let finalPhotoUrl = asset.photoUrl;
+    // 👇 LOGIKA UPDATE FOTO DENGAN KOMPRESI SHARP (MULTI-FILE) 👇
+    const existingUrls = parsePhotoUrls(asset.photoUrl);
+    const removedIndexes: number[] = [];
+    const keptUrls: string[] = [...existingUrls];
 
-    if (removePhoto) {
-      if (asset.photoUrl) await deleteS3File(asset.photoUrl);
-      finalPhotoUrl = null;
-    } else if (photoFile && photoFile.size > 0) {
-      if (asset.photoUrl) await deleteS3File(asset.photoUrl);
-
-      try {
-        const arrayBuffer = await photoFile.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-
-        const compressedBuffer = await sharp(buffer)
-          .jpeg({ quality: 80, mozjpeg: true })
-          .toBuffer();
-
-        const compressedFile = new File(
-          [new Uint8Array(compressedBuffer)],
-          photoFile.name,
-          {
-            type: 'image/jpeg',
-          },
-        );
-
-        finalPhotoUrl = await uploadToS3(compressedFile, 'asset-photos');
-        console.log('2. HASIL UPLOAD S3 (COMPRESSED):', finalPhotoUrl);
-      } catch (error) {
-        console.error('Error compressing image during update:', error);
-        finalPhotoUrl = await uploadToS3(photoFile, 'asset-photos');
+    // Collect individual remove flags
+    for (let i = 0; i < existingUrls.length; i++) {
+      if (formData.get(`removePhoto_${i}`) === 'true') {
+        removedIndexes.push(i);
+        await deleteS3File(existingUrls[i]);
       }
     }
+    // Remove in reverse order to maintain index correctness
+    for (const idx of removedIndexes.sort((a, b) => b - a)) {
+      keptUrls.splice(idx, 1);
+    }
+
+    // Handle new uploads
+    const newPhotoFiles = formData.getAll('photos') as File[];
+    if (newPhotoFiles.length > 0) {
+      const uploadPromises = newPhotoFiles
+        .filter((f) => f.size > 0)
+        .map(async (file) => {
+          try {
+            const arrayBuffer = await file.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            const compressedBuffer = await sharp(buffer)
+              .jpeg({ quality: 80, mozjpeg: true })
+              .toBuffer();
+            const compressedFile = new File(
+              [new Uint8Array(compressedBuffer)],
+              file.name,
+              { type: 'image/jpeg' },
+            );
+            return await uploadToS3(compressedFile, 'asset-photos').catch(
+              async () => uploadToS3(file, 'asset-photos'),
+            );
+          } catch {
+            return await uploadToS3(file, 'asset-photos');
+          }
+        });
+      const newUrls = (await Promise.all(uploadPromises)).filter(Boolean) as string[];
+      keptUrls.push(...newUrls);
+    }
+
+    const finalPhotoUrl = serializePhotoUrls(keptUrls);
 
     // 👇 LOGIKA UPDATE DOKUMEN 👇
     const removeDocument = formData.get('removeDocument') === 'true';
@@ -962,7 +968,8 @@ export async function deleteAsset(id: string) {
     if (!existing) throw new Error('Asset not found');
 
     if (existing.photoUrl) {
-      await deleteS3File(existing.photoUrl);
+      const photoUrls = parsePhotoUrls(existing.photoUrl);
+      await Promise.all(photoUrls.map((url) => deleteS3File(url)));
     }
 
     await tx.assetHistory.create({
@@ -1046,8 +1053,12 @@ export async function getAssetById(id: string) {
         item: { include: { category: true } },
         location: true,
         department: true,
-        aparDetails: true, // 👈 Opsional tapi bagus agar frontend tahu detailnya
-        hydrantDetails: true, // 👈 Sama seperti di atas
+        aparDetails: true,
+        hydrantDetails: true,
+        assetGroup: { select: { id: true, name: true, code: true } },
+        assetCategory: { select: { id: true, name: true, code: true } },
+        assetCluster: { select: { id: true, name: true, code: true } },
+        assetSubCluster: { select: { id: true, name: true, code: true } },
       },
     });
 
@@ -1065,50 +1076,61 @@ export async function getAssetById(id: string) {
       });
     }
 
-    let assetGroupId = asset.assetGroupId || null;
-    let assetCategoryId = asset.assetCategoryId || null;
-    let assetClusterId = asset.assetClusterId || null;
-    let assetSubClusterId = asset.assetSubClusterId || null;
+    let resolvedGroup = asset.assetGroup;
+    let resolvedCategory = asset.assetCategory;
+    let resolvedCluster = asset.assetCluster;
+    let resolvedSubCluster = asset.assetSubCluster;
 
-    if (!assetGroupId && asset.item?.category?.classificationType) {
+    if (!resolvedGroup && asset.item?.category?.classificationType) {
       const targetId = asset.item.category.classificationId;
       const type = asset.item.category.classificationType;
 
       if (type === 'SUBCLUSTER' && targetId) {
         const sub = await prisma.assetSubCluster.findUnique({
           where: { id: targetId },
-          include: { assetCluster: { include: { assetCategory: true } } },
+          include: {
+            assetCluster: { include: { assetCategory: { include: { assetGroup: { select: { id: true, name: true, code: true } } } } } },
+          },
         });
-        assetSubClusterId = targetId;
-        assetClusterId = sub?.assetClusterId || null;
-        assetCategoryId = sub?.assetCluster?.assetCategoryId || null;
-        assetGroupId = sub?.assetCluster?.assetCategory?.assetGroupId || null;
+        resolvedSubCluster = sub ? { id: sub.id, name: sub.name, code: sub.code } : null;
+        resolvedCluster = sub?.assetCluster ? { id: sub.assetCluster.id, name: sub.assetCluster.name, code: sub.assetCluster.code } : null;
+        resolvedCategory = sub?.assetCluster?.assetCategory ? { id: sub.assetCluster.assetCategory.id, name: sub.assetCluster.assetCategory.name, code: sub.assetCluster.assetCategory.code } : null;
+        resolvedGroup = sub?.assetCluster?.assetCategory?.assetGroup || null;
       } else if (type === 'CLUSTER' && targetId) {
         const clust = await prisma.assetCluster.findUnique({
           where: { id: targetId },
-          include: { assetCategory: true },
+          include: { assetCategory: { include: { assetGroup: { select: { id: true, name: true, code: true } } } } },
         });
-        assetClusterId = targetId;
-        assetCategoryId = clust?.assetCategoryId || null;
-        assetGroupId = clust?.assetCategory?.assetGroupId || null;
+        resolvedCluster = clust ? { id: clust.id, name: clust.name, code: clust.code } : null;
+        resolvedCategory = clust?.assetCategory ? { id: clust.assetCategory.id, name: clust.assetCategory.name, code: clust.assetCategory.code } : null;
+        resolvedGroup = clust?.assetCategory?.assetGroup || null;
       } else if (type === 'CATEGORY' && targetId) {
         const cat = await prisma.assetCategory.findUnique({
           where: { id: targetId },
+          include: { assetGroup: { select: { id: true, name: true, code: true } } },
         });
-        assetCategoryId = targetId;
-        assetGroupId = cat?.assetGroupId || null;
+        resolvedCategory = cat ? { id: cat.id, name: cat.name, code: cat.code } : null;
+        resolvedGroup = cat?.assetGroup || null;
       } else if (type === 'GROUP' && targetId) {
-        assetGroupId = targetId;
+        const grp = await prisma.assetGroup.findUnique({
+          where: { id: targetId },
+          select: { id: true, name: true, code: true },
+        });
+        resolvedGroup = grp || null;
       }
     }
 
     return {
       ...asset,
       assignedUser,
-      assetGroupId,
-      assetCategoryId,
-      assetClusterId,
-      assetSubClusterId,
+      assetGroup: resolvedGroup,
+      assetCategory: resolvedCategory,
+      assetCluster: resolvedCluster,
+      assetSubCluster: resolvedSubCluster,
+      assetGroupId: resolvedGroup?.id || null,
+      assetCategoryId: resolvedCategory?.id || null,
+      assetClusterId: resolvedCluster?.id || null,
+      assetSubClusterId: resolvedSubCluster?.id || null,
     };
   } catch (error) {
     console.error(error);

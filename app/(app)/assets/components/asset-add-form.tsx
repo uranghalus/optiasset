@@ -10,7 +10,7 @@ import {
 import { getAssetFormAccess, isValidImageFile } from "@/lib/utils";
 import { AssetForm, AssetFormSchema } from "@/schema/asset-schema";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,18 +25,15 @@ import {
 import { Field, FieldLabel, FieldError } from "@/components/ui/field";
 import { Combobox } from "@/components/ui/combobox";
 import { AssetType } from "@/generated/prisma/client";
-// 👇 Tambahkan icon FileText untuk dokumen
-import { Camera, X, Info, FileText } from "lucide-react";
+import { Camera, X, Info, FileText, Upload, GripVertical } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSelectDepartment } from "@/hooks/crud/use-department";
 
 export default function AssetAddForm() {
-  // State untuk Foto
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageError, setImageError] = useState<string | null>(null);
-
-  // 👇 State untuk Dokumen 👇
+  const [photoPreviews, setPhotoPreviews] = useState<{ file: File; preview: string }[]>([]);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [documentName, setDocumentName] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const router = useRouter();
   const createMutation = useCreateAsset();
@@ -65,8 +62,8 @@ export default function AssetAddForm() {
       assetCategoryId: "",
       assetClusterId: "",
       assetSubClusterId: "",
-      photo: null,
-      documentUrl: null, // 👈 Tambahkan nilai default untuk dokumen
+      photos: [],
+      documentUrl: null,
       brand: "",
       model: "",
       partNumber: "",
@@ -146,41 +143,62 @@ export default function AssetAddForm() {
     }
   }, [isApar, isHydrant, form]);
 
-  // Handle Image
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    setImageError(null);
+  const addPhotos = useCallback((files: FileList | File[]) => {
+    setPhotoError(null);
+    const validFiles = Array.from(files).filter((file) => {
+      const validation = isValidImageFile(file);
+      if (!validation.valid) {
+        setPhotoError(validation.error || "File tidak valid");
+        return false;
+      }
+      return true;
+    });
 
-    if (!file) {
-      setImagePreview(null);
-      form.setValue("photo", null);
-      return;
-    }
+    if (!validFiles.length) return;
 
-    const validation = isValidImageFile(file);
-    if (!validation.valid) {
-      setImageError(validation.error || "File tidak valid");
+    const newEntries = validFiles.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
+    }));
+
+    setPhotoPreviews((prev) => {
+      const updated = [...prev, ...newEntries];
+      form.setValue("photos", updated.map((e) => e.file));
+      return updated;
+    });
+  }, [form]);
+
+  const handlePhotoInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.length) {
+      addPhotos(e.target.files);
       e.target.value = "";
-      form.setValue("photo", null);
-      return;
     }
-
-    form.setValue("photo", file);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setImagePreview(e.target?.result as string);
-    };
-    reader.readAsDataURL(file);
   };
 
-  const handleRemoveImage = () => {
-    setImagePreview(null);
-    setImageError(null);
-    form.setValue("photo", null);
-    const fileInput = document.getElementById(
-      "photo-input",
-    ) as HTMLInputElement;
-    if (fileInput) fileInput.value = "";
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files?.length) addPhotos(e.dataTransfer.files);
+  }, [addPhotos]);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotoPreviews((prev) => {
+      const entry = prev[index];
+      if (entry) URL.revokeObjectURL(entry.preview);
+      const updated = prev.filter((_, i) => i !== index);
+      form.setValue("photos", updated.map((e) => e.file));
+      return updated;
+    });
   };
 
   // 👇 Handle Document Upload 👇
@@ -217,11 +235,14 @@ export default function AssetAddForm() {
     const formData = new FormData();
 
     for (const [key, value] of Object.entries(values)) {
-      if (value !== undefined && value !== null && value !== "") {
-        // 👇 PERBAIKAN: Pastikan document juga diperlakukan sebagai File saat append 👇
-        if ((key === "photo" || key === "documentUrl") && value instanceof File) {
+      if (value !== undefined && value !== null) {
+        if (key === "photos" && Array.isArray(value)) {
+          for (const file of value) {
+            if (file instanceof File) formData.append("photos", file);
+          }
+        } else if (key === "documentUrl" && value instanceof File) {
           formData.append(key, value);
-        } else {
+        } else if (key !== "photos") {
           formData.append(key, value as string | Blob);
         }
       }
@@ -230,8 +251,8 @@ export default function AssetAddForm() {
     try {
       await createMutation.mutateAsync(formData);
       form.reset();
-      setImagePreview(null);
-      setImageError(null);
+      setPhotoPreviews([]);
+      setPhotoError(null);
       setDocumentName(null);
       router.push("/assets");
     } catch (error: any) {
@@ -780,63 +801,99 @@ export default function AssetAddForm() {
         )}
         {/* ===================================================================== */}
 
-        {/* UPLOAD SECTION: PHOTO & DOCUMENT */}
+        {/* UPLOAD SECTION: PHOTOS & DOCUMENT */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-          {/* PHOTO UPLOAD */}
-          <div className="space-y-4 border rounded-lg p-4 bg-slate-50">
-            <h3 className="font-semibold text-sm">Lampiran Foto Fisik Unit</h3>
-            {imagePreview && (
-              <div className="relative w-full flex justify-center">
-                <div className="relative">
-                  <img
-                    src={imagePreview}
-                    alt="Asset preview"
-                    className="h-40 w-40 object-cover rounded-lg border shadow-sm"
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full shadow-md"
-                    onClick={handleRemoveImage}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
+          {/* MULTI-PHOTO UPLOAD */}
+          <div className="space-y-4 border rounded-xl p-5 bg-white shadow-sm">
+            <h3 className="font-semibold text-sm flex items-center gap-2">
+              <Camera className="h-4 w-4 text-primary" />
+              Foto Fisik Unit
+              <span className="text-xs text-muted-foreground font-normal">(bisa banyak)</span>
+            </h3>
+
+            {photoPreviews.length > 0 && (
+              <div className="grid grid-cols-3 gap-3">
+                {photoPreviews.map((entry, index) => (
+                  <div key={index} className="relative group aspect-square rounded-lg overflow-hidden border bg-muted/30">
+                    <img
+                      src={entry.preview}
+                      alt={`Foto ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="h-8 w-8 rounded-full shadow-lg"
+                        onClick={() => removePhoto(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <span className="absolute top-1 left-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded font-medium">
+                      {index + 1}
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
-            {imageError && (
-              <p className="text-sm text-red-500 bg-red-50 p-2 rounded">
-                {imageError}
-              </p>
+
+            {photoError && (
+              <p className="text-sm text-red-500 bg-red-50 p-2 rounded">{photoError}</p>
             )}
-            <div className="flex items-center gap-2">
-              <label htmlFor="photo-input" className="flex-1">
-                <div className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors">
-                  <Camera className="h-4 w-4 text-slate-500" />
-                  <span className="text-sm text-slate-600 font-medium">
-                    {imagePreview
-                      ? "Ubah foto lampiran"
-                      : "Pilih foto aset"}
+
+            <div
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+            >
+              <label htmlFor="photo-input">
+                <div
+                  className={`flex flex-col items-center justify-center gap-2 p-5 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
+                    isDragging
+                      ? "border-primary bg-primary/5 scale-[1.02]"
+                      : "border-slate-300 hover:border-primary/50 hover:bg-slate-50"
+                  }`}
+                >
+                  <div className="p-2 rounded-full bg-primary/10">
+                    <Upload className="h-5 w-5 text-primary" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-700">
+                    {isDragging ? "Lepaskan foto di sini" : "Klik atau seret foto ke sini"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    JPG, PNG, WebP — Maks 5MB per file
                   </span>
                 </div>
                 <input
                   id="photo-input"
                   type="file"
                   accept="image/*"
+                  multiple
                   className="hidden"
-                  onChange={handleImageChange}
+                  onChange={handlePhotoInput}
                   disabled={isPending}
                 />
               </label>
             </div>
+
+            {photoPreviews.length > 0 && (
+              <p className="text-xs text-muted-foreground text-center">
+                {photoPreviews.length} foto dipilih
+              </p>
+            )}
           </div>
 
-          {/* 👇 PENAMBAHAN DOCUMENT UPLOAD 👇 */}
-          <div className="space-y-4 border rounded-lg p-4 bg-slate-50">
-            <h3 className="font-semibold text-sm">Lampiran Dokumen (Opsional)</h3>
+          {/* DOCUMENT UPLOAD */}
+          <div className="space-y-4 border rounded-xl p-5 bg-white shadow-sm">
+            <h3 className="font-semibold text-sm flex items-center gap-2">
+              <FileText className="h-4 w-4 text-blue-500" />
+              Lampiran Dokumen
+              <span className="text-xs text-muted-foreground font-normal">(opsional)</span>
+            </h3>
             {documentName && (
-              <div className="flex items-center justify-between p-3 bg-white border rounded-lg shadow-sm">
+              <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-100 rounded-lg">
                 <div className="flex items-center gap-2 overflow-hidden">
                   <FileText className="h-5 w-5 text-blue-500 shrink-0" />
                   <span className="text-sm text-slate-700 truncate font-medium">
@@ -856,28 +913,24 @@ export default function AssetAddForm() {
             )}
 
             {!documentName && (
-              <div className="flex items-center gap-2">
-                <label htmlFor="document-input" className="flex-1">
-                  <div className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors h-[52px]">
-                    <FileText className="h-4 w-4 text-slate-500" />
-                    <span className="text-sm text-slate-600 font-medium">
-                      Unggah file dokumen
-                    </span>
+              <label htmlFor="document-input">
+                <div className="flex flex-col items-center justify-center gap-2 p-5 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-blue-400/50 hover:bg-blue-50/50 transition-all">
+                  <div className="p-2 rounded-full bg-blue-100">
+                    <FileText className="h-5 w-5 text-blue-500" />
                   </div>
-                  <input
-                    id="document-input"
-                    type="file"
-                    accept=".pdf,.doc,.docx,.xls,.xlsx"
-                    className="hidden"
-                    onChange={handleDocumentChange}
-                    disabled={isPending}
-                  />
-                </label>
-              </div>
+                  <span className="text-sm font-medium text-slate-700">Unggah file dokumen</span>
+                  <span className="text-xs text-muted-foreground">PDF, Word, Excel — Maks 5MB</span>
+                </div>
+                <input
+                  id="document-input"
+                  type="file"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx"
+                  className="hidden"
+                  onChange={handleDocumentChange}
+                  disabled={isPending}
+                />
+              </label>
             )}
-            <p className="text-[11px] text-slate-500">
-              Format didukung: PDF, Word, Excel. Maksimal 5MB.
-            </p>
           </div>
         </div>
 

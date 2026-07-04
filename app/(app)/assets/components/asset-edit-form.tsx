@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { Camera, X, Loader2, FileText } from "lucide-react"; // 👈 Tambah FileText
+import { Camera, X, Loader2, FileText, Upload } from "lucide-react";
 
-import { type AssetEditForm, AssetEditFormSchema } from "@/schema/asset-schema";
+import { type AssetEditForm, AssetEditFormSchema, parsePhotoUrls } from "@/schema/asset-schema";
 import { getAssetFormAccess, isValidImageFile } from "@/lib/utils";
 import { AssetType } from "@/generated/prisma/client";
 
@@ -45,15 +45,17 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
   const activeOrgId = session?.session?.activeOrganizationId || "";
   const router = useRouter();
 
-  // State untuk Foto
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageError, setImageError] = useState<string | null>(null);
+  // State untuk Foto (multi-file)
+  const [existingPhotoUrls, setExistingPhotoUrls] = useState<string[]>([]);
+  const [removedPhotoIndexes, setRemovedPhotoIndexes] = useState<Set<number>>(new Set());
+  const [newPhotoPreviews, setNewPhotoPreviews] = useState<{ file: File; preview: string }[]>([]);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  // 👇 State untuk Dokumen 👇
+  // State untuk Dokumen
   const [documentName, setDocumentName] = useState<string | null>(null);
   const [hasExistingDocument, setHasExistingDocument] = useState<boolean>(false);
 
-  // Flag agar saat pre-fill awal, dropdown anak tidak ter-reset
   const isPreFilling = useRef(true);
 
   const updateMutation = useUpdateAsset();
@@ -85,8 +87,8 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
       kode_asset: "",
       vendorName: "",
       garansi_exp: "",
-      photo: null,
-      documentUrl: null, // 👈 Tambahkan inisialisasi form document
+      photos: [],
+      documentUrl: null,
       brand: "",
       model: "",
       partNumber: "",
@@ -175,11 +177,15 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
         ukuranHydrant: hydrantInfo?.ukuran || "",
         PIC: (assetData as any).PIC || "",
 
-        photo: null,
+        photos: [],
         documentUrl: null,
       });
 
-      if (assetData.photoUrl) setImagePreview(assetData.photoUrl);
+      if (assetData.photoUrl) {
+        setExistingPhotoUrls(parsePhotoUrls(assetData.photoUrl));
+        setRemovedPhotoIndexes(new Set());
+        setNewPhotoPreviews([]);
+      }
 
       // 👇 Pre-fill UI Document jika exist dari database
       if ((assetData as any).documentUrl) {
@@ -248,36 +254,70 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
     form.setValue("assetSubClusterId", "");
   }, [selectedCluster, form]);
 
-  // Handle Foto
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    setImageError(null);
-    if (!file) {
-      setImagePreview(assetData?.photoUrl || null);
-      form.setValue("photo", null);
-      return;
-    }
-    const validation = isValidImageFile(file);
-    if (!validation.valid) {
-      setImageError(validation.error || "File tidak valid");
+  // Handle Multi-Photo
+  const addNewPhotos = useCallback((files: FileList | File[]) => {
+    setPhotoError(null);
+    const validFiles = Array.from(files).filter((file) => {
+      const validation = isValidImageFile(file);
+      if (!validation.valid) {
+        setPhotoError(validation.error || "File tidak valid");
+        return false;
+      }
+      return true;
+    });
+    if (!validFiles.length) return;
+
+    const newEntries = validFiles.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
+    }));
+    setNewPhotoPreviews((prev) => {
+      const updated = [...prev, ...newEntries];
+      form.setValue("photos", updated.map((e) => e.file));
+      return updated;
+    });
+  }, [form]);
+
+  const handlePhotoInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.length) {
+      addNewPhotos(e.target.files);
       e.target.value = "";
-      form.setValue("photo", null);
-      return;
     }
-    form.setValue("photo", file);
-    const reader = new FileReader();
-    reader.onload = (e) => setImagePreview(e.target?.result as string);
-    reader.readAsDataURL(file);
   };
 
-  const handleRemoveImage = () => {
-    setImagePreview(null);
-    setImageError(null);
-    form.setValue("photo", null);
-    const fileInput = document.getElementById(
-      "photo-input",
-    ) as HTMLInputElement;
-    if (fileInput) fileInput.value = "";
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files?.length) addNewPhotos(e.dataTransfer.files);
+  }, [addNewPhotos]);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const removeExistingPhoto = (index: number) => {
+    setRemovedPhotoIndexes((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  };
+
+  const removeNewPhoto = (index: number) => {
+    setNewPhotoPreviews((prev) => {
+      const entry = prev[index];
+      if (entry) URL.revokeObjectURL(entry.preview);
+      const updated = prev.filter((_, i) => i !== index);
+      form.setValue("photos", updated.map((e) => e.file));
+      return updated;
+    });
   };
 
   // 👇 Handle Dokumen 👇
@@ -319,18 +359,23 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
     const formData = new FormData();
 
     for (const [key, value] of Object.entries(values)) {
-      // 👇 Mencegah bug typeof untuk File object 👇
-      if ((key === "photo" || key === "documentUrl") && value instanceof File) {
+      if (value === undefined || value === null) continue;
+      if (key === "photos" && Array.isArray(value)) {
+        for (const file of value) {
+          if (file instanceof File) formData.append("photos", file);
+        }
+      } else if (key === "documentUrl" && value instanceof File) {
         formData.append(key, value);
-      } else {
-        formData.append(key, value === null || value === undefined ? "" : String(value));
+      } else if (key !== "photos") {
+        formData.append(key, String(value));
       }
     }
 
-    // Flag hapus file existing ke API
-    if (!imagePreview && assetData?.photoUrl) {
-      formData.append("removePhoto", "true");
+    // Mark removed existing photos
+    for (const idx of removedPhotoIndexes) {
+      formData.append(`removePhoto_${idx}`, "true");
     }
+
     if (!documentName && (assetData as any)?.documentUrl) {
       formData.append("removeDocument", "true");
     }
@@ -898,62 +943,136 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
           </div>
         )}
 
-        {/* UPLOAD SECTION: PHOTO & DOCUMENT */}
+        {/* UPLOAD SECTION: PHOTOS & DOCUMENT */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-          {/* PHOTO SECTION */}
-          <div className="space-y-4 border rounded-lg p-4 bg-slate-50">
-            <h3 className="font-semibold text-sm">Lampiran Foto Fisik Unit</h3>
-            {imagePreview && (
-              <div className="relative w-full flex justify-center">
-                <div className="relative">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={imagePreview.startsWith('data:') ? imagePreview : `/api/image?key=${encodeURIComponent(imagePreview)}`}
-                    alt="Asset preview"
-                    className="h-40 w-40 object-cover rounded-lg border bg-white shadow-sm"
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full shadow-md"
-                    onClick={handleRemoveImage}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
+          {/* MULTI-PHOTO UPLOAD */}
+          <div className="space-y-4 border rounded-xl p-5 bg-white shadow-sm">
+            <h3 className="font-semibold text-sm flex items-center gap-2">
+              <Camera className="h-4 w-4 text-primary" />
+              Foto Fisik Unit
+              <span className="text-xs text-muted-foreground font-normal">(bisa banyak)</span>
+            </h3>
+
+            {/* Existing photos */}
+            {existingPhotoUrls.length > 0 && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-2 font-medium">Foto tersimpan:</p>
+                <div className="grid grid-cols-3 gap-3">
+                  {existingPhotoUrls.map((url, index) => {
+                    const isRemoved = removedPhotoIndexes.has(index);
+                    return (
+                      <div
+                        key={`existing-${index}`}
+                        className={`relative group aspect-square rounded-lg overflow-hidden border transition-all ${
+                          isRemoved ? "opacity-40 ring-2 ring-destructive" : "bg-muted/30"
+                        }`}
+                      >
+                        {url.startsWith('data:') || url.startsWith('http') ? (
+                          <img src={url} alt={`Foto ${index + 1}`} className="w-full h-full object-cover" />
+                        ) : (
+                          <img
+                            src={`/api/image?key=${encodeURIComponent(url)}`}
+                            alt={`Foto ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        )}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                          <Button
+                            type="button"
+                            variant={isRemoved ? "secondary" : "destructive"}
+                            size="icon"
+                            className="h-8 w-8 rounded-full shadow-lg"
+                            onClick={() => removeExistingPhoto(index)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <span className="absolute top-1 left-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded font-medium">
+                          {index + 1}
+                        </span>
+                        {isRemoved && (
+                          <span className="absolute bottom-1 left-1/2 -translate-x-1/2 bg-destructive text-white text-[10px] px-2 py-0.5 rounded font-medium whitespace-nowrap">
+                            Akan dihapus
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
-            {imageError && (
-              <p className="text-sm text-red-500 bg-red-50 p-2 rounded">
-                {imageError}
-              </p>
+
+            {/* New photos */}
+            {newPhotoPreviews.length > 0 && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-2 font-medium">Foto baru:</p>
+                <div className="grid grid-cols-3 gap-3">
+                  {newPhotoPreviews.map((entry, index) => (
+                    <div key={`new-${index}`} className="relative group aspect-square rounded-lg overflow-hidden border bg-muted/30">
+                      <img src={entry.preview} alt={`Foto baru ${index + 1}`} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="h-8 w-8 rounded-full shadow-lg"
+                          onClick={() => removeNewPhoto(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <span className="absolute top-1 left-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded font-medium">
+                        {existingPhotoUrls.length - removedPhotoIndexes.size + index + 1}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
-            <div className="flex items-center gap-2">
-              <label htmlFor="photo-input" className="flex-1">
-                <div className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-100 bg-white transition-colors">
-                  <Camera className="h-4 w-4 text-slate-500" />
-                  <span className="text-sm text-slate-600 font-medium">
-                    {imagePreview ? "Klik ubah foto" : "Pilih dokumen foto aset"}
+
+            {photoError && (
+              <p className="text-sm text-red-500 bg-red-50 p-2 rounded">{photoError}</p>
+            )}
+
+            <div onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave}>
+              <label htmlFor="edit-photo-input">
+                <div
+                  className={`flex flex-col items-center justify-center gap-2 p-5 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
+                    isDragging
+                      ? "border-primary bg-primary/5 scale-[1.02]"
+                      : "border-slate-300 hover:border-primary/50 hover:bg-slate-50"
+                  }`}
+                >
+                  <div className="p-2 rounded-full bg-primary/10">
+                    <Upload className="h-5 w-5 text-primary" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-700">
+                    {isDragging ? "Lepaskan foto di sini" : "Klik atau seret foto tambahan"}
                   </span>
+                  <span className="text-xs text-muted-foreground">JPG, PNG, WebP — Maks 5MB per file</span>
                 </div>
                 <input
-                  id="photo-input"
+                  id="edit-photo-input"
                   type="file"
                   accept="image/*"
+                  multiple
                   className="hidden"
-                  onChange={handleImageChange}
-                  disabled={updateMutation.isPending}
+                  onChange={handlePhotoInput}
+                  disabled={isPending}
                 />
               </label>
             </div>
           </div>
 
-          {/* 👇 DOCUMENT SECTION 👇 */}
-          <div className="space-y-4 border rounded-lg p-4 bg-slate-50">
-            <h3 className="font-semibold text-sm">Lampiran Dokumen (Opsional)</h3>
+          {/* DOCUMENT SECTION */}
+          <div className="space-y-4 border rounded-xl p-5 bg-white shadow-sm">
+            <h3 className="font-semibold text-sm flex items-center gap-2">
+              <FileText className="h-4 w-4 text-blue-500" />
+              Lampiran Dokumen
+              <span className="text-xs text-muted-foreground font-normal">(opsional)</span>
+            </h3>
             {documentName && (
-              <div className="flex items-center justify-between p-3 bg-white border rounded-lg shadow-sm">
+              <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-100 rounded-lg">
                 <div className="flex items-center gap-2 overflow-hidden">
                   <FileText className="h-5 w-5 text-blue-500 flex-shrink-0" />
                   <span className="text-sm text-slate-700 truncate font-medium" title={documentName}>
@@ -973,28 +1092,24 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
             )}
 
             {!documentName && (
-              <div className="flex items-center gap-2">
-                <label htmlFor="document-input" className="flex-1">
-                  <div className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-100 bg-white transition-colors h-[52px]">
-                    <FileText className="h-4 w-4 text-slate-500" />
-                    <span className="text-sm text-slate-600 font-medium">
-                      Unggah file dokumen baru
-                    </span>
+              <label htmlFor="edit-document-input">
+                <div className="flex flex-col items-center justify-center gap-2 p-5 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-blue-400/50 hover:bg-blue-50/50 transition-all">
+                  <div className="p-2 rounded-full bg-blue-100">
+                    <FileText className="h-5 w-5 text-blue-500" />
                   </div>
-                  <input
-                    id="document-input"
-                    type="file"
-                    accept=".pdf,.doc,.docx,.xls,.xlsx"
-                    className="hidden"
-                    onChange={handleDocumentChange}
-                    disabled={updateMutation.isPending}
-                  />
-                </label>
-              </div>
+                  <span className="text-sm font-medium text-slate-700">Unggah file dokumen baru</span>
+                  <span className="text-xs text-muted-foreground">PDF, Word, Excel — Maks 5MB</span>
+                </div>
+                <input
+                  id="edit-document-input"
+                  type="file"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx"
+                  className="hidden"
+                  onChange={handleDocumentChange}
+                  disabled={isPending}
+                />
+              </label>
             )}
-            <p className="text-[11px] text-slate-500">
-              Format didukung: PDF, Word, Excel. Maksimal 5MB.
-            </p>
           </div>
         </div>
 

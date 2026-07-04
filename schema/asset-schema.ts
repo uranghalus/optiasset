@@ -11,8 +11,6 @@ export const AssetFormSchema = z.object({
   brand: z.string().min(1, 'Brand is required'),
   model: z.string().min(1, 'Model is required'),
 
-  // 👇 UBAH BAGIAN INI 👇
-  // Jika diisi "-" atau dikosongkan, otomatis dianggap tidak ada (null/undefined)
   partNumber: z
     .string()
     .optional()
@@ -20,7 +18,6 @@ export const AssetFormSchema = z.object({
 
   condition: z.string().min(1, 'Condition is required'),
 
-  // 👇 UBAH BAGIAN INI 👇
   serialNumber: z
     .string()
     .optional()
@@ -31,7 +28,6 @@ export const AssetFormSchema = z.object({
   kode_asset: z.string().optional(),
   vendorName: z.string().optional(),
   garansi_exp: z.string().optional(),
-  // 👇 TAMBAHKAN FIELD INI DI BAGIAN BAWAH SCHEMA ANDA 👇
   isAparOrHydrant: z
     .enum(['APAR', 'HYDRANT', 'NONE'])
     .optional()
@@ -44,7 +40,7 @@ export const AssetFormSchema = z.object({
   assetClusterId: z.string().optional(),
   assetSubClusterId: z.string().optional(),
   PIC: z.string().optional(),
-  photo: z.instanceof(File).optional().nullable(),
+  photos: z.array(z.instanceof(File)).optional().default([]),
   documentUrl: z.instanceof(File).optional().nullable(),
 });
 
@@ -59,8 +55,6 @@ export const ImportFormSchema = z.object({
 
 export type ImportForm = z.infer<typeof ImportFormSchema>;
 
-// Schema untuk form edit: biarkan field detail (brand, model, partNumber, serialNumber)
-// bersifat opsional sehingga edit tidak wajib mengirim ulang semua detail.
 export const AssetEditFormSchema = AssetFormSchema.partial({
   brand: true,
   model: true,
@@ -69,3 +63,18 @@ export const AssetEditFormSchema = AssetFormSchema.partial({
 });
 
 export type AssetEditForm = z.infer<typeof AssetEditFormSchema>;
+
+export function parsePhotoUrls(photoUrl: string | null): string[] {
+  if (!photoUrl) return [];
+  try {
+    if (photoUrl.startsWith('[')) return JSON.parse(photoUrl);
+    return [photoUrl];
+  } catch {
+    return [photoUrl];
+  }
+}
+
+export function serializePhotoUrls(urls: string[]): string | null {
+  if (!urls.length) return null;
+  return JSON.stringify(urls);
+}

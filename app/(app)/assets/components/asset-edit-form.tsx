@@ -60,7 +60,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
 
   const updateMutation = useUpdateAsset();
   const { data: role } = useActiveMemberRole();
-  const { canView, isReadonly } = getAssetFormAccess(role);
+  const { canView } = getAssetFormAccess(role);
 
   // Fetching Data Pendukung
   const { data: items } = useItemsForSelect();
@@ -500,7 +500,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                     }
                     renderText={(x) => `${x.code} - ${x.name}`}
                     onChange={(x) => field.onChange(x.id)}
-                    disabled={!selectedGroup || isReadonly}
+                    disabled={!selectedGroup}
                   />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
@@ -530,7 +530,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                     }
                     renderText={(x) => `${x.code} - ${x.name}`}
                     onChange={(x) => field.onChange(x.id)}
-                    disabled={!selectedCategory || isReadonly}
+                    disabled={!selectedCategory}
                   />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
@@ -560,7 +560,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
                     }
                     renderText={(x) => `${x.code} - ${x.name}`}
                     onChange={(x) => field.onChange(x.id)}
-                    disabled={!selectedCluster || isReadonly}
+                    disabled={!selectedCluster}
                   />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />

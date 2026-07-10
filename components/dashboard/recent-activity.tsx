@@ -165,7 +165,7 @@ export function RecentActivity({ recentActivity }: RecentActivityProps) {
                     getEntityTypeBg(log.entityType),
                   )}
                 >
-                  {getIcon(log.entityType, log.action)}
+                  {getIcon(log.entityType)}
                 </div>
 
                 {/* Content */}

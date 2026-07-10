@@ -1,9 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { useState } from "react";
 import type { Table } from "@tanstack/react-table";
 import { cn, getPageNumbers } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -29,6 +31,8 @@ export function DataTablePagination<TData>({
   pageCount,
   className,
 }: DataTablePaginationProps<TData>) {
+  const [gotoPage, setGotoPage] = useState("");
+
   const { pageIndex, pageSize } = table.getState().pagination;
 
   const currentPage = pageIndex + 1;
@@ -70,8 +74,31 @@ export function DataTablePagination<TData>({
           </Select>
         </div>
 
-        <div className="text-xs font-medium text-muted-foreground sm:text-sm">
-          Page {currentPage} of {totalPages}
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-medium text-muted-foreground sm:text-sm whitespace-nowrap">
+            Page {currentPage} of {totalPages}
+          </p>
+          <div className="flex items-center gap-1">
+            <p className="text-xs font-medium text-muted-foreground">Go to</p>
+            <Input
+              type="number"
+              min={1}
+              max={totalPages}
+              value={gotoPage}
+              onChange={(e) => setGotoPage(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  const page = Number(gotoPage);
+                  if (page >= 1 && page <= totalPages) {
+                    table.setPageIndex(page - 1);
+                  }
+                  setGotoPage("");
+                }
+              }}
+              onBlur={() => setGotoPage("")}
+              className="h-9 w-[60px] rounded-lg text-center text-xs"
+            />
+          </div>
         </div>
       </div>
 

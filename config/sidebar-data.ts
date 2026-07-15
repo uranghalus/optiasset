@@ -127,73 +127,73 @@ export const sidebarData: SidebarData = {
       ],
     },
 
-    // ---------- INVENTORY ----------
-    {
-      title: 'Persediaan',
-      items: [
-        {
-          title: 'Stok Barang',
-          url: '/stocks',
-          icon: Warehouse,
-          permission: {
-            resource: 'inventory',
-            actions: ['view'],
-          },
-        },
-        {
-          title: 'Transaksi Stok',
-          url: '/stock-transactions',
-          icon: ClipboardList,
-          permission: {
-            resource: 'inventory',
-            actions: ['view'],
-          },
-        },
-      ],
-    },
+    // // ---------- INVENTORY ----------
+    // {
+    //   title: 'Persediaan',
+    //   items: [
+    //     {
+    //       title: 'Stok Barang',
+    //       url: '/stocks',
+    //       icon: Warehouse,
+    //       permission: {
+    //         resource: 'inventory',
+    //         actions: ['view'],
+    //       },
+    //     },
+    //     {
+    //       title: 'Transaksi Stok',
+    //       url: '/stock-transactions',
+    //       icon: ClipboardList,
+    //       permission: {
+    //         resource: 'inventory',
+    //         actions: ['view'],
+    //       },
+    //     },
+    //   ],
+    // },
 
-    // // ---------- OPERASIONAL ----------
-    {
-      title: 'Operasional',
-      items: [
-        {
-          title: 'Peminjaman Aset',
-          url: '/asset-loans',
-          icon: Handshake,
-          permission: {
-            resource: 'asset.loan',
-            actions: ['view'],
-          },
-        },
-        // {
-        //   title: 'Perawatan Aset',
-        //   url: '/maintenances',
-        //   icon: Wrench,
-        //   permission: {
-        //     resource: 'asset.maintenance',
-        //     actions: ['view'],
-        //   },
-        // },
-        // {
-        //   title: 'Jadwal Perawatan',
-        //   url: '/maintenance-schedules',
-        //   icon: Clock,
-        //   permission: {
-        //     resource: 'asset.maintenance',
-        //     actions: ['view'],
-        //   },
-        // },
-        {
-          title: 'Persetujuan',
-          url: '/approvals',
-          icon: CheckSquare,
-          permission: {
-            resource: 'asset.transfer',
-            actions: ['approve'],
-          },
-        },
-      ],
-    },
+    // // // ---------- OPERASIONAL ----------
+    // {
+    //   title: 'Operasional',
+    //   items: [
+    //     {
+    //       title: 'Peminjaman Aset',
+    //       url: '/asset-loans',
+    //       icon: Handshake,
+    //       permission: {
+    //         resource: 'asset.loan',
+    //         actions: ['view'],
+    //       },
+    //     },
+    //     // {
+    //     //   title: 'Perawatan Aset',
+    //     //   url: '/maintenances',
+    //     //   icon: Wrench,
+    //     //   permission: {
+    //     //     resource: 'asset.maintenance',
+    //     //     actions: ['view'],
+    //     //   },
+    //     // },
+    //     // {
+    //     //   title: 'Jadwal Perawatan',
+    //     //   url: '/maintenance-schedules',
+    //     //   icon: Clock,
+    //     //   permission: {
+    //     //     resource: 'asset.maintenance',
+    //     //     actions: ['view'],
+    //     //   },
+    //     // },
+    //     {
+    //       title: 'Persetujuan',
+    //       url: '/approvals',
+    //       icon: CheckSquare,
+    //       permission: {
+    //         resource: 'asset.transfer',
+    //         actions: ['approve'],
+    //       },
+    //     },
+    //   ],
+    // },
 
     // ---------- ORGANISASI ----------
     {

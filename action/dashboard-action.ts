@@ -42,7 +42,7 @@ export async function getDashboardData() {
     totalAssets,
     totalItems,
     stockItems,
-    categories,
+    golongan,
     recentAssets,
     lowStockItems,
   ] = await Promise.all([
@@ -60,14 +60,13 @@ export async function getDashboardData() {
       },
     }),
 
-    // 4. Pengagihan Kategori
-    // Kategori adalah global, tetapi kiraan item di dalamnya mesti mengikut jabatan pengguna
-    prisma.category.findMany({
+    // 4. Pengagihan berdasarkan Golongan (AssetGroup)
+    prisma.assetGroup.findMany({
       where: { organizationId: activeOrgId },
       include: {
         _count: {
           select: {
-            items: {
+            assets: {
               where:
                 shouldFilterByDept && deptId ? { departmentId: deptId } : {},
             },
@@ -110,15 +109,14 @@ export async function getDashboardData() {
       totalAssets,
       totalItems,
       totalStock: stockItems._sum.quantity || 0,
-      totalCategories: categories.length,
+      totalCategories: golongan.length,
     },
-    chartData: categories
-      .map((cat) => ({
-        name: cat.name,
-        value: cat._count.items,
+    chartData: golongan
+      .map((g) => ({
+        name: g.name,
+        value: g._count.assets,
       }))
-      // Hanya tunjukkan kategori yang mempunyai item berdasarkan tapisan jabatan tadi
-      .filter((c) => c.value > 0),
+      .filter((g) => g.value > 0),
 
     // Aktiviti Terkini
     recentActivity: recentAssets.map((log: any) => ({

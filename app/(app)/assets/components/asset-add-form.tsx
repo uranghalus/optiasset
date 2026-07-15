@@ -8,7 +8,7 @@ import {
   useLocationsForSelect,
 } from "@/hooks/crud/use-assets";
 import { getAssetFormAccess, isValidImageFile } from "@/lib/utils";
-import { AssetForm, AssetFormSchema } from "@/schema/asset-schema";
+import { AssetForm, AssetFormSchema, AssetDraftSchema } from "@/schema/asset-schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState, useCallback } from "react";
 import { Controller, useForm } from "react-hook-form";
@@ -231,7 +231,7 @@ export default function AssetAddForm() {
   };
 
   // Submit Data
-  const onSubmit = async (values: AssetForm) => {
+  const onSubmit = async (values: AssetForm, status: string = "ACTIVE") => {
     const formData = new FormData();
 
     for (const [key, value] of Object.entries(values)) {
@@ -247,6 +247,8 @@ export default function AssetAddForm() {
         }
       }
     }
+
+    formData.append("status", status);
 
     try {
       await createMutation.mutateAsync(formData);
@@ -266,6 +268,14 @@ export default function AssetAddForm() {
 
   const isPending = createMutation.isPending;
 
+  // Submit as Draft — validate only itemId
+  const onSubmitDraft = async () => {
+    const valid = await form.trigger("itemId");
+    if (!valid) return;
+    const values = form.getValues();
+    onSubmit(values as any, "DRAFT");
+  };
+
   return (
     <div className="p-4 border border-gray-100 rounded-lg">
       <form
@@ -279,6 +289,10 @@ export default function AssetAddForm() {
           </p>
         )}
 
+        <p className="text-xs text-muted-foreground">
+          <span className="text-destructive font-medium">*</span> Wajib diisi untuk publikasi aset. Field lain bisa dilengkapi nanti via edit.
+        </p>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* KIRI: Informasi Utama & Klasifikasi Terkunci */}
           <div className="space-y-4">
@@ -291,7 +305,10 @@ export default function AssetAddForm() {
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Pilih Master Item (Katalog)</FieldLabel>
+                  <FieldLabel>
+                    Pilih Master Item (Katalog)
+                    <span className="text-destructive ml-0.5">*</span>
+                  </FieldLabel>
                   <Combobox<{
                     name: string;
                     id: string;
@@ -378,7 +395,10 @@ export default function AssetAddForm() {
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Brand / Merk</FieldLabel>
+                  <FieldLabel>
+                    Brand / Merk
+                    <span className="text-destructive ml-0.5">*</span>
+                  </FieldLabel>
                   <Input
                     {...field}
                     value={field.value ?? ""}
@@ -396,7 +416,10 @@ export default function AssetAddForm() {
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Model / Tipe</FieldLabel>
+                  <FieldLabel>
+                    Model / Tipe
+                    <span className="text-destructive ml-0.5">*</span>
+                  </FieldLabel>
                   <Input
                     {...field}
                     value={field.value ?? ""}
@@ -450,7 +473,10 @@ export default function AssetAddForm() {
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Kondisi Awal</FieldLabel>
+                  <FieldLabel>
+                    Kondisi Awal
+                    <span className="text-destructive ml-0.5">*</span>
+                  </FieldLabel>
                   <Select
                     value={field.value || "GOOD"}
                     onValueChange={field.onChange}
@@ -963,6 +989,15 @@ export default function AssetAddForm() {
             className="w-full md:w-auto"
           >
             Batal
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onSubmitDraft}
+            disabled={isPending}
+            className="w-full md:w-auto"
+          >
+            Simpan Draft
           </Button>
           <Button
             form="asset-form"

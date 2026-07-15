@@ -29,6 +29,7 @@ export function useAssets({
   departmentId,
   categoryId,
   search,
+  status,
 }: PaginationState) {
   return useQuery({
     queryKey: [
@@ -39,6 +40,7 @@ export function useAssets({
       departmentId,
       categoryId,
       search,
+      status,
     ],
     queryFn: () =>
       getAllAssets({
@@ -48,6 +50,7 @@ export function useAssets({
         departmentId,
         categoryId,
         search,
+        status,
       }),
   });
 }
@@ -263,16 +266,19 @@ export function useImportAsset() {
       });
     },
     onSuccess: (result) => {
-      // Result didapat dari return value server action: { success: number, failed: number, errors: string[] }
+      // Result didapat dari return value server action: { success, failed, warnings, errors }
 
       if (result.failed > 0) {
-        // Timpa loading menjadi warning jika ada baris yang gagal
-        toast.warning('Import selesai dengan peringatan!', {
+        toast.warning('Import selesai dengan error!', {
           id: 'import-asset-toast',
           description: `Berhasil: ${result.success} baris. Gagal: ${result.failed} baris.`,
         });
+      } else if (result.warnings?.length > 0) {
+        toast.warning('Import selesai — ada data draft!', {
+          id: 'import-asset-toast',
+          description: `${result.success} baris berhasil. ${result.warnings.length} baris disimpan sebagai draft (field tidak lengkap).`,
+        });
       } else {
-        // Timpa loading menjadi success jika semua baris berhasil
         toast.success('Import Berhasil!', {
           id: 'import-asset-toast',
           description: `${result.success} data aset berhasil ditambahkan.`,

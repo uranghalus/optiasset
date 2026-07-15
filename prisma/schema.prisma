@@ -242,6 +242,11 @@ enum AssetAssignmentStatus {
   ASSIGNED
 }
 
+enum AssetGroupType {
+  PERALATAN
+  PERLENGKAPAN
+}
+
 // LINK Asset
 model Asset {
   id              String                @id @default(uuid())
@@ -419,6 +424,7 @@ model AssetSubCluster {
   name           String
   description    String? @db.Text
   notes          String? @db.Text // keterangan
+  type           AssetGroupType @default(PERALATAN)
 
   assetCluster AssetCluster @relation(fields: [assetClusterId], references: [id], onDelete: Cascade)
 

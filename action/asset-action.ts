@@ -31,6 +31,7 @@ export type AssetArgs = {
   condition?: string[];
   categoryId?: string;
   search?: string;
+  status?: string;
   organizationId?: string;
 };
 
@@ -45,6 +46,7 @@ export async function getAllAssets({
   condition,
   categoryId,
   search,
+  status,
 }: AssetArgs) {
   const session = await getServerSession();
   if (!session) throw new Error('Unauthorized');
@@ -65,6 +67,7 @@ export async function getAllAssets({
     categoryId,
     search,
     organizationId: activeOrgId,
+    status,
   });
 
   const safePage = Math.max(1, page);
@@ -81,6 +84,7 @@ export async function getAllAssets({
         kode_asset: true,
         partNumber: true,
         condition: true,
+        status: true,
         purchaseDate: true,
         brand: true,
         model: true,
@@ -103,6 +107,17 @@ export async function getAllAssets({
           select: {
             nama_department: true,
             kode_department: true,
+          },
+        },
+        assetGroup: {
+          select: {
+            name: true,
+          },
+        },
+        assetSubCluster: {
+          select: {
+            name: true,
+            type: true,
           },
         },
       },
@@ -326,8 +341,10 @@ export async function createAsset(formData: FormData) {
   let finalKodeAsset = formData.get('kode_asset')?.toString()?.trim() || null;
 
   const asset = await prisma.$transaction(async (tx) => {
-    // Auto Generate Code
-    if (!finalKodeAsset && itemMaster.category?.code) {
+    // Auto Generate Code (skip for draft)
+    if (assetStatus === 'DRAFT') {
+      finalKodeAsset = null;
+    } else if (!finalKodeAsset && itemMaster.category?.code) {
       const prefix = itemMaster.category.code;
       const lastAsset = await tx.asset.findFirst({
         where: {
@@ -435,10 +452,12 @@ export async function createAsset(formData: FormData) {
     }
 
     // Eksekusi Simpan Asset Utama
+    const assetStatus = formData.get('status')?.toString() || 'ACTIVE';
     const newAsset = await tx.asset.create({
       data: {
         itemId,
         organizationId: activeOrgId,
+        status: assetStatus,
         purchaseDate: parseDateOrNull('purchaseDate'),
         purchasePrice: parseFloatOrNull('purchasePrice'),
         condition: formData.get('condition')?.toString() || null,
@@ -500,7 +519,7 @@ export async function createAsset(formData: FormData) {
     });
 
     const locationId = formData.get('locationId')?.toString();
-    if (locationId) {
+    if (locationId && assetStatus !== 'DRAFT') {
       await tx.stock.upsert({
         where: { itemId_locationId: { itemId, locationId } },
         create: {
@@ -729,6 +748,32 @@ export async function updateAsset(id: string, formData: FormData) {
         finalKodeAsset = kodeInput === '' ? null : kodeInput || null;
       }
 
+      // Handle status (DRAFT → ACTIVE promotion)
+      const newStatus = formData.get('status')?.toString();
+      const isPromoting = asset.status === 'DRAFT' && newStatus === 'ACTIVE';
+      const finalStatus = newStatus || asset.status;
+
+      // Validate required fields when promoting from DRAFT to ACTIVE
+      if (isPromoting) {
+        const currentItem = await tx.item.findUnique({ where: { id: newItemId } });
+        if (!currentItem) throw new Error('Item wajib dipilih untuk mempublikasikan aset');
+        // Generate kode_asset if missing
+        if (!finalKodeAsset && currentItem.category?.code) {
+          const prefix = currentItem.category.code;
+          const lastAsset = await tx.asset.findFirst({
+            where: { organizationId: activeOrgId, kode_asset: { startsWith: prefix + '.' } },
+            orderBy: { kode_asset: 'desc' },
+          });
+          let nextSequence = 1;
+          if (lastAsset?.kode_asset) {
+            const parts = lastAsset.kode_asset.split('.');
+            const lastSeq = Number(parts[parts.length - 1]);
+            if (!isNaN(lastSeq)) nextSequence = lastSeq + 1;
+          }
+          finalKodeAsset = `${prefix}.${String(nextSequence).padStart(4, '0')}`;
+        }
+      }
+
       const result = await tx.asset.update({
         where: { id },
         data: {
@@ -787,8 +832,8 @@ export async function updateAsset(id: string, formData: FormData) {
             : (asset as any).PIC,
 
           photoUrl: finalPhotoUrl,
-          documentUrl: finalDocumentUrl, // 👈 MENYIMPAN URL DOKUMEN KE DB
-
+          documentUrl: finalDocumentUrl,
+          status: finalStatus,
           updatedAt: new Date(),
           kode_asset: finalKodeAsset,
 
@@ -877,8 +922,8 @@ export async function updateAsset(id: string, formData: FormData) {
         await tx.hydrantDetail.deleteMany({ where: { assetId: id } });
       }
 
-      // Sync Stock
-      if (newLocationId && newLocationId !== oldLocationId) {
+      // Sync Stock (skip for DRAFT)
+      if (finalStatus !== 'DRAFT' && newLocationId && newLocationId !== oldLocationId) {
         if (oldLocationId) {
           await tx.stock.updateMany({
             where: { itemId: asset.itemId, locationId: oldLocationId },
@@ -920,9 +965,27 @@ export async function updateAsset(id: string, formData: FormData) {
         action: 'UPDATE',
         entityType: 'ASSET',
         entityId: id,
-        details: { message: 'Asset updated successfully' },
+        details: {
+          message: isPromoting
+            ? 'Asset dipublikasikan dari draft'
+            : 'Asset updated successfully',
+        },
         tx,
       });
+
+      // Create initial stock when promoting from DRAFT
+      if (isPromoting && newLocationId) {
+        await tx.stock.upsert({
+          where: { itemId_locationId: { itemId: result.itemId, locationId: newLocationId } },
+          create: {
+            itemId: result.itemId,
+            locationId: newLocationId,
+            organizationId: activeOrgId,
+            quantity: 1,
+          },
+          update: { quantity: { increment: 1 } },
+        });
+      }
 
       return result;
     });
@@ -1566,7 +1629,7 @@ export async function importAssetExcel(
     });
   }
 
-  const results = { success: 0, failed: 0, errors: [] as string[] };
+  const results = { success: 0, failed: 0, warnings: [] as string[], errors: [] as string[] };
 
   for (const [index, row] of dataRows.entries()) {
     const unitName = row[col.unit];
@@ -1633,6 +1696,16 @@ export async function importAssetExcel(
         const modelName =
           col.model !== -1 ? String(row[col.model] || '').trim() : '';
 
+        // ============================================================
+        // CEK FIELD WAJIB — tentukan status (ACTIVE / DRAFT)
+        // ============================================================
+        const missingFields: string[] = [];
+        if (!modelName) missingFields.push('Model/Brand');
+        // condition always defaults to BAIK if rusak column is empty, so it's never truly "missing"
+
+        const isDraft = missingFields.length > 0;
+        const assetStatus = isDraft ? 'DRAFT' : 'ACTIVE';
+
         // Deteksi Item Master
         let item = await tx.item.findFirst({
           where: { name: String(unitName), organizationId },
@@ -1666,7 +1739,10 @@ export async function importAssetExcel(
             ? String(row[col.kode]).trim() || null
             : null;
 
-        if (!excelKodeAsset && activeCategory?.code) {
+        // Generate kode_asset only for ACTIVE status
+        if (assetStatus === 'DRAFT') {
+          excelKodeAsset = null;
+        } else if (!excelKodeAsset && activeCategory?.code) {
           const prefix = activeCategory.code;
           const lastAsset = await tx.asset.findFirst({
             where: { organizationId, kode_asset: { startsWith: prefix + '.' } },
@@ -1775,7 +1851,7 @@ export async function importAssetExcel(
             PIC: finalPersonName,
             condition: condition,
             locationId: locationId,
-            status: 'ACTIVE',
+            status: assetStatus,
             purchaseDate: purchaseDate,
             notes: finalNotes || null,
 
@@ -1810,6 +1886,12 @@ export async function importAssetExcel(
         });
       });
       results.success++;
+      if (isDraft) {
+        const barisKe = index + startIdx + 3;
+        results.warnings.push(
+          `Baris ${barisKe} (${unitName}): Data tersimpan sebagai DRAFT — field kosong: ${missingFields.join(', ')}`,
+        );
+      }
     } catch (err: any) {
       results.failed++;
       const barisKe = index + startIdx + 3;

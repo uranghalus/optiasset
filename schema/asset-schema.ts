@@ -8,15 +8,15 @@ export const AssetFormSchema = z.object({
   locationId: z.string().optional(),
   departmentId: z.string().optional(),
   notes: z.string().optional(),
-  brand: z.string().min(1, 'Brand is required'),
-  model: z.string().min(1, 'Model is required'),
+  brand: z.string().optional(),
+  model: z.string().optional(),
 
   partNumber: z
     .string()
     .optional()
     .transform((val) => (val === '-' || val?.trim() === '' ? null : val)),
 
-  condition: z.string().min(1, 'Condition is required'),
+  condition: z.string().optional(),
 
   serialNumber: z
     .string()
@@ -44,7 +44,49 @@ export const AssetFormSchema = z.object({
   documentUrl: z.instanceof(File).optional().nullable(),
 });
 
+// Schema untuk DRAFT — hanya itemId wajib
+export const AssetDraftSchema = z.object({
+  itemId: z.string().min(1, 'Item wajib dipilih'),
+  brand: z.string().optional(),
+  model: z.string().optional(),
+  condition: z.string().optional(),
+  purchaseDate: z.string().optional(),
+  purchasePrice: z.string().optional(),
+  warrantyExpire: z.string().optional(),
+  locationId: z.string().optional(),
+  departmentId: z.string().optional(),
+  notes: z.string().optional(),
+  partNumber: z
+    .string()
+    .optional()
+    .transform((val) => (val === '-' || val?.trim() === '' ? null : val)),
+  serialNumber: z
+    .string()
+    .optional()
+    .transform((val) => (val === '-' || val?.trim() === '' ? null : val)),
+  no_spb: z.string().optional(),
+  document_number: z.string().optional(),
+  kode_asset: z.string().optional(),
+  vendorName: z.string().optional(),
+  garansi_exp: z.string().optional(),
+  isAparOrHydrant: z
+    .enum(['APAR', 'HYDRANT', 'NONE'])
+    .optional()
+    .default('NONE'),
+  jenisApar: z.enum(['CO2', 'Powder', 'Foam', 'Air']).optional(),
+  sizeApar: z.coerce.number().optional(),
+  ukuranHydrant: z.string().optional(),
+  assetGroupId: z.string().optional(),
+  assetCategoryId: z.string().optional(),
+  assetClusterId: z.string().optional(),
+  assetSubClusterId: z.string().optional(),
+  PIC: z.string().optional(),
+  photos: z.array(z.instanceof(File)).optional().default([]),
+  documentUrl: z.instanceof(File).optional().nullable(),
+});
+
 export type AssetForm = z.infer<typeof AssetFormSchema>;
+export type AssetDraftForm = z.infer<typeof AssetDraftSchema>;
 
 export const ImportFormSchema = z.object({
   categoryId: z.string().min(1, 'Kategori Item wajib dipilih'),
@@ -60,6 +102,7 @@ export const AssetEditFormSchema = AssetFormSchema.partial({
   model: true,
   partNumber: true,
   serialNumber: true,
+  condition: true,
 });
 
 export type AssetEditForm = z.infer<typeof AssetEditFormSchema>;

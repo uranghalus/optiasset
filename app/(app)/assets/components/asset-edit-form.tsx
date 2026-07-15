@@ -355,7 +355,9 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
 
   // Handle Submit
   const isPending = updateMutation.isPending;
-  const onSubmit = async (values: AssetEditForm) => {
+  const isDraft = (assetData as any)?.status === 'DRAFT';
+
+  const onSubmit = async (values: AssetEditForm, status?: string) => {
     const formData = new FormData();
 
     for (const [key, value] of Object.entries(values)) {
@@ -380,7 +382,25 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
       formData.append("removeDocument", "true");
     }
 
+    if (status) formData.append("status", status);
+
     updateMutation.mutate({ id: assetId, formData });
+  };
+
+  // Publish draft → ACTIVE (validasi wajib ada itemId)
+  const onSubmitPublish = async () => {
+    const valid = await form.trigger("itemId");
+    if (!valid) return;
+    const values = form.getValues();
+    onSubmit(values as any, "ACTIVE");
+  };
+
+  // Simpan sebagai draft
+  const onSubmitDraft = async () => {
+    const valid = await form.trigger("itemId");
+    if (!valid) return;
+    const values = form.getValues();
+    onSubmit(values as any, "DRAFT");
   };
 
   const onError = (errors: any) => {
@@ -409,6 +429,16 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
           </p>
         )}
 
+        <p className="text-xs text-muted-foreground">
+          <span className="text-destructive font-medium">*</span> Wajib diisi untuk mempublikasikan aset.
+        </p>
+
+        {isDraft && (
+          <div className="flex items-center gap-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+            <span className="font-medium">Status: Draft</span> — Lengkapi field yang ditandai <span className="text-destructive">*</span>, lalu klik "Publikasikan".
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* KOLOM KIRI */}
           <div className="space-y-4">
@@ -420,7 +450,10 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Master Item</FieldLabel>
+                  <FieldLabel>
+                    Master Item
+                    <span className="text-destructive ml-0.5">*</span>
+                  </FieldLabel>
                   <Combobox<{
                     name: string;
                     id: string;
@@ -599,7 +632,10 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Brand / Merk</FieldLabel>
+                  <FieldLabel>
+                    Brand / Merk
+                    <span className="text-destructive ml-0.5">*</span>
+                  </FieldLabel>
                   <Input
                     {...field}
                     value={field.value ?? ""}
@@ -616,7 +652,10 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
               control={form.control}
               render={({ field }) => (
                 <Field>
-                  <FieldLabel>Model</FieldLabel>
+                  <FieldLabel>
+                    Model
+                    <span className="text-destructive ml-0.5">*</span>
+                  </FieldLabel>
                   <Input {...field} value={field.value ?? ""} />
                 </Field>
               )}
@@ -657,7 +696,10 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Kondisi Awal</FieldLabel>
+                  <FieldLabel>
+                    Kondisi Awal
+                    <span className="text-destructive ml-0.5">*</span>
+                  </FieldLabel>
                   <Select
                     value={field.value}
                     onValueChange={field.onChange}
@@ -1135,14 +1177,38 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
             Batal
           </Button>
 
-          <Button
-            form="asset-edit-form"
-            type="submit"
-            disabled={isPending}
-            className="w-full md:w-auto"
-          >
-            {isPending ? "Menyimpan Unit..." : "Simpan Data Unit Aset"}
-          </Button>
+          {isDraft && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onSubmitDraft}
+                disabled={isPending}
+                className="w-full md:w-auto"
+              >
+                Simpan Draft
+              </Button>
+              <Button
+                type="button"
+                onClick={onSubmitPublish}
+                disabled={isPending}
+                className="w-full md:w-auto"
+              >
+                {isPending ? "Mempublikasi..." : "Publikasikan"}
+              </Button>
+            </>
+          )}
+
+          {!isDraft && (
+            <Button
+              form="asset-edit-form"
+              type="submit"
+              disabled={isPending}
+              className="w-full md:w-auto"
+            >
+              {isPending ? "Menyimpan Unit..." : "Simpan Data Unit Aset"}
+            </Button>
+          )}
         </div>
       </form>
     </div>

@@ -1,7 +1,7 @@
 import { TaxonomyForm } from "./taxonomy-form";
 import { FileEdit, MousePointerClick } from "lucide-react";
 
-export function TaxonomyEditorPanel({ editor }: any) {
+export function TaxonomyEditorPanel({ editor, activeTypeFilter }: any) {
   if (!editor.selected) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 p-8">
@@ -33,6 +33,7 @@ export function TaxonomyEditorPanel({ editor }: any) {
         mode={editor.mode}
         selected={editor.selected}
         editor={editor}
+        activeTypeFilter={activeTypeFilter}
       />
     </div>
   );

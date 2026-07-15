@@ -12,6 +12,7 @@ export type PaginationState = {
   condition?: string[]; // 🔥 array
   categoryId?: string;
   search?: string;
+  status?: string;
 };
 
 /* ===================== */

@@ -30,6 +30,8 @@ import { cn } from "@/lib/utils";
 interface ClassificationCardsProps {
   editor: any;
   search: string;
+  typeFilter?: string;
+  onTypeFilterChange: (value: string | undefined) => void;
 }
 
 const levelLabels: Record<string, string> = {
@@ -75,20 +77,38 @@ function getNextLevel(level: string): string {
   }
 }
 
+/** Check if a group has any subcluster with given type */
+function groupHasType(group: any, type: string): boolean {
+  for (const cat of group.categories || []) {
+    for (const clust of cat.assetClusters || []) {
+      for (const sc of clust.assetSubClusters || []) {
+        if (sc.type === type) return true;
+      }
+    }
+  }
+  return false;
+}
+
+const typeTabs = [
+  { label: "Semua", value: undefined },
+  { label: "Peralatan", value: "PERALATAN" },
+  { label: "Perlengkapan", value: "PERLENGKAPAN" },
+] as const;
+
 export function ClassificationCards({
   editor,
   search,
+  typeFilter,
+  onTypeFilterChange,
 }: ClassificationCardsProps) {
   const { data = [], isLoading, isError } = useClassificationTree();
   const [path, setPath] = useState<BreadcrumbItem[]>([]);
 
-  // Derive the current level and items from the path
   const currentLevel = path.length === 0 ? "group" : getNextLevel(path[path.length - 1].level);
 
   const currentItems = useMemo(() => {
     if (path.length === 0) return data;
 
-    // Navigate down the tree following the path
     let items: any[] = data;
     for (const step of path) {
       const found = items.find((n: any) => n.id === step.id);
@@ -98,16 +118,26 @@ export function ClassificationCards({
     return items;
   }, [data, path]);
 
-  // Apply search filter
   const filteredItems = useMemo(() => {
-    if (!search) return currentItems;
-    const s = search.toLowerCase();
-    return currentItems.filter(
-      (item: any) =>
-        item.name?.toLowerCase().includes(s) ||
-        item.code?.toLowerCase().includes(s)
-    );
-  }, [currentItems, search]);
+    let items = currentItems;
+
+    // Search filter
+    if (search) {
+      const s = search.toLowerCase();
+      items = items.filter(
+        (item: any) =>
+          item.name?.toLowerCase().includes(s) ||
+          item.code?.toLowerCase().includes(s)
+      );
+    }
+
+    // Type filter (only at group level)
+    if (typeFilter && currentLevel === "group") {
+      items = items.filter((item: any) => groupHasType(item, typeFilter));
+    }
+
+    return items;
+  }, [currentItems, search, typeFilter, currentLevel]);
 
   function handleDrillDown(node: any, level: string) {
     setPath((prev) => [
@@ -118,10 +148,8 @@ export function ClassificationCards({
 
   function handleBreadcrumbNavigate(index: number) {
     if (index === -1) {
-      // Navigate to root
       setPath([]);
     } else {
-      // Navigate to a specific level in the path
       setPath((prev) => prev.slice(0, index + 1));
     }
   }
@@ -169,20 +197,43 @@ export function ClassificationCards({
         </span>
       </div>
 
+      {/* Type tabs — only at group level */}
+      {currentLevel === "group" && (
+        <div className="flex gap-1 p-1.5 mx-4 mt-2 bg-muted rounded-lg">
+          {typeTabs.map((tab) => {
+            const isActive = typeFilter === tab.value;
+            return (
+              <button
+                key={tab.label}
+                onClick={() => onTypeFilterChange(tab.value)}
+                className={cn(
+                  "flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
+                  isActive
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Cards grid */}
       <ScrollArea className="flex-1">
         {filteredItems.length === 0 ? (
           <Empty className="h-full min-h-[300px]">
             <EmptyHeader>
               <EmptyMedia variant="icon">
-                {search ? <SearchX /> : <CurrentIcon />}
+                {search || typeFilter ? <SearchX /> : <CurrentIcon />}
               </EmptyMedia>
               <EmptyTitle>
-                {search ? "Tidak ada hasil" : `Belum ada ${currentLabel}`}
+                {search || typeFilter ? "Tidak ada hasil" : `Belum ada ${currentLabel}`}
               </EmptyTitle>
               <EmptyDescription>
-                {search
-                  ? `Tidak ditemukan ${currentLabel.toLowerCase()} untuk "${search}"`
+                {search || typeFilter
+                  ? `Tidak ditemukan ${currentLabel.toLowerCase()} untuk filter ini`
                   : `Mulai dengan menambahkan ${currentLabel.toLowerCase()} baru`}
               </EmptyDescription>
             </EmptyHeader>
@@ -196,6 +247,13 @@ export function ClassificationCards({
               const isEditorSelected =
                 editor.selected?.id === item.id;
 
+              // Determine groupType: for subcluster level, pass from path root group
+              let itemGroupType: string | undefined;
+              if (currentLevel === "subcluster" && path.length > 0) {
+                const rootGroup = data.find((g: any) => g.id === path[0].id);
+                itemGroupType = rootGroup?.type;
+              }
+
               return (
                 <ClassificationCard
                   key={item.id}
@@ -206,6 +264,7 @@ export function ClassificationCards({
                   editor={editor}
                   onDrillDown={handleDrillDown}
                   isSelected={isEditorSelected}
+                  groupType={itemGroupType}
                 />
               );
             })}

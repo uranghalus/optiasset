@@ -27,9 +27,20 @@ export type AssetWithItem = Prisma.AssetGetPayload<{
       select: {
         name: true;
       }
+    };
+    assetGroup: {
+      select: {
+        name: true,
+      }
+    };
+    assetSubCluster: {
+      select: {
+        name: true;
+        type: true;
+      }
     }
   };
-}> & { PIC: string | null };
+}> & { PIC: string | null; status: string };
 
 /* =======================
    BASE COLUMNS (TANPA DEPARTMENT)
@@ -78,9 +89,17 @@ export const assetColumn: ColumnDef<AssetWithItem>[] = [
     ),
     cell: ({ row }) => {
       const asset = row.original;
+      const isDraft = asset.status === 'DRAFT';
       return (
         <div className="ps-2 flex flex-col min-w-[200px]">
-          <span className="font-medium break-words whitespace-normal">{asset.item.name}</span>
+          <div className="flex items-center gap-1.5">
+            <span className="font-medium break-words whitespace-normal">{asset.item.name}</span>
+            {isDraft && (
+              <Badge variant="outline" className="border-amber-500 text-amber-600 text-[10px] px-1.5 py-0 shrink-0">
+                DRAFT
+              </Badge>
+            )}
+          </div>
           <span className="text-xs text-muted-foreground italic break-words whitespace-normal">
             {[asset.brand, asset.model].filter(Boolean).join(" ") || "-"}
           </span>
@@ -89,6 +108,37 @@ export const assetColumn: ColumnDef<AssetWithItem>[] = [
     },
     size: 250,
     minSize: 200,
+  },
+
+  {
+    id: "assetType",
+    accessorFn: (row) => row.assetSubCluster?.type ?? null,
+    filterFn: "arrIncludesSome",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Tipe" />
+    ),
+    cell: ({ row }) => {
+      const asset = row.original;
+      const type = asset.assetSubCluster?.type;
+      if (!type) return <div className="ps-2 text-xs text-muted-foreground">-</div>;
+
+      return (
+        <div className="ps-2">
+          <Badge
+            variant="outline"
+            className={cn(
+              "text-[10px] px-1.5 py-0 h-5",
+              type === "PERALATAN"
+                ? "bg-sky-50 text-sky-700 border-sky-200/50 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-800/30"
+                : "bg-rose-50 text-rose-700 border-rose-200/50 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800/30"
+            )}
+          >
+            {type === "PERALATAN" ? "Peralatan" : "Perlengkapan"}
+          </Badge>
+        </div>
+      );
+    },
+    size: 120,
   },
 
   {

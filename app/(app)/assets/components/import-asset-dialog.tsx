@@ -118,8 +118,8 @@ export default function ImportAssetDialog({ open, onOpenChange }: Props) {
 
       setImportResult(result);
 
-      // Jika tidak ada yang gagal, tutup dialog setelah delay singkat
-      if (result.failed === 0) {
+      // Jika tidak ada yang gagal dan tidak ada warning, tutup dialog setelah delay singkat
+      if (result.failed === 0 && (!result.warnings || result.warnings.length === 0)) {
         setTimeout(() => onOpenChange(false), 2000);
       }
     } catch (error: any) {
@@ -137,7 +137,11 @@ export default function ImportAssetDialog({ open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>Import Data Aset (Excel)</DialogTitle>
           <DialogDescription>
-            Pilih <b>Kategori Item</b> terlebih dahulu, lalu unggah file Excel berisi daftar aset yang ingin di-import.
+            Pilih <b>Kategori Item</b> terlebih dahulu, lalu unggah file Excel berisi daftar aset.
+            <br />
+            <span className="text-amber-600 text-xs">
+              Data dengan field kosong akan disimpan sebagai <b>Draft</b> dan perlu dilengkapi secara manual.
+            </span>
           </DialogDescription>
         </DialogHeader>
 
@@ -154,15 +158,34 @@ export default function ImportAssetDialog({ open, onOpenChange }: Props) {
 
           {importResult && (
             <div
-              className={`p-4 rounded-lg text-sm ${importResult.failed > 0 ? "bg-amber-50 text-amber-900 border border-amber-200" : "bg-green-50 text-green-900 border border-green-200"}`}
+              className={`p-4 rounded-lg text-sm ${importResult.failed > 0 ? "bg-red-50 text-red-900 border border-red-200" : importResult.warnings?.length > 0 ? "bg-amber-50 text-amber-900 border border-amber-200" : "bg-green-50 text-green-900 border border-green-200"}`}
             >
               <p className="font-semibold mb-1">Hasil Import:</p>
               <ul className="list-disc list-inside">
                 <li>Berhasil: {importResult.success} baris</li>
-                <li>Gagal: {importResult.failed} baris</li>
+                {importResult.warnings?.length > 0 && (
+                  <li className="text-amber-700">
+                    Draft (data tidak lengkap): {importResult.warnings.length} baris
+                  </li>
+                )}
+                {importResult.failed > 0 && (
+                  <li className="text-red-700">
+                    Gagal: {importResult.failed} baris
+                  </li>
+                )}
               </ul>
+
+              {importResult.warnings?.length > 0 && (
+                <div className="mt-2 max-h-40 overflow-y-auto bg-amber-100/50 p-2 rounded text-xs text-amber-700 space-y-1">
+                  <p className="font-medium mb-0.5">Field yang perlu dilengkapi:</p>
+                  {importResult.warnings.map((warn: string, i: number) => (
+                    <div key={i}>{warn}</div>
+                  ))}
+                </div>
+              )}
+
               {importResult.errors?.length > 0 && (
-                <div className="mt-2 max-h-32 overflow-y-auto bg-white/50 p-2 rounded text-xs text-red-600 space-y-1">
+                <div className="mt-2 max-h-32 overflow-y-auto bg-red-100/50 p-2 rounded text-xs text-red-600 space-y-1">
                   {importResult.errors.map((err: string, i: number) => (
                     <div key={i}>{err}</div>
                   ))}

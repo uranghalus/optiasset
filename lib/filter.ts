@@ -6,7 +6,8 @@ type BuildAssetFilterArgs = {
   condition?: string[];
   organizationId: string;
   categoryId?: string;
-  search?: string; // ✅ Sudah ada di sini
+  search?: string;
+  status?: string;
 };
 
 export function isGlobalAccess(role?: string | null) {
@@ -21,11 +22,16 @@ export function buildAssetFilter({
   organizationId,
   categoryId,
   search,
+  status,
 }: BuildAssetFilterArgs) {
-  // ✅ Tidak perlu ditambah & { search?: string } lagi
   const where: any = {
     organizationId,
   };
+
+  // Status filter
+  if (status) {
+    where.status = status;
+  }
 
   if (categoryId) {
     where.item = {

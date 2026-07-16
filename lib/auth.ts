@@ -2,8 +2,9 @@ import { prisma } from './prisma';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { betterAuth } from 'better-auth';
 import { nextCookies } from 'better-auth/next-js';
-
+import { sso } from '@better-auth/sso';
 import { admin as adminPg, organization, username } from 'better-auth/plugins';
+
 import { ac, owner, admin } from './auth-permission';
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -54,7 +55,6 @@ export const auth = betterAuth({
     },
   },
   plugins: [
-   
     username(),
     adminPg(),
     organization({
@@ -71,7 +71,8 @@ export const auth = betterAuth({
         enabled: true,
       },
     }),
-     nextCookies(),
+    nextCookies(),
+    sso(),
   ],
 });
 

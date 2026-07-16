@@ -1,3 +1,4 @@
+
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "linux-musl"]
@@ -44,6 +45,14 @@ model User {
   aparInspections          AparInspection[]    @relation("UserAparInspections")
   hydrantInspections       HydrantInspection[] @relation("UserHydrantInspections")
 
+  oauthclients       OauthClient[]
+  oauthrefreshtokens OauthRefreshToken[]
+  oauthaccesstokens  OauthAccessToken[]
+  oauthconsents      OauthConsent[]
+  teammembers        TeamMember[]
+
+  ssoproviders SsoProvider[]
+
   @@index([departmentId])
   @@index([divisiId])
   @@map("user")
@@ -62,6 +71,9 @@ model Session {
   activeOrganizationId String?  @db.Text
   activeTeamId         String?  @db.Text
   user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  oauthrefreshtokens OauthRefreshToken[]
+  oauthaccesstokens  OauthAccessToken[]
 
   @@index([userId])
   @@map("session")
@@ -128,6 +140,8 @@ model Organization {
   aparInspections    AparInspection[]
   hydrantInspections HydrantInspection[]
 
+  organizationroles OrganizationRole[]
+
   @@map("organization")
 }
 
@@ -140,6 +154,8 @@ model Team {
   div_team_rel   div_team_rel[]
   organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   teammember     teamMember[]
+
+  teammembers TeamMember[]
 
   @@index([organizationId])
   @@map("team")
@@ -185,7 +201,7 @@ model organizationRole {
   permission     String       @db.Text
   createdAt      DateTime     @default(now())
   updatedAt      DateTime?
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: "organizationRole_organizationId_fkey")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: "organizationRole_organizationId_fkey_1")
 
   @@index([organizationId], map: "organizationRole_organizationId_idx")
   @@index([role(length: 191)], map: "organizationRole_role_idx")
@@ -197,8 +213,8 @@ model teamMember {
   teamId    String
   userId    String
   createdAt DateTime?
-  team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade, map: "teamMember_teamId_fkey")
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade, map: "teamMember_userId_fkey")
+  team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade, map: "teamMember_teamId_fkey_rel")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade, map: "teamMember_userId_fkey_relation")
 
   @@index([teamId], map: "teamMember_teamId_idx")
   @@index([userId], map: "teamMember_userId_idx")
@@ -206,6 +222,7 @@ model teamMember {
 }
 
 //LINK Item
+
 model Item {
   id             String    @id @default(uuid())
   code           String
@@ -229,10 +246,11 @@ model Item {
   // Perhatikan perbedaan casing: model target 'department', references ke 'id_department' dan 'organization_id'
   department department? @relation(fields: [departmentId, organizationId], references: [id_department, organization_id])
 
+  // Index untuk performa
   @@unique([code, organizationId])
   @@unique([id, organizationId])
   @@index([categoryId, organizationId])
-  @@index([departmentId, organizationId]) // Index untuk performa
+  @@index([departmentId, organizationId])
   @@index([organizationId])
   @@map("items")
 }
@@ -248,6 +266,7 @@ enum AssetGroupType {
 }
 
 // LINK Asset
+
 model Asset {
   id              String                @id @default(uuid())
   itemId          String
@@ -308,13 +327,13 @@ model Asset {
   // Tetap pertahankan relasi many-to-many lama jika masih dipakai untuk backward compatibility
   assetSubClusters AssetSubCluster[] @relation("AssetSubClusters")
 
+  // 3. 👇 OPTIMASI INDEX BARU UNTUK PENCARIAN SILSILAH FILTER LAPORAN 👇
+  // MENJADI INI (Composite Index):
   @@unique([id, organizationId])
   @@unique([kode_asset, organizationId])
   @@unique([serialNumber, organizationId])
-  // 3. 👇 OPTIMASI INDEX BARU UNTUK PENCARIAN SILSILAH FILTER LAPORAN 👇
   @@index([itemId, organizationId])
   @@index([organizationId])
-  // MENJADI INI (Composite Index):
   @@index([organizationId, assetGroupId])
   @@index([organizationId, assetCategoryId])
   @@index([organizationId, assetClusterId])
@@ -323,6 +342,7 @@ model Asset {
 }
 
 // LINK STOCK
+
 model Stock {
   id             String             @id @default(uuid())
   itemId         String
@@ -343,6 +363,7 @@ model Stock {
 }
 
 // LINK STOCK TRANSACTION
+
 model StockTransaction {
   id        String          @id @default(uuid())
   stockId   String
@@ -358,6 +379,7 @@ model StockTransaction {
 }
 
 //LINK Kategory Untuk Asset
+
 model AssetGroup {
   id             String  @id @default(uuid())
   code           String? @db.VarChar(20) // contoh: 01
@@ -418,12 +440,12 @@ model AssetCluster {
 }
 
 model AssetSubCluster {
-  id             String  @id @default(uuid())
+  id             String         @id @default(uuid())
   assetClusterId String
-  code           String? @db.VarChar(20) // contoh: 01.02.03.01
+  code           String?        @db.VarChar(20) // contoh: 01.02.03.01
   name           String
-  description    String? @db.Text
-  notes          String? @db.Text // keterangan
+  description    String?        @db.Text
+  notes          String?        @db.Text // keterangan
   type           AssetGroupType @default(PERALATAN)
 
   assetCluster AssetCluster @relation(fields: [assetClusterId], references: [id], onDelete: Cascade)
@@ -450,6 +472,7 @@ enum ClassificationLevel {
 }
 
 //LINK Kategory untuk item
+
 model Category {
   id                 String               @id @default(uuid())
   name               String
@@ -467,6 +490,7 @@ model Category {
 }
 
 //LINK Location
+
 model Location {
   id             String          @id @default(uuid())
   name           String
@@ -483,6 +507,7 @@ model Location {
 }
 
 //LINK Department
+
 model department {
   id_department   String          @id
   organization_id String
@@ -507,6 +532,7 @@ model department {
 }
 
 //LINK Divisi
+
 model divisi {
   id_divisi       String         @id
   department_id   String
@@ -527,6 +553,7 @@ model divisi {
 }
 
 //LINK Asset History
+
 model AssetHistory {
   id               String        @id @default(uuid())
   assetId          String?
@@ -554,6 +581,7 @@ model AssetHistory {
 }
 
 //LINK Audit Log
+
 model AuditLog {
   id             String        @id @default(uuid())
   userId         String?
@@ -575,6 +603,7 @@ model AuditLog {
 }
 
 //LINK Asset Loan
+
 model AssetLoan {
   id                String       @id @default(uuid())
   assetId           String
@@ -607,6 +636,7 @@ model AssetLoan {
 }
 
 //LINK Asset Transfer
+
 model AssetTransfer {
   id             String       @id @default(uuid())
   assetId        String
@@ -638,6 +668,7 @@ model AssetTransfer {
 }
 
 //LINK Asset Disposal
+
 model AssetDisposal {
   id                String   @id @default(uuid())
   assetId           String
@@ -664,6 +695,7 @@ model AssetDisposal {
 }
 
 //LINK Divisi Team Rel
+
 model div_team_rel {
   A      String
   B      String
@@ -691,6 +723,7 @@ enum AssetType {
 // -------------------------------------------------------------
 // EXTENSION UNTUK APAR & HYDRANT
 // -------------------------------------------------------------
+
 enum ReguInspeksi {
   PAGI
   SIANG
@@ -786,4 +819,161 @@ model HydrantInspection {
   @@index([userId])
   @@index([organizationId])
   @@map("hydrant_inspections")
+}
+
+model Jwks {
+  id         String    @id
+  publicKey  String    @db.Text
+  privateKey String    @db.Text
+  createdAt  DateTime
+  expiresAt  DateTime?
+
+  @@map("jwks")
+}
+
+model OauthClient {
+  id                      String              @id
+  clientId                String
+  clientSecret            String?             @db.Text
+  disabled                Boolean?            @default(false)
+  skipConsent             Boolean?
+  enableEndSession        Boolean?
+  subjectType             String?             @db.Text
+  scopes                  String?
+  userId                  String?
+  user                    User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt               DateTime?
+  updatedAt               DateTime?
+  name                    String?             @db.Text
+  uri                     String?             @db.Text
+  icon                    String?             @db.Text
+  contacts                String?
+  tos                     String?             @db.Text
+  policy                  String?             @db.Text
+  softwareId              String?             @db.Text
+  softwareVersion         String?             @db.Text
+  softwareStatement       String?             @db.Text
+  redirectUris            String
+  postLogoutRedirectUris  String?
+  tokenEndpointAuthMethod String?             @db.Text
+  grantTypes              String?
+  responseTypes           String?
+  public                  Boolean?
+  type                    String?             @db.Text
+  requirePKCE             Boolean?
+  referenceId             String?             @db.Text
+  metadata                String?
+  oauthrefreshtokens      OauthRefreshToken[]
+  oauthaccesstokens       OauthAccessToken[]
+  oauthconsents           OauthConsent[]
+
+  @@unique([clientId])
+  @@index([userId(length: 191)])
+  @@map("oauthClient")
+}
+
+model OauthRefreshToken {
+  id                String             @id
+  token             String
+  clientId          String
+  oauthclient       OauthClient        @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  sessionId         String?
+  session           Session?           @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  userId            String
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId       String?            @db.Text
+  expiresAt         DateTime
+  createdAt         DateTime
+  revoked           DateTime?
+  authTime          DateTime?
+  scopes            String
+  oauthaccesstokens OauthAccessToken[]
+
+  @@unique([token])
+  @@index([clientId(length: 191)])
+  @@index([sessionId(length: 191)])
+  @@index([userId(length: 191)])
+  @@map("oauthRefreshToken")
+}
+
+model OauthAccessToken {
+  id                String             @id
+  token             String
+  clientId          String
+  oauthclient       OauthClient        @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  sessionId         String?
+  session           Session?           @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  userId            String?
+  user              User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId       String?            @db.Text
+  refreshId         String?
+  oauthrefreshtoken OauthRefreshToken? @relation(fields: [refreshId], references: [id], onDelete: Cascade)
+  expiresAt         DateTime
+  createdAt         DateTime
+  scopes            String
+
+  @@unique([token])
+  @@index([clientId(length: 191)])
+  @@index([sessionId(length: 191)])
+  @@index([userId(length: 191)])
+  @@index([refreshId(length: 191)])
+  @@map("oauthAccessToken")
+}
+
+model OauthConsent {
+  id          String      @id
+  clientId    String
+  oauthclient OauthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  userId      String?
+  user        User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId String?     @db.Text
+  scopes      String
+  createdAt   DateTime
+  updatedAt   DateTime
+
+  @@index([clientId(length: 191)])
+  @@index([userId(length: 191)])
+  @@map("oauthConsent")
+}
+
+model OrganizationRole {
+  id             String       @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: "organizationRole_organizationId_fkey")
+  role           String       @db.Text
+  permission     String       @db.Text
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime?    @updatedAt
+
+  @@index([organizationId(length: 191)])
+  @@index([role(length: 191)])
+  @@map("organizationRole")
+}
+
+model TeamMember {
+  id        String    @id
+  teamId    String
+  team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime?
+
+  @@index([teamId(length: 191)])
+  @@index([userId(length: 191)])
+  @@map("teamMember")
+}
+
+model SsoProvider {
+  id             String  @id
+  issuer         String  @db.Text
+  oidcConfig     String? @db.Text
+  samlConfig     String? @db.Text
+  userId         String
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerId     String
+  organizationId String? @db.Text
+  domain         String  @db.Text
+
+  @@unique([providerId])
+  @@map("ssoProvider")
 }

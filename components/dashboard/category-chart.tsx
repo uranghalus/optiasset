@@ -55,8 +55,8 @@ export function CategoryChart({ data }: CategoryChartProps) {
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-bold tracking-tight">Distribusi Aset</h3>
             <p className="text-[11px] text-muted-foreground mt-0.5">
-              Rincian berdasarkan golongan aset
-            </p>
+                          Rincian berdasarkan kategori aset
+                        </p>
           </div>
         </div>
 

@@ -39,13 +39,13 @@ export async function getDashboardData() {
 
   // Mengambil kiraan dan statistik
   const [
-    totalAssets,
-    totalItems,
-    stockItems,
-    golongan,
-    recentAssets,
-    lowStockItems,
-  ] = await Promise.all([
+      totalAssets,
+      totalItems,
+      stockItems,
+      kategori,
+      recentAssets,
+      lowStockItems,
+    ] = await Promise.all([
     // 1. Jumlah Assets (Ditapis mengikut jabatan jika bukan staff_asset/owner)
     prisma.asset.count({ where: baseWhere }),
 
@@ -60,20 +60,20 @@ export async function getDashboardData() {
       },
     }),
 
-    // 4. Pengagihan berdasarkan Golongan (AssetGroup)
-    prisma.assetGroup.findMany({
-      where: { organizationId: activeOrgId },
-      include: {
-        _count: {
-          select: {
-            assets: {
-              where:
-                shouldFilterByDept && deptId ? { departmentId: deptId } : {},
+    // 4. Pengagihan berdasarkan Kategori (AssetCategory)
+        prisma.assetCategory.findMany({
+                  where: { assetGroup: { organizationId: activeOrgId } },
+                  include: {
+            _count: {
+              select: {
+                assets: {
+                  where:
+                    shouldFilterByDept && deptId ? { departmentId: deptId } : {},
+                },
+              },
             },
           },
-        },
-      },
-    }),
+        }),
 
     // 5. Aktiviti Terkini dari Log Audit (Ditapis melalui departmentId pengguna)
     prisma.auditLog.findMany({
@@ -105,18 +105,18 @@ export async function getDashboardData() {
   ]);
 
   return {
-    stats: {
-      totalAssets,
-      totalItems,
-      totalStock: stockItems._sum.quantity || 0,
-      totalCategories: golongan.length,
-    },
-    chartData: golongan
-      .map((g) => ({
-        name: g.name,
-        value: g._count.assets,
-      }))
-      .filter((g) => g.value > 0),
+      stats: {
+        totalAssets,
+        totalItems,
+        totalStock: stockItems._sum.quantity || 0,
+        totalCategories: kategori.length,
+      },
+      chartData: kategori
+        .map((k) => ({
+          name: k.name,
+          value: k._count.assets,
+        }))
+        .filter((k) => k.value > 0),
 
     // Aktiviti Terkini
     recentActivity: recentAssets.map((log: any) => ({

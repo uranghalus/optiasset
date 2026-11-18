@@ -420,7 +420,7 @@ export default function AssetEditForm({ assetId }: { assetId: string }) {
     <div className="p-4 border border-gray-100 rounded-lg bg-white">
       <form
         id="asset-edit-form"
-        onSubmit={form.handleSubmit(onSubmit, onError)}
+        onSubmit={form.handleSubmit((values) => onSubmit(values), onError)}
         className="space-y-6"
       >
         {form.formState.errors.root?.message && (

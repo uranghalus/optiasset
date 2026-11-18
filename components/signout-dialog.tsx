@@ -22,7 +22,7 @@ export function SignOutDialog({ open, onOpenChange }: SignOutDialogProps) {
         await authClient.signOut({
           fetchOptions: {
             onSuccess: () => {
-              router.push("/");
+              router.push("/login");
             },
           },
         });

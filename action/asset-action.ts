@@ -339,6 +339,7 @@ export async function createAsset(formData: FormData) {
   if (!itemMaster) throw new Error('Master Item tidak ditemukan');
 
   let finalKodeAsset = formData.get('kode_asset')?.toString()?.trim() || null;
+  const assetStatus = formData.get('status')?.toString() || 'ACTIVE';
 
   const asset = await prisma.$transaction(async (tx) => {
     // Auto Generate Code (skip for draft)
@@ -452,7 +453,6 @@ export async function createAsset(formData: FormData) {
     }
 
     // Eksekusi Simpan Asset Utama
-    const assetStatus = formData.get('status')?.toString() || 'ACTIVE';
     const newAsset = await tx.asset.create({
       data: {
         itemId,
@@ -755,7 +755,10 @@ export async function updateAsset(id: string, formData: FormData) {
 
       // Validate required fields when promoting from DRAFT to ACTIVE
       if (isPromoting) {
-        const currentItem = await tx.item.findUnique({ where: { id: newItemId } });
+        const currentItem = await tx.item.findUnique({
+          where: { id: newItemId },
+          include: { category: true },
+        });
         if (!currentItem) throw new Error('Item wajib dipilih untuk mempublikasikan aset');
         // Generate kode_asset if missing
         if (!finalKodeAsset && currentItem.category?.code) {
@@ -1637,6 +1640,8 @@ export async function importAssetExcel(
     // Simpan variabel kode dan SN di luar transaction agar bisa diakses catch block jika error
     let currentExcelKodeAsset = '';
     let currentSerialNumber = '';
+    let isDraft = false;
+    let missingFields: string[] = [];
     try {
       await prisma.$transaction(async (tx) => {
         let purchaseDate = null;
@@ -1699,11 +1704,11 @@ export async function importAssetExcel(
         // ============================================================
         // CEK FIELD WAJIB — tentukan status (ACTIVE / DRAFT)
         // ============================================================
-        const missingFields: string[] = [];
+        missingFields = [];
         if (!modelName) missingFields.push('Model/Brand');
         // condition always defaults to BAIK if rusak column is empty, so it's never truly "missing"
 
-        const isDraft = missingFields.length > 0;
+        isDraft = missingFields.length > 0;
         const assetStatus = isDraft ? 'DRAFT' : 'ACTIVE';
 
         // Deteksi Item Master

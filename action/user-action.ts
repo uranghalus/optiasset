@@ -110,6 +110,15 @@ export async function createUserAction(formData: FormData) {
       },
     },
   });
+  // Admin-created users are trusted. Marking them verified lets Better Auth
+  // link their existing account on the first SSO sign-in.
+  if (email.toLowerCase().endsWith('@appdutamall.com')) {
+    await prisma.user.update({
+      where: { id: data.user.id },
+      data: { emailVerified: true },
+    });
+  }
+
   const addMember = await auth.api.addMember({
     body: {
       userId: data.user.id,

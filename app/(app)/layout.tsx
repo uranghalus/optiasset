@@ -26,7 +26,12 @@ export default async function AppLayout({
   const sidebarState = cookieStore.get("sidebar_state")?.value;
   const defaultOpen = sidebarState !== "false";
   const session = await getServerSession();
-  if (!session) redirect("/");
+  if (!session) redirect("/login");
+
+  // SSO users start as guests until an admin verifies their role.
+  if (!session.user.role || session.user.role === "guest") {
+    redirect("/waiting");
+  }
 
   // Jika user belum memiliki active organization, auto-set ke org pertama yang dia miliki
   if (!session.session?.activeOrganizationId) {

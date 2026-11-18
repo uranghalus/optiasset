@@ -247,13 +247,6 @@ export function ClassificationCards({
               const isEditorSelected =
                 editor.selected?.id === item.id;
 
-              // Determine groupType: for subcluster level, pass from path root group
-              let itemGroupType: string | undefined;
-              if (currentLevel === "subcluster" && path.length > 0) {
-                const rootGroup = data.find((g: any) => g.id === path[0].id);
-                itemGroupType = rootGroup?.type;
-              }
-
               return (
                 <ClassificationCard
                   key={item.id}
@@ -264,7 +257,6 @@ export function ClassificationCards({
                   editor={editor}
                   onDrillDown={handleDrillDown}
                   isSelected={isEditorSelected}
-                  groupType={itemGroupType}
                 />
               );
             })}

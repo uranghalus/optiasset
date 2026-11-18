@@ -14,7 +14,11 @@ export const authClient = createAuthClient({
   plugins: [
     adminClient(),
     inferAdditionalFields<typeof auth>(),
-    ssoClient(),
+    ssoClient({
+      domainVerification: {
+        enabled: true,
+      },
+    }),
     usernameClient(),
     organizationClient({
       ac: ac,

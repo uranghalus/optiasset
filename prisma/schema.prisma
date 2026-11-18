@@ -39,7 +39,7 @@ model User {
   invitations              Invitation[]
   members                  Member[]
   sessions                 Session[]
-  teammember               teamMember[]
+  teammember               LegacyTeamMember[]
   department               department?         @relation(fields: [departmentId], references: [id_department])
   divisi                   divisi?             @relation(fields: [divisiId], references: [id_divisi])
   aparInspections          AparInspection[]    @relation("UserAparInspections")
@@ -153,9 +153,11 @@ model Team {
   updatedAt      DateTime?      @updatedAt
   div_team_rel   div_team_rel[]
   organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  teammember     teamMember[]
+  teammember     LegacyTeamMember[]
 
   teammembers TeamMember[]
+
+  memberCount Int @default(0)
 
   @@index([organizationId])
   @@map("team")
@@ -208,7 +210,7 @@ model organizationRole {
   @@map("organizationrole")
 }
 
-model teamMember {
+model LegacyTeamMember {
   id        String    @id
   teamId    String
   userId    String
@@ -958,9 +960,12 @@ model TeamMember {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime?
 
+  membershipKey String?
+
   @@index([teamId(length: 191)])
   @@index([userId(length: 191)])
   @@map("teamMember")
+  @@unique([membershipKey])
 }
 
 model SsoProvider {
@@ -973,6 +978,8 @@ model SsoProvider {
   providerId     String
   organizationId String? @db.Text
   domain         String  @db.Text
+
+  domainVerified Boolean?
 
   @@unique([providerId])
   @@map("ssoProvider")

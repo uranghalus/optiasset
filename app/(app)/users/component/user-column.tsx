@@ -89,7 +89,11 @@ export const userColumns: ColumnDef<UserWithRole>[] = [
           {roles.map((r, i) => (
             <div
               key={i}
-              className="flex items-center gap-1 border px-2 py-0.5 rounded-md bg-muted/50 text-xs"
+              className={cn(
+                "flex items-center gap-1 border px-2 py-0.5 rounded-md bg-muted/50 text-xs",
+                r === "guest" &&
+                  "border-amber-500/40 bg-amber-500/10 text-amber-700",
+              )}
             >
               <ShieldCheck className="h-3 w-3 text-muted-foreground" />
               <span className="capitalize">{r}</span>

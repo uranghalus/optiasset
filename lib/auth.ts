@@ -6,6 +6,11 @@ import { sso } from '@better-auth/sso';
 import { admin as adminPg, organization, username } from 'better-auth/plugins';
 
 import { ac, owner, admin } from './auth-permission';
+import { buildSamlDefaultSso } from './saml-config';
+import { provisionSsoUser } from './sso-provisioning';
+
+const samlDefaultSso = buildSamlDefaultSso();
+
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: 'mysql', // or "mysql", "postgresql", ...etc
@@ -56,7 +61,10 @@ export const auth = betterAuth({
   },
   plugins: [
     username(),
-    adminPg(),
+    // Self-created users (including SSO) start unprivileged. The admin plugin
+    // otherwise defaults every new user to "user", which would let SSO users
+    // skip admin verification. Admin-created users always send an explicit role.
+    adminPg({ defaultRole: 'guest' }),
     organization({
       ac: ac,
       allowUserToCreateOrganization: true,
@@ -71,8 +79,19 @@ export const auth = betterAuth({
         enabled: true,
       },
     }),
-    nextCookies(),
-    sso(),
+    sso({
+      domainVerification: {
+        enabled: true,
+      },
+      // New SSO users are self-provisioned as "guest" and redirected to the
+      // waiting page until an admin changes their role.
+      provisionUser: async ({ user }) => {
+        await provisionSsoUser(user);
+      },
+      provisionUserOnEveryLogin: true,
+      ...(samlDefaultSso ? { defaultSSO: [samlDefaultSso] } : {}),
+    }),
+    nextCookies(), // must be the last plugin
   ],
 });
 

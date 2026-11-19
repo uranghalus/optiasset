@@ -17,15 +17,37 @@ import { Button } from './ui/button'
 
 import { PasswordInput } from './password-input'
 import { loginAction } from '@/action/auth-action'
+import { authClient } from '@/lib/auth-client'
 import Logo from './logo'
 import { Checkbox } from './ui/checkbox'
+import { ShieldCheck } from 'lucide-react'
+
+function getSsoErrorMessage(code: string | null, description: string | null) {
+    if (!code) return null
+
+    switch (code) {
+        case 'account_not_linked':
+            return 'Akun ini belum terhubung ke data pengguna. Hubungi admin untuk menghubungkan akun Anda.'
+        case 'signup_disabled':
+            return 'Pendaftaran akun baru melalui SSO dinonaktifkan. Hubungi admin.'
+        case 'access_denied':
+            return 'Login SSO dibatalkan.'
+        default:
+            return description || `Login SSO gagal (${code}).`
+    }
+}
 
 export default function LoginForm() {
     const [isLoading, setIsLoading] = useState(false)
+    const [isSsoLoading, setIsSsoLoading] = useState(false)
 
     const router = useRouter()
     const searchParams = useSearchParams()
     const redirect = searchParams.get('redirect')
+    const ssoError = getSsoErrorMessage(
+        searchParams.get('error'),
+        searchParams.get('error_description'),
+    )
 
     const form = useForm<z.infer<typeof LoginSchema>>({
         resolver: zodResolver(LoginSchema),
@@ -86,6 +108,32 @@ export default function LoginForm() {
         }
     }
 
+    async function onSsoLogin() {
+        setIsSsoLoading(true)
+
+        try {
+            const result = await authClient.signIn.sso({
+                providerId: 'opti-saml',
+                callbackURL: redirect ?? '/dashboard',
+                errorCallbackURL: '/login',
+            })
+
+            if (result?.error) {
+                setIsSsoLoading(false)
+                form.setError('root', {
+                    type: 'server',
+                    message: result.error.message ?? 'Gagal memulai login SSO',
+                })
+            }
+        } catch {
+            setIsSsoLoading(false)
+            form.setError('root', {
+                type: 'server',
+                message: 'Gagal memulai login SSO',
+            })
+        }
+    }
+
     return (
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 sm:px-4 px-4">
 
@@ -94,6 +142,15 @@ export default function LoginForm() {
                 <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
                     <p className="text-sm text-destructive font-medium">
                         {form.formState.errors.root.message}
+                    </p>
+                </div>
+            )}
+
+            {/* SSO ERROR */}
+            {ssoError && (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+                    <p className="text-sm text-destructive font-medium">
+                        {ssoError}
                     </p>
                 </div>
             )}
@@ -175,6 +232,34 @@ export default function LoginForm() {
                                 Logging in...
                             </span>
                         ) : 'Sign In'}
+                    </Button>
+                </Field>
+
+                <div className="flex items-center gap-3">
+                    <span className="h-px flex-1 bg-border" />
+                    <span className="text-xs text-muted-foreground">atau</span>
+                    <span className="h-px flex-1 bg-border" />
+                </div>
+
+                <Field>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full h-10 text-sm"
+                        onClick={onSsoLogin}
+                        disabled={isSsoLoading || isLoading}
+                    >
+                        {isSsoLoading ? (
+                            <span className="flex items-center gap-2">
+                                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                Mengalihkan ke SSO...
+                            </span>
+                        ) : (
+                            <>
+                                <ShieldCheck className="mr-2 h-4 w-4" />
+                                Masuk dengan SSO OptiGate
+                            </>
+                        )}
                     </Button>
                 </Field>
             </FieldGroup>

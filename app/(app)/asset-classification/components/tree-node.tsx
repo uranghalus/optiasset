@@ -154,6 +154,20 @@ export function TreeNode({ node, level, editor }: any) {
             {node.code}
           </Badge>
 
+          {level === "subcluster" && node.type && (
+            <Badge
+              variant="outline"
+              className={cn(
+                "shrink-0 text-[10px] h-5 px-1.5",
+                node.type === "PERALATAN"
+                  ? "bg-sky-50 text-sky-700 border-sky-200/50 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-800/30"
+                  : "bg-rose-50 text-rose-700 border-rose-200/50 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800/30"
+              )}
+            >
+              {node.type === "PERALATAN" ? "Peralatan" : "Perlengkapan"}
+            </Badge>
+          )}
+
           <span className="truncate text-sm font-medium">
             {node.name}
           </span>

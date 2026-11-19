@@ -19,6 +19,7 @@ import { TaxonomyToolbar } from "./taxonomy-toolbar";
 export default function AssetTaxonomyPage() {
   const editor = useClassificationEditor();
   const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
 
   return (
     <div className="h-[calc(100vh-170px)] flex flex-col overflow-hidden rounded-lg border bg-card">
@@ -33,13 +34,18 @@ export default function AssetTaxonomyPage() {
           defaultSize={40}
           className="bg-gradient-to-b from-background to-muted/20"
         >
-          <ClassificationCards editor={editor} search={search} />
+          <ClassificationCards
+            editor={editor}
+            search={search}
+            typeFilter={typeFilter}
+            onTypeFilterChange={setTypeFilter}
+          />
         </ResizablePanel>
 
         <ResizableHandle withHandle />
 
         <ResizablePanel defaultSize={60}>
-          <TaxonomyEditorPanel editor={editor} />
+          <TaxonomyEditorPanel editor={editor} activeTypeFilter={typeFilter} />
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>

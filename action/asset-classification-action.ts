@@ -639,6 +639,7 @@ export async function createAssetSubCluster(formData: FormData) {
           name,
           description: formData.get("description")?.toString() ?? undefined,
           notes: formData.get("notes")?.toString() ?? undefined,
+          type: (formData.get("type")?.toString() as any) || "PERALATAN",
         },
       });
 
@@ -794,6 +795,7 @@ export async function updateAssetSubCluster(id: string, formData: FormData) {
           name,
           description: formData.get("description")?.toString(),
           notes: formData.get("notes")?.toString(),
+          type: (formData.get("type")?.toString() as any) || existing.type,
         },
       });
 

@@ -41,6 +41,16 @@ type Props = {
 export function UserActionDialog({ open, onOpenChange, currentRow }: Props) {
   const isEdit = !!currentRow;
 
+  // A user is pending verification while their only role is "guest" (or none).
+  const isVerifying =
+    isEdit &&
+    (!currentRow?.role ||
+      currentRow.role
+        .split(",")
+        .map((r: string) => r.trim())
+        .filter(Boolean)
+        .every((r: string) => r === "guest"));
+
   const createMutation = useCreateUser();
   const updateMutation = useUpdateUser();
 
@@ -71,7 +81,12 @@ export function UserActionDialog({ open, onOpenChange, currentRow }: Props) {
     if (currentRow) {
       let userRoles: string[] = [];
       if (currentRow.role) {
-        userRoles = currentRow.role.split(",").map((r: string) => r.trim());
+        // "guest" is a pending marker, not a selectable role. Dropping it here
+        // prevents saving values like "guest,staff" during verification.
+        userRoles = currentRow.role
+          .split(",")
+          .map((r: string) => r.trim())
+          .filter((r: string) => r && r !== "guest");
       }
       form.reset({
         name: currentRow.name || "",
@@ -95,6 +110,14 @@ export function UserActionDialog({ open, onOpenChange, currentRow }: Props) {
   const isPending = createMutation.isPending || updateMutation.isPending;
 
   const onSubmit = async (values: UserForm) => {
+    if (isVerifying && (!values.role || values.role.length === 0)) {
+      form.setError("role", {
+        type: "manual",
+        message: "Pilih minimal satu role untuk memverifikasi akun.",
+      });
+      return;
+    }
+
     const formData = new FormData();
     formData.append("name", values.name);
     if (values.email) formData.append("email", values.email);
@@ -143,11 +166,15 @@ export function UserActionDialog({ open, onOpenChange, currentRow }: Props) {
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit User" : "Tambah User"}</DialogTitle>
+          <DialogTitle>
+            {isVerifying ? "Verifikasi User" : isEdit ? "Edit User" : "Tambah User"}
+          </DialogTitle>
           <DialogDescription>
-            {isEdit
-              ? "Perbarui data user."
-              : "Buat user baru untuk masuk ke sistem."}
+            {isVerifying
+              ? "Pilih role untuk mengaktifkan akun SSO ini dan mengizinkan akses."
+              : isEdit
+                ? "Perbarui data user."
+                : "Buat user baru untuk masuk ke sistem."}
           </DialogDescription>
         </DialogHeader>
 
@@ -319,8 +346,11 @@ export function UserActionDialog({ open, onOpenChange, currentRow }: Props) {
                       <p className="text-xs text-muted-foreground col-span-2">
                         Memuat role...
                       </p>
-                    ) : orgRoles.length > 0 ? (
-                      orgRoles.map((role: any) => (
+                    ) : orgRoles.filter((role: any) => role.role !== "guest")
+                        .length > 0 ? (
+                      orgRoles
+                        .filter((role: any) => role.role !== "guest")
+                        .map((role: any) => (
                         <label
                           key={role.id}
                           className="flex items-center gap-2 cursor-pointer"
@@ -356,7 +386,11 @@ export function UserActionDialog({ open, onOpenChange, currentRow }: Props) {
 
           <DialogFooter>
             <Button type="submit" disabled={isPending}>
-              {isPending ? "Menyimpan..." : "Simpan"}
+              {isPending
+                ? "Menyimpan..."
+                : isVerifying
+                  ? "Verifikasi"
+                  : "Simpan"}
             </Button>
           </DialogFooter>
         </form>

@@ -13,6 +13,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import {
   useCreateAssetGroup,
@@ -29,6 +36,7 @@ type FormValues = {
   code: string;
   name: string;
   notes?: string;
+  type?: string;
 };
 
 const levelMeta: Record<
@@ -64,7 +72,7 @@ function getLevelLabel(level: string) {
   return levelMeta[level]?.label || "Data";
 }
 
-export function TaxonomyForm({ mode, selected, editor }: any) {
+export function TaxonomyForm({ mode, selected, editor, activeTypeFilter }: any) {
   const submitMode = useRef<"continue" | "close">("continue");
 
   const form = useForm<FormValues>({
@@ -72,14 +80,16 @@ export function TaxonomyForm({ mode, selected, editor }: any) {
       code: "",
       name: "",
       notes: "",
+      type: "PERALATAN",
     },
   });
 
-  const { register, handleSubmit, reset } = form;
+  const { register, handleSubmit, reset, watch, setValue } = form;
 
   useEffect(() => {
     if (mode === "create") {
-      reset({ code: "", name: "", notes: "" });
+      const defaultType = selected.level === "subcluster" ? (activeTypeFilter || "PERALATAN") : "PERALATAN";
+      reset({ code: "", name: "", notes: "", type: defaultType });
       return;
     }
 
@@ -88,9 +98,10 @@ export function TaxonomyForm({ mode, selected, editor }: any) {
         code: selected.data.code || "",
         name: selected.data.name || "",
         notes: selected.data.notes || "",
+        type: selected.data.type || "PERALATAN",
       });
     }
-  }, [mode, selected?.id, selected?.parentId, selected?.level, reset]);
+  }, [mode, selected?.id, selected?.parentId, selected?.level, reset, activeTypeFilter]);
 
   const createGroup = useCreateAssetGroup();
   const createCategory = useCreateAssetCategory();
@@ -106,7 +117,8 @@ export function TaxonomyForm({ mode, selected, editor }: any) {
       editor.closeEditor();
       return;
     }
-    reset({ code: "", name: "", notes: "" });
+    const defaultType = selected.level === "subcluster" ? (activeTypeFilter || "PERALATAN") : "PERALATAN";
+    reset({ code: "", name: "", notes: "", type: defaultType });
   }
 
   function submit(values: FormValues) {
@@ -115,6 +127,10 @@ export function TaxonomyForm({ mode, selected, editor }: any) {
     fd.append("name", values.name);
     if (values.notes) {
       fd.append("notes", values.notes);
+    }
+    // Type field only for subcluster level
+    if (selected.level === "subcluster" && values.type) {
+      fd.append("type", values.type);
     }
 
     /* CREATE */
@@ -228,6 +244,29 @@ export function TaxonomyForm({ mode, selected, editor }: any) {
           <div className="space-y-1.5">
             <label className="block text-sm font-medium">Catatan</label>
             <Input {...register("notes")} placeholder="Catatan tambahan (opsional)" />
+          </div>
+        )}
+
+        {selected.level === "subcluster" && (
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium">
+              Tipe <span className="text-destructive">*</span>
+            </label>
+            <Select
+              value={watch("type") || "PERALATAN"}
+              onValueChange={(val) => setValue("type", val)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih tipe" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="PERALATAN">Peralatan (Equipment)</SelectItem>
+                <SelectItem value="PERLENGKAPAN">Perlengkapan (Supplies)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-muted-foreground">
+              Menandai apakah sub-klaster ini untuk peralatan atau perlengkapan.
+            </p>
           </div>
         )}
 

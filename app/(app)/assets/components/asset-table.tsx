@@ -36,6 +36,7 @@ import { useSelectDepartment } from "@/hooks/crud/use-department";
 import { useDebounce } from "@/hooks/use-debounce";
 
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 export default function AssetTable() {
   const { setOpen } = useDialog();
@@ -47,6 +48,13 @@ export default function AssetTable() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const categoryId = searchParams.get("categoryId") || undefined;
+  const statusParam = searchParams.get("status") || "ACTIVE";
+
+  // Status tabs: ACTIVE, DRAFT
+  const statusTabs = [
+    { label: "Aktif", value: "ACTIVE" },
+    { label: "Draft", value: "DRAFT" },
+  ];
 
   // ==========================================
   // PERUBAHAN BESAR: TANPA useState & useEffect
@@ -105,6 +113,7 @@ export default function AssetTable() {
     condition: selectedCondition,
     categoryId,
     search: debouncedSearch,
+    status: statusParam,
   });
   const isLoading = assetLoading || isFetching;
 
@@ -133,6 +142,14 @@ export default function AssetTable() {
           { label: "Hilang", value: "HILANG" },
         ],
       },
+      {
+        columnId: "assetType",
+        title: "Tipe Aset",
+        options: [
+          { label: "Peralatan", value: "PERALATAN" },
+          { label: "Perlengkapan", value: "PERLENGKAPAN" },
+        ],
+      },
     ];
   }, [role, departments]);
 
@@ -158,6 +175,34 @@ export default function AssetTable() {
 
   return (
     <div className="p-3 rounded-md border space-y-4 w-full overflow-hidden">
+      {/* Status Tabs */}
+      <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
+        {statusTabs.map((tab) => {
+          const isActive = statusParam === tab.value;
+          return (
+            <button
+              key={tab.label}
+              onClick={() => {
+                const params = new URLSearchParams(searchParams.toString());
+                params.delete("page");
+                params.set("status", tab.value);
+                router.replace(`${pathname}?${params.toString()}`, {
+                  scroll: false,
+                });
+              }}
+              className={cn(
+                "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
+                isActive
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
       <DataTableToolbar
         table={table}
         searchPlaceholder="Cari Kode Aset..."

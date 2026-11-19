@@ -4,7 +4,7 @@ import { ButtonGroup } from '@/components/ui/button-group'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { useDialog } from '@/context/dialog-provider'
 import { Row } from '@tanstack/react-table'
-import { Trash2, Pencil, ChevronDownIcon, VolumeOffIcon, CheckIcon, AlertTriangleIcon, UserRoundXIcon, ShareIcon, CopyIcon, TrashIcon, OctagonMinus, Check } from 'lucide-react'
+import { Trash2, Pencil, ChevronDownIcon, VolumeOffIcon, CheckIcon, AlertTriangleIcon, UserRoundXIcon, ShareIcon, CopyIcon, TrashIcon, OctagonMinus, Check, ShieldCheck } from 'lucide-react'
 import React from 'react'
 import { Button } from '@/components/ui/button'
 
@@ -14,6 +14,15 @@ interface UserRowActionsProps<TData> {
 export default function UserRowActions<TData>({ row }: UserRowActionsProps<TData>) {
     const { setOpen, setCurrentRow } = useDialog()
     const user = row.original
+    const role = (user as { role?: string | null }).role
+    const isPendingVerification =
+        !role ||
+        role
+            .split(',')
+            .map((r) => r.trim())
+            .filter(Boolean)
+            .every((r) => r === 'guest')
+
     return (
         <ButtonGroup>
             <Button variant="destructive" size="icon" onClick={() => {
@@ -36,6 +45,20 @@ export default function UserRowActions<TData>({ row }: UserRowActionsProps<TData
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
                     <DropdownMenuGroup>
+                        {isPendingVerification && (
+                            <>
+                                <DropdownMenuItem
+                                    onClick={() => {
+                                        setCurrentRow(user);
+                                        setOpen("edit");
+                                    }}
+                                >
+                                    <ShieldCheck />
+                                    Verifikasi Akun
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                            </>
+                        )}
                         <DropdownMenuItem variant="destructive" onClick={() => {
                             setCurrentRow(user);
                             setOpen("banned");
